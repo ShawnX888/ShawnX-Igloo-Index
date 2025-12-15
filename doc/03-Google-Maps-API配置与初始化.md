@@ -33,9 +33,14 @@
 - 推荐：步骤02已完成，类型定义已就绪
 
 ### 需要的数据/接口
-- Google Maps JavaScript API Key：`AIzaSyDySKOyx0ilGmORM-8px8Hx45jb9s28zms`
+- Google Maps JavaScript API Key：通过环境变量 `VITE_GOOGLE_MAPS_API_KEY` 配置
 - Google Cloud Project：`axinan-dev`
 - 类型定义：步骤02中定义的类型（如果已完成）
+
+**API Key配置**：
+1. 复制 `.env.example` 文件为 `.env`
+2. 在 `.env` 文件中设置 `VITE_GOOGLE_MAPS_API_KEY=your_actual_api_key`
+3. 在代码中使用 `import.meta.env.VITE_GOOGLE_MAPS_API_KEY` 访问API Key
 
 ---
 
@@ -44,8 +49,10 @@
 ### 核心功能点
 
 1. **API Key配置**
-   - 在环境变量或配置文件中设置API Key
-   - 确保API Key安全，不在代码中硬编码（开发环境可以例外）
+   - 在 `.env` 文件中设置 `VITE_GOOGLE_MAPS_API_KEY` 环境变量
+   - 在代码中使用 `import.meta.env.VITE_GOOGLE_MAPS_API_KEY` 访问API Key
+   - 确保API Key安全，不在代码中硬编码
+   - 确保 `.env` 文件已添加到 `.gitignore`，不会被提交到版本控制
 
 2. **动态库加载**
    - 使用`google.maps.importLibrary`动态加载所需库
