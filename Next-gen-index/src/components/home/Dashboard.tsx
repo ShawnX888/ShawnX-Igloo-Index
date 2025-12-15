@@ -7,8 +7,9 @@ import { DataDashboard } from "./DataDashboard";
 import { ContextualAssistant } from "./ContextualAssistant";
 import { ProductSelector } from "./ProductSelector";
 import { Region, RainfallType, RiskData, InsuranceProduct, DateRange } from "./types";
-import { initialRiskData, rainfallHistory, rainfallPrediction } from "../../lib/mockData";
-import { addDays, differenceInDays } from "date-fns";
+import { initialRiskData } from "../../lib/mockData";
+import { useRainfallData, useDailyData } from "../../hooks/useRainfallData";
+import { addDays } from "date-fns";
 
 export function Dashboard({ 
   onNavigateToProduct, 
@@ -47,38 +48,18 @@ export function Dashboard({
   const [riskData] = useState<RiskData[]>(initialRiskData);
 
   // --- CENTRALIZED DATA GENERATION ---
-  // Generate consistent data for all regions so Map and Dashboard match
+  // 使用新的数据生成器生成所有区域的数据
+  const allRegionsHourlyData = useRainfallData(selectedRegion, dateRange, rainfallType);
+  
+  // 生成日级数据（从小时级数据累计）
+  const allRegionsDailyData = useDailyData(allRegionsHourlyData, dateRange);
+  
+  // 为了兼容现有代码，同时提供小时级和日级数据
+  // 根据使用场景选择合适的数据粒度
   const allRegionsData = useMemo(() => {
-     if (!dateRange.from || !dateRange.to) return {};
-     
-     const regions = ["Jakarta Selatan", "Jakarta Timur", "Jakarta Barat"];
-     const sourceData = rainfallType === 'predicted' ? rainfallPrediction : rainfallHistory;
-     const days = differenceInDays(dateRange.to, dateRange.from) + 1;
-     
-     const data: Record<string, any[]> = {};
-
-     regions.forEach(regionName => {
-         const items = [];
-         const regionSeed = regionName.length; 
-         
-         for (let i = 0; i < days; i++) {
-             const currentDate = addDays(dateRange.from, i);
-             const sourceItem = sourceData[i % sourceData.length];
-             
-             // Variance logic (Must match what we want in DataDashboard)
-             const variance = 0.8 + (Math.sin(i + regionSeed) * 0.4); 
-             
-             items.push({
-                 date: currentDate.toISOString(),
-                 amount: Math.max(0, sourceItem.amount * variance),
-                 risk: sourceItem.risk
-             });
-         }
-         data[regionName] = items;
-     });
-     
-     return data;
-  }, [dateRange, rainfallType]);
+    // 返回小时级数据（更详细），如果需要日级数据可以从allRegionsDailyData获取
+    return allRegionsHourlyData;
+  }, [allRegionsHourlyData]);
 
   // --- HANDLERS ---
   const handleRainfallTypeChange = (type: RainfallType) => {
@@ -191,7 +172,7 @@ export function Dashboard({
           dateRange={dateRange}
           selectedProduct={selectedProduct}
           onProductSelect={setSelectedProduct}
-          dailyData={allRegionsData[selectedRegion.district] || []}
+          dailyData={allRegionsDailyData[selectedRegion.district] || allRegionsData[selectedRegion.district] || []}
           onNavigateToProduct={onNavigateToProduct}
         />
       </div>
