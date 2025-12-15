@@ -1,16 +1,18 @@
 
-import { Calendar as CalendarIcon, ChevronDown, ChevronRight, ChevronLeft, MapPin, Droplets, ShieldCheck, Clock, Search, Minimize2, Settings2 } from "lucide-react";
+import { Calendar as CalendarIcon, ChevronDown, ChevronRight, ChevronLeft, MapPin, Droplets, ShieldCheck, Clock, Search, Minimize2, Settings2, X } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Calendar } from "../ui/calendar";
 import { format } from "date-fns";
 import { Region, RainfallType, InsuranceProduct, DateRange } from "./types";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { cn } from "../../lib/utils";
 import { Card } from "../ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { ScrollArea } from "../ui/scroll-area";
+import { REGION_HIERARCHY } from "../../lib/regionData";
+import { useRegionData } from "../../hooks/useRegionData";
 
 interface ControlPanelProps {
   isMinimized: boolean;
@@ -67,28 +69,47 @@ export function ControlPanel({
     );
   }
 
-  // Mock Data for Cascading Location
-  const HIERARCHY: Record<string, Record<string, string[]>> = {
-    "Indonesia": {
-      "Jakarta": ["Jakarta Selatan", "Jakarta Timur", "Jakarta Barat", "Jakarta Pusat"],
-      "West Java": ["Bandung", "Bogor", "Bekasi"],
-      "Bali": ["Denpasar", "Ubud"]
-    },
-    "Thailand": {
-      "Bangkok": ["Bang Rak", "Pathum Wan", "Chatuchak"],
-      "Chiang Mai": ["Mueang", "Mae Rim"]
-    },
-    "Vietnam": {
-       "Ho Chi Minh": ["District 1", "District 3", "Thu Duc"],
-       "Hanoi": ["Hoan Kiem", "Tay Ho"]
-    }
-  };
+  // 使用区域数据管理模块
+  const HIERARCHY = REGION_HIERARCHY;
+  const { search: searchRegions } = useRegionData();
 
   // State for the custom cascading popover
   const [locationStep, setLocationStep] = useState<1 | 2 | 3>(1);
   const [tempCountry, setTempCountry] = useState<string>("");
   const [tempProvince, setTempProvince] = useState<string>("");
   const [isLocationOpen, setIsLocationOpen] = useState(false);
+
+  // State for search
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
+
+  // Search results
+  const searchResults = useMemo(() => {
+    if (!searchQuery || searchQuery.trim().length === 0) {
+      return [];
+    }
+    return searchRegions(searchQuery);
+  }, [searchQuery, searchRegions]);
+
+  // Handle search input change
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    setIsSearchOpen(value.length > 0);
+  };
+
+  // Handle search result selection
+  const handleSearchResultSelect = (region: Region) => {
+    setSelectedRegion(region);
+    setSearchQuery("");
+    setIsSearchOpen(false);
+    setIsLocationOpen(false);
+  };
+
+  // Clear search
+  const handleClearSearch = () => {
+    setSearchQuery("");
+    setIsSearchOpen(false);
+  };
 
   // Reset wizard when opening
   const handleLocationOpenChange = (open: boolean) => {
@@ -144,10 +165,51 @@ export function ControlPanel({
                  <h3 className="text-xs">Location</h3>
               </div>
               
-              {/* Search Box simulation */}
+              {/* Search Box */}
               <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-gray-400" />
-                <Input placeholder="Search areas..." className="pl-8 bg-gray-50 border-gray-200 focus-visible:ring-blue-500 h-9 text-xs" />
+                <Input 
+                  placeholder="Search areas..." 
+                  className="pl-8 pr-8 bg-gray-50 border-gray-200 focus-visible:ring-blue-500 h-9 text-xs" 
+                  value={searchQuery}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  onFocus={() => searchQuery.length > 0 && setIsSearchOpen(true)}
+                />
+                {searchQuery.length > 0 && (
+                  <button
+                    onClick={handleClearSearch}
+                    className="absolute right-2.5 top-2.5 h-3.5 w-3.5 text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+                
+                {/* Search Results Dropdown */}
+                {isSearchOpen && searchResults.length > 0 && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                    {searchResults.map((result, index) => (
+                      <button
+                        key={`${result.country}-${result.province}-${result.district}-${index}`}
+                        onClick={() => handleSearchResultSelect(result)}
+                        className="w-full text-left px-3 py-2 hover:bg-blue-50 hover:text-blue-700 text-sm border-b border-gray-100 last:border-b-0"
+                      >
+                        <div className="font-medium text-gray-900">
+                          {result.district}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {result.province}, {result.country}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                
+                {/* No Results */}
+                {isSearchOpen && searchQuery.length > 0 && searchResults.length === 0 && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-3 text-sm text-gray-500">
+                    No results found for "{searchQuery}"
+                  </div>
+                )}
               </div>
 
               {/* Single Cascading Dropdown */}

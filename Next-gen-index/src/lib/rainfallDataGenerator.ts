@@ -6,6 +6,7 @@
 import { Region, DateRange, RainfallType, RegionData, RainfallData } from '../types';
 import { RainfallDataGenerator } from '../interfaces/dataGenerator';
 import { addDays, addHours, format, differenceInHours, differenceInDays, startOfDay, isBefore, isAfter } from 'date-fns';
+import { getDistrictsInProvince as getDistrictsFromRegionData } from './regionData';
 
 /**
  * 区域种子生成器
@@ -44,36 +45,12 @@ class SeededRandom {
 
 /**
  * 获取同一省/州下的所有市/区
- * 注意：这里使用硬编码的区域层级，未来应该从区域数据管理模块获取
+ * 使用区域数据管理模块
  */
-function getDistrictsInProvince(region: Region): string[] {
-  // 临时硬编码的区域层级（与ControlPanel中的HIERARCHY保持一致）
-  const HIERARCHY: Record<string, Record<string, string[]>> = {
-    "Indonesia": {
-      "Jakarta": ["Jakarta Selatan", "Jakarta Timur", "Jakarta Barat", "Jakarta Pusat"],
-      "West Java": ["Bandung", "Bogor", "Bekasi", "Jakarta Selatan"], // 添加默认区域
-      "Bali": ["Denpasar", "Ubud"]
-    },
-    "Thailand": {
-      "Bangkok": ["Bang Rak", "Pathum Wan", "Chatuchak"],
-      "Chiang Mai": ["Mueang", "Mae Rim"]
-    },
-    "Vietnam": {
-      "Ho Chi Minh": ["District 1", "District 3", "Thu Duc"],
-      "Hanoi": ["Hoan Kiem", "Tay Ho"]
-    }
-  };
+import { getDistrictsInProvince as getDistrictsFromRegionData } from './regionData';
 
-  const districts = HIERARCHY[region.country]?.[region.province] || [];
-  // 如果找不到对应的省/州，至少返回当前选中的市/区
-  if (districts.length === 0) {
-    return [region.district];
-  }
-  // 确保选中的市/区在列表中
-  if (!districts.includes(region.district)) {
-    districts.push(region.district);
-  }
-  return districts;
+function getDistrictsInProvince(region: Region): string[] {
+  return getDistrictsFromRegionData(region);
 }
 
 /**
