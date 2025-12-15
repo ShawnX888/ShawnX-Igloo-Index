@@ -1,0 +1,46 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "GitLab: 查看 Merge Requests",
+      "type": "shell",
+      "command": "glab mr list",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "GitLab: 创建 Merge Request",
+      "type": "shell",
+      "command": "glab mr create",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "GitLab: 查看 Issues",
+      "type": "shell",
+      "command": "glab issue list",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "GitLab: 查看项目信息",
+      "type": "shell",
+      "command": "glab repo view",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    }
+  ]
+}
+

@@ -1,0 +1,12 @@
+{
+  // GitLab CLI (glab) 配置
+  // 注意：GitLab Workflow 扩展不兼容 GitLab 15.5.3-ee
+  // 已改用 GitLab CLI (glab) 作为替代方案
+  
+  // Git 配置
+  "git.defaultBranchName": "main",
+  
+  // 终端配置（用于运行 glab 命令）
+  "terminal.integrated.defaultProfile.osx": "zsh"
+}
+
