@@ -54,11 +54,11 @@
      - 省/州（administrative_area_level_1）
      - 市/区（administrative_area_level_2或locality）
 
-3. **区域匹配与验证**
-   - 验证定位结果是否在东南亚国家范围内
-   - 如果不在范围内，提示用户并保持当前选择
+3. **区域匹配与设置**
+   - 将定位结果转换为行政区域信息
    - 如果定位成功，自动设置选中的区域
    - 更新地图视图，自动缩放到定位区域
+   - 不限制特定地区，支持全球范围
 
 4. **UI交互设计**
    - 定位按钮：位于地图控制区域（图层控制附近）
@@ -115,12 +115,7 @@ async function reverseGeocode(
   const province = extractProvince(addressComponents);
   const district = extractDistrict(addressComponents);
   
-  // 验证是否在东南亚国家范围内
-  const seaCountries = ['Indonesia', 'Malaysia', 'Thailand', ...];
-  if (!seaCountries.includes(country)) {
-    throw new Error('Location is not in Southeast Asia');
-  }
-  
+  // 返回区域信息（不限制特定地区）
   return { country, province, district };
 }
 ```
@@ -151,7 +146,7 @@ function GPSLocationButton({
         throw new Error('Failed to convert location to region');
       }
 
-      // 3. 设置选中区域
+      // 3. 设置选中区域（不限制特定地区）
       setSelectedRegion(region);
       
       // 4. 更新地图视图
@@ -251,7 +246,6 @@ export function GPSLocationButton({ ... }: GPSButtonProps) { ... }
 - [ ] 定位过程中显示加载状态
 - [ ] 定位成功后显示成功提示
 - [ ] 定位失败时显示错误提示（权限被拒绝、定位超时等）
-- [ ] 定位位置不在东南亚时显示提示
 
 ### 性能验收标准
 - [ ] GPS定位获取时间在10秒内
@@ -272,9 +266,9 @@ export function GPSLocationButton({ ... }: GPSButtonProps) { ... }
    - 设置合理的超时时间（10秒）
    - 处理超时错误，提供重试选项
 
-3. **定位位置不在东南亚**
-   - 验证定位结果是否在东南亚国家范围内
-   - 如果不在，提示用户并保持当前选择
+3. **定位位置无法转换为区域**
+   - 处理Geocoding API返回结果为空的情况
+   - 处理地址组件解析失败的情况
 
 4. **反向地理编码失败**
    - 处理API调用失败的情况

@@ -1,6 +1,6 @@
-# 东南亚 Index Insurance 门户网站设计
+# Index Insurance 门户网站设计
 
-打造一个东南亚 index insurance 的门户网站，UI 风格参考 Google Maps Platform 和 Apple App Store。
+打造一个 index insurance 的门户网站，UI 风格参考 Google Maps Platform 和 Apple App Store。
 
 网站的页面包含：降雨和风险（首页），保险产品介绍页。
 
@@ -77,7 +77,7 @@
 
 1. **区域选择**
    - 模糊搜索
-   - 按层级分步选择"国家 - 省/州 - 市/区"（仅限东南亚国家）
+   - 按层级分步选择"国家 - 省/州 - 市/区"（支持全球范围）
 
 2. **选择数据类型**
    - "历史降雨量"或"预测降雨量"，二选一
