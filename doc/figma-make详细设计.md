@@ -170,38 +170,55 @@
 
 ### 保险产品
 
-#### 日内产品
+**重要说明**：保险产品涵盖两层定义：
+1. **产品级的风险事件触发条件**：定义什么情况触发风险事件，触发风险的级别（tier 1, tier 2, tier 3）
+2. **保单级的赔付原则**：定义赔付多少金额，赔付几次（如"once per day per policy"、"对应不同理赔额度"）
 
-连续 4 小时的降雨量超过阈值：4-hour cumulative rainfall within one day (00:00 to 23:00) > threshold, once per day per policy。
+**当前网站范围**：目前该网站仅计算并可视化产品级的风险事件触发条件，不涉及保单级的赔付计算。产品详情页中的保单级信息（如"once per day per policy"、"对应不同理赔额度"）仅用于教育展示，不参与实际计算。
 
-阈值 threshold 分 3 档：
-- 100mm
-- 120mm
-- 140mm
+#### 降雨量日内产品
 
-对应不同理赔额度。
+*产品级的风险事件触发条件*：
+- 天气类型：降雨量
+- 触发条件：连续 4 小时的降雨量超过阈值（时间区间：00:00 to 23:59）
+- 阈值 threshold 分 3 档：
+  - 100mm (tier 1)
+  - 120mm (tier 2)
+  - 140mm (tier 3)
+- 触发级别：根据超过的阈值档位确定（tier 1, tier 2, tier 3）
 
-#### 周度产品
+*保单级的赔付原则*（仅用于教育展示，不参与计算）：
+- 赔付频率限制：once per day per policy（每天每个保单最多赔付一次）
+- 理赔额度：对应不同理赔额度（根据 tier 1/2/3 不同档位）
 
-7 天降雨量超过阈值：7-day cumulative rainfall within one month > threshold, once per month per policy。
+#### 降雨量周度产品
 
-阈值 threshold 分 3 档：
-- 300mm
-- 350mm
-- 400mm
+*产品级的风险事件触发条件*：
+- 天气类型：降雨量
+- 触发条件：7 天累计降雨量超过阈值
+- 阈值 threshold 分 3 档：
+  - 300mm (tier 1)
+  - 350mm (tier 2)
+  - 400mm (tier 3)
+- 触发级别：根据超过的阈值档位确定（tier 1, tier 2, tier 3）
 
-对应不同理赔额度。
+*保单级的赔付原则*（仅用于教育展示，不参与计算）：
+- 赔付频率限制：once per month per policy（每月每个保单最多赔付一次）
+- 理赔额度：对应不同理赔额度（根据 tier 1/2/3 不同档位）
 
-#### 月度产品
+#### 降雨量月度产品
 
-当月降雨量低于阈值：cumulative rainfall of one month < threshold。
+*产品级的风险事件触发条件*：
+- 天气类型：降雨量
+- 触发条件：当月累计降雨量低于阈值
+- 阈值 threshold 分 3 档：
+  - 60mm (tier 1)
+  - 40mm (tier 2)
+  - 20mm (tier 3)
+- 触发级别：根据低于的阈值档位确定（tier 1, tier 2, tier 3）
 
-阈值 threshold 分 3 档：
-- 60mm
-- 40mm
-- 20mm
-
-对应不同理赔额度。
+*保单级的赔付原则*（仅用于教育展示，不参与计算）：
+- 理赔额度：对应不同理赔额度（根据 tier 1/2/3 不同档位）
 
 ### 页面联动
 

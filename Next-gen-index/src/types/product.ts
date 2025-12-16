@@ -10,9 +10,10 @@ import { TimeWindowConfig, WeatherType } from './data';
 export type ProductType = 'daily' | 'weekly' | 'monthly';
 
 /**
- * 风险级别
+ * 风险级别（对应阈值档位）
+ * @deprecated 使用 RiskTier ('tier1' | 'tier2' | 'tier3') 替代
  */
-export type RiskLevel = 'low' | 'medium' | 'high';
+export type RiskLevel = 'tier1' | 'tier2' | 'tier3';
 
 /**
  * 阈值配置
@@ -20,8 +21,8 @@ export type RiskLevel = 'low' | 'medium' | 'high';
 export interface Threshold {
   /** 阈值数值 */
   value: number;
-  /** 对应的风险级别 */
-  level: RiskLevel;
+  /** 对应的风险级别（tier 1, tier 2, tier 3） */
+  level: 'tier1' | 'tier2' | 'tier3';
   /** 阈值标签（可选） */
   label?: string;
 }

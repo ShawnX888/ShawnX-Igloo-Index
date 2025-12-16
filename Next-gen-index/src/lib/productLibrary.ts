@@ -71,6 +71,15 @@ export class ProductLibraryImpl implements IProductLibrary {
       return false;
     }
 
+    // 检查阈值级别是否为 tier1/tier2/tier3
+    const validLevels = ['tier1', 'tier2', 'tier3'];
+    for (const threshold of riskRules.thresholds) {
+      if (!validLevels.includes(threshold.level)) {
+        console.warn(`Invalid threshold level for product ${product.id}: ${threshold.level}. Expected tier1, tier2, or tier3`);
+        return false;
+      }
+    }
+
     // 检查阈值是否按值排序（用于风险级别判断）
     const thresholdValues = riskRules.thresholds.map(t => t.value);
     const isAscending = thresholdValues.every((val, idx) => idx === 0 || val >= thresholdValues[idx - 1]);
