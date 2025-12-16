@@ -1,12 +1,12 @@
 
-import { RiskData } from "../components/home/types";
+import { RiskData } from "../types/risk";
 
 export const initialRiskData: RiskData[] = [
-  { id: "1", district: "Bandung", rainfall: 120, riskLevel: "high", events: 5 },
-  { id: "2", district: "Bekasi", rainfall: 45, riskLevel: "low", events: 1 },
-  { id: "3", district: "Bogor", rainfall: 85, riskLevel: "medium", events: 3 },
-  { id: "4", district: "Depok", rainfall: 60, riskLevel: "medium", events: 2 },
-  { id: "5", district: "Cimahi", rainfall: 30, riskLevel: "low", events: 0 },
+  { id: "1", region: { country: "Indonesia", province: "West Java", district: "Bandung" }, weatherType: "rainfall", value: 120, riskLevel: "high", events: 5 },
+  { id: "2", region: { country: "Indonesia", province: "West Java", district: "Bekasi" }, weatherType: "rainfall", value: 45, riskLevel: "low", events: 1 },
+  { id: "3", region: { country: "Indonesia", province: "West Java", district: "Bogor" }, weatherType: "rainfall", value: 85, riskLevel: "medium", events: 3 },
+  { id: "4", region: { country: "Indonesia", province: "West Java", district: "Depok" }, weatherType: "rainfall", value: 60, riskLevel: "medium", events: 2 },
+  { id: "5", region: { country: "Indonesia", province: "West Java", district: "Cimahi" }, weatherType: "rainfall", value: 30, riskLevel: "low", events: 0 },
 ];
 
 export const rainfallHistory = [

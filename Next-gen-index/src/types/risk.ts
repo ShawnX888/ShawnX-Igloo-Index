@@ -39,6 +39,7 @@ export interface RiskEvent {
 
 /**
  * 风险统计数据
+ * 支持按级别（level）、数据类型（dataType）和天气类型（weatherType）的多维度统计
  */
 export interface RiskStatistics {
   /** 总事件数 */
@@ -49,6 +50,59 @@ export interface RiskStatistics {
     tier2: number;
     tier3: number;
   };
+  /** 按数据类型统计（历史/预测） */
+  byDataType: {
+    historical: number;
+    predicted: number;
+  };
+  /** 按天气类型统计 */
+  byWeatherType: Record<WeatherType, number>;
+  /** 按数据类型和级别的组合统计 */
+  byDataTypeAndLevel: {
+    historical: {
+      tier1: number;
+      tier2: number;
+      tier3: number;
+    };
+    predicted: {
+      tier1: number;
+      tier2: number;
+      tier3: number;
+    };
+  };
+  /** 按天气类型和级别的组合统计 */
+  byWeatherTypeAndLevel: Record<
+    WeatherType,
+    {
+      tier1: number;
+      tier2: number;
+      tier3: number;
+    }
+  >;
+  /** 按数据类型和天气类型的组合统计 */
+  byDataTypeAndWeatherType: {
+    historical: Record<WeatherType, number>;
+    predicted: Record<WeatherType, number>;
+  };
+  /** 按数据类型、天气类型和级别的三维组合统计 */
+  byDataTypeAndWeatherTypeAndLevel: {
+    historical: Record<
+      WeatherType,
+      {
+        tier1: number;
+        tier2: number;
+        tier3: number;
+      }
+    >;
+    predicted: Record<
+      WeatherType,
+      {
+        tier1: number;
+        tier2: number;
+        tier3: number;
+      }
+    >;
+  };
   /** 严重程度（整体评估）
    * 规则：若没有风险事件为"-"，若最高级别为tier 1为低，tier 2为中，tier 3为高
    */
@@ -57,14 +111,17 @@ export interface RiskStatistics {
 
 /**
  * 风险数据（用于地图展示）
+ * 支持多种天气类型，不限定为降雨量
  */
 export interface RiskData {
   /** 区域标识 */
   id: string;
-  /** 区域名称（district） */
-  district: string;
-  /** 降雨量 */
-  rainfall: number;
+  /** 区域信息（完整区域对象，包含 country, province, district） */
+  region: Region;
+  /** 天气类型 */
+  weatherType: WeatherType;
+  /** 天气数值（通用字段，支持所有天气类型） */
+  value: number;
   /** 风险级别（向后兼容，使用旧的 low/medium/high 格式） */
   riskLevel: 'low' | 'medium' | 'high';
   /** 事件数量 */

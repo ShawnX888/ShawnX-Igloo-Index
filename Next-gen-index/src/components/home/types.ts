@@ -18,11 +18,5 @@ export interface InsuranceProduct {
   icon: string;
 }
 
-// RiskData 类型保持原样（用于地图展示的特定格式）
-export type RiskData = {
-  id: string;
-  district: string;
-  rainfall: number;
-  riskLevel: "low" | "medium" | "high";
-  events: number;
-};
+// RiskData 类型从统一类型系统导入（支持多种天气类型）
+export type { RiskData } from '../../types/risk';
