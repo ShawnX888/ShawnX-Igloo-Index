@@ -1,121 +1,90 @@
-# 区域数据文件说明
+# 数据文件说明
 
 ## 文件结构
 
 - `regions.ts`: 包含所有国家的行政区域层级数据和坐标数据
+- `products.ts`: 包含所有保险产品的配置数据
 
-## 数据结构
+## 区域数据 (regions.ts)
 
 ### REGION_HIERARCHY
 三级层级结构：`国家 -> 省/州 -> 市/区`
 
-```typescript
-{
-  "国家名称": {
-    "省/州名称": ["市/区1", "市/区2", ...],
-    ...
-  },
-  ...
-}
-```
-
 ### REGION_CENTERS
 区域中心点坐标数据，用于地图定位和边界生成
 
-```typescript
-{
-  "国家名称": {
-    "省/州名称": {
-      "市/区名称": { lat: 纬度, lng: 经度 },
-      ...
-    },
-    ...
-  },
-  ...
-}
-```
+详细说明请参考 `regions.ts` 文件注释。
 
-## 当前覆盖的国家
+## 产品数据 (products.ts)
 
-1. **中国 (China)**: 10个省份，50+个城市
-2. **美国 (United States)**: 10个州，60+个城市
-3. **新加坡 (Singapore)**: 5个区域，30+个地区
-4. **印度尼西亚 (Indonesia)**: 8个省份，48+个城市
-5. **泰国 (Thailand)**: 8个省份，48+个城市
-6. **越南 (Vietnam)**: 8个省份，48+个城市
-7. **马来西亚 (Malaysia)**: 10个州，60+个城市
+### PRODUCT_LIBRARY_CONFIG
+产品库配置，包含所有保险产品的定义。
 
-## 如何添加新区域
+### 产品类型
 
-### 1. 添加新的国家
+1. **日内产品 (daily)**
+   - ID: `daily`
+   - 触发条件：4小时累计降雨量 > 阈值
+   - 阈值：100mm (low), 120mm (medium), 140mm (high)
+   - 时间窗口：4小时滑动窗口
 
-在 `REGION_HIERARCHY` 和 `REGION_CENTERS` 中添加新国家：
+2. **周度产品 (weekly)**
+   - ID: `weekly`
+   - 触发条件：7天累计降雨量 > 阈值
+   - 阈值：300mm (low), 350mm (medium), 400mm (high)
+   - 时间窗口：7天滑动窗口
 
-```typescript
-export const REGION_HIERARCHY = {
-  // ... 现有国家
-  "新国家名称": {
-    "省/州名称": ["市/区1", "市/区2"],
-    ...
-  }
-};
+3. **月度产品 (monthly/drought)**
+   - ID: `drought`
+   - 触发条件：当月累计降雨量 < 阈值
+   - 阈值：60mm (low), 40mm (medium), 20mm (high)
+   - 时间窗口：完整自然月
 
-export const REGION_CENTERS = {
-  // ... 现有国家
-  "新国家名称": {
-    "省/州名称": {
-      "市/区名称": { lat: 纬度, lng: 经度 },
-      ...
-    },
-    ...
-  }
-};
-```
+## 使用方法
 
-### 2. 添加现有国家的新省/州
-
-在对应国家的对象中添加新的省/州：
+### 使用产品库
 
 ```typescript
-"China": {
-  // ... 现有省份
-  "新省份": ["城市1", "城市2", ...]
-}
+import { productLibrary } from '@/lib/productLibrary';
+
+// 获取所有产品
+const allProducts = productLibrary.getAllProducts();
+
+// 根据ID获取产品
+const dailyProduct = productLibrary.getProduct('daily');
+
+// 根据类型获取产品
+const dailyProducts = productLibrary.getProductsByType('daily');
 ```
 
-### 3. 添加现有省/州的新市/区
-
-在对应省/州数组中添加新城市：
+### 使用区域数据
 
 ```typescript
-"Beijing": [
-  // ... 现有城市
-  "新城市"
-]
+import { REGION_HIERARCHY, getAdministrativeRegion } from '@/lib/regionData';
+
+// 获取所有国家
+const countries = Object.keys(REGION_HIERARCHY);
+
+// 获取区域信息
+const region = getAdministrativeRegion({
+  country: 'China',
+  province: 'Beijing',
+  district: 'Dongcheng'
+});
 ```
 
-## 坐标数据获取
+## 数据更新
 
-坐标数据可以从以下来源获取：
-- Google Maps Geocoding API
-- OpenStreetMap Nominatim API
-- GeoNames 数据库
-- 官方统计机构数据
+### 添加新区域
+
+在 `regions.ts` 中的 `REGION_HIERARCHY` 和 `REGION_CENTERS` 中添加新区域数据。
+
+### 添加新产品
+
+在 `products.ts` 中的 `PRODUCT_LIBRARY_CONFIG.products` 数组中添加新产品定义。
 
 ## 注意事项
 
-1. **数据一致性**: 确保 `REGION_HIERARCHY` 和 `REGION_CENTERS` 中的区域名称完全一致
-2. **坐标精度**: 使用主要城市的中心点坐标，精度到小数点后4位即可
-3. **命名规范**: 
-   - 国家名称使用英文标准名称
-   - 省/州名称使用英文或当地语言的标准名称
-   - 市/区名称使用当地语言的标准名称
-4. **数据更新**: 定期检查并更新区域数据，确保与实际情况一致
-
-## 未来扩展
-
-- 支持从外部API动态加载区域数据
-- 支持GeoJSON格式的边界数据
-- 支持多语言区域名称
-- 支持区域别名和搜索优化
-
+1. **数据一致性**: 确保区域数据和坐标数据匹配
+2. **产品验证**: 新产品会自动通过 `ProductLibrary` 的验证机制
+3. **类型安全**: 所有数据都使用 TypeScript 类型定义，确保类型安全

@@ -28,7 +28,8 @@
 ### 需要的数据/接口
 - 区域信息：`Region`类型（country, province, district）
 - 时间范围：`DateRange`类型（from, to, startHour, endHour）
-- 数据类型：`RainfallType`（"historical" | "predicted"）
+- 数据类型：`DataType`（"historical" | "predicted"）
+- 天气类型：`WeatherType`（"rainfall" | "temperature" | "wind" | "humidity" | "pressure" | "snowfall"）
 
 ---
 
@@ -79,7 +80,19 @@ const allRegionsData = useMemo(() => {
 
 #### 3. 数据格式
 ```typescript
-// 伪代码示例
+// 通用天气数据格式（推荐使用）
+interface WeatherData {
+  date: string; // ISO格式
+  value: number; // 数值（根据天气类型有不同的单位和含义）
+  risk?: 'low' | 'medium' | 'high';
+  weatherType?: WeatherType; // 天气类型标识
+}
+
+interface RegionWeatherData {
+  [districtName: string]: WeatherData[];
+}
+
+// 降雨量数据格式（向后兼容）
 interface RainfallData {
   date: string; // ISO格式
   amount: number; // 降雨量 (mm)
@@ -95,30 +108,53 @@ interface RegionData {
 
 #### 数据生成函数
 ```typescript
-// 伪代码示例
+// 通用天气数据生成函数（推荐使用）
+function generateWeatherData(
+  region: Region,
+  dateRange: DateRange,
+  dataType: DataType,
+  weatherType: WeatherType
+): RegionWeatherData {
+  // 1. 根据区域和天气类型获取区域种子
+  // 2. 根据天气类型选择生成配置
+  // 3. 生成时间序列
+  // 4. 为每个区域生成数据
+  // 5. 返回格式化的数据
+}
+
+// 降雨量数据生成函数（向后兼容）
 function generateRainfallData(
   region: Region,
   dateRange: DateRange,
-  type: RainfallType
+  type: DataType
 ): RegionData {
-  // 1. 获取区域种子
-  // 2. 生成时间序列
-  // 3. 为每个区域生成数据
-  // 4. 返回格式化的数据
+  // 内部调用 generateWeatherData(region, dateRange, type, 'rainfall')
+  // 并转换为 RainfallData 格式
 }
 ```
 
 #### 缓存Hook
 ```typescript
-// 伪代码示例
-function useRainfallData(
+// 通用天气数据Hook（推荐使用）
+function useWeatherData(
   selectedRegion: Region,
   dateRange: DateRange,
-  rainfallType: RainfallType
+  dataType: DataType,
+  weatherType: WeatherType
 ) {
   return useMemo(() => {
     // 生成或获取缓存数据
-  }, [selectedRegion, dateRange, rainfallType]);
+  }, [selectedRegion, dateRange, dataType, weatherType]);
+}
+
+// 降雨量数据Hook（向后兼容）
+function useRainfallData(
+  selectedRegion: Region,
+  dateRange: DateRange,
+  rainfallType: DataType
+) {
+  // 内部调用 useWeatherData(selectedRegion, dateRange, rainfallType, 'rainfall')
+  // 并转换为 RainfallData 格式
 }
 ```
 
@@ -129,10 +165,14 @@ function useRainfallData(
 ### 输入
 - **区域信息**：`Region`（country, province, district）
 - **时间范围**：`DateRange`（from, to, startHour, endHour）
-- **数据类型**：`RainfallType`（"historical" | "predicted"）
+- **数据类型**：`DataType`（"historical" | "predicted"）
+- **天气类型**：`WeatherType`（"rainfall" | "temperature" | "wind" | "humidity" | "pressure" | "snowfall"）
 
 ### 输出
-- **区域数据**：`RegionData`类型，包含所有"市/区"的降雨量数据
+- **区域天气数据**：`RegionWeatherData`类型，包含所有"市/区"的天气数据
+  - 每个区域的数据格式：`WeatherData[]`
+  - 数据包含：日期、数值、风险级别、天气类型
+- **区域降雨量数据**（向后兼容）：`RegionData`类型，包含所有"市/区"的降雨量数据
   - 每个区域的数据格式：`RainfallData[]`
   - 数据包含：日期、降雨量、风险级别
 
@@ -182,9 +222,31 @@ function useRainfallData(
 - **数据格式统一**：确保生成的数据格式与后续步骤兼容
 
 ### 扩展性考虑
+
+#### 1. 多天气类型支持
+- **设计目标**：支持多种天气数据类型（降雨量、温度、风速、湿度、气压、降雪等）
+- **实现方式**：
+  - 使用 `WeatherType` 类型定义支持的天气类型：`'rainfall' | 'temperature' | 'wind' | 'humidity' | 'pressure' | 'snowfall'`
+  - 使用通用的 `WeatherData` 接口替代 `RainfallData`，通过 `weatherType` 字段区分数据类型
+  - 使用 `WeatherDataGenerator` 接口，支持通过 `weatherType` 参数生成不同类型的天气数据
+  - 每种天气类型有独立的生成配置（基础值范围、时间因子、季节性因子等）
+
+#### 2. 数据生成器架构
+- **通用生成器**：`MockWeatherDataGenerator` 实现 `WeatherDataGenerator` 接口，支持所有天气类型
+- **向后兼容**：`MockRainfallDataGenerator` 作为适配器，内部使用 `WeatherDataGenerator`，保持现有代码兼容
+- **配置化**：每种天气类型的生成参数通过 `WEATHER_CONFIGS` 配置对象管理，便于扩展新类型
+
+#### 3. 类型系统扩展
+- **数据类型**：使用 `DataType`（'historical' | 'predicted'）替代 `RainfallType`，更通用
+- **数据接口**：`WeatherData` 接口包含 `value`（通用数值）和 `weatherType`（类型标识）
+- **区域数据**：`RegionWeatherData` 替代 `RegionData`，支持多种天气类型
+
+#### 4. 未来扩展方向
 - 数据生成逻辑可以提取为独立函数，便于测试
 - 数据生成策略可以配置化，便于未来调整
 - 预留真实API接口，便于未来替换为真实数据
+- 支持自定义天气类型和生成配置
+- 支持多天气类型组合查询（如同时查询降雨量和温度）
 
 ---
 

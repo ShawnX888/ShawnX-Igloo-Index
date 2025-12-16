@@ -2,10 +2,10 @@
  * 产品相关类型定义
  */
 
-import { TimeWindowConfig } from './data';
+import { TimeWindowConfig, WeatherType } from './data';
 
 /**
- * 产品类型
+ * 产品类型（时间维度）
  */
 export type ProductType = 'daily' | 'weekly' | 'monthly';
 
@@ -34,16 +34,18 @@ export interface CalculationConfig {
   aggregation: 'sum' | 'average' | 'max' | 'min';
   /** 比较运算符 */
   operator: '>' | '<' | '>=' | '<=' | '==';
-  /** 数据单位 */
-  unit: 'mm' | 'inch';
+  /** 数据单位（根据天气类型不同） */
+  unit: 'mm' | 'inch' | 'celsius' | 'fahrenheit' | 'kmh' | 'mph' | 'percent' | 'hpa' | 'psi';
 }
 
 /**
  * 风险事件触发规则
  */
 export interface RiskRule {
-  /** 触发类型 */
+  /** 触发类型（时间维度） */
   triggerType: ProductType;
+  /** 天气类型（数据维度） */
+  weatherType: WeatherType;
   /** 时间窗口配置 */
   timeWindow: TimeWindowConfig;
   /** 阈值配置数组（多档阈值） */
@@ -60,8 +62,10 @@ export interface Product {
   id: string;
   /** 产品名称 */
   name: string;
-  /** 产品类型 */
+  /** 产品类型（时间维度：daily/weekly/monthly） */
   type: ProductType;
+  /** 天气类型（数据维度：rainfall/temperature/wind等） */
+  weatherType: WeatherType;
   /** 产品描述 */
   description: string;
   /** 产品图标 */
