@@ -3,7 +3,7 @@
  * 提供区域搜索、层级选择和GPS转换功能
  */
 
-import { useMemo, useCallback } from 'react';
+import { useCallback } from 'react';
 import { Region, AdministrativeRegion, RegionSearchOptions } from '../types';
 import {
   searchRegions,
@@ -24,44 +24,44 @@ import {
  */
 export function useRegionData() {
   /**
-   * 搜索区域
+   * 搜索区域（异步）
    */
-  const search = useCallback((query: string, options?: RegionSearchOptions): AdministrativeRegion[] => {
+  const search = useCallback(async (query: string, options?: RegionSearchOptions): Promise<AdministrativeRegion[]> => {
     return searchRegions(query, options);
   }, []);
 
   /**
-   * 获取所有国家列表
+   * 获取所有国家列表（异步）
    */
-  const getCountries = useCallback((): string[] => {
+  const getCountries = useCallback(async (): Promise<string[]> => {
     return getAllCountries();
   }, []);
 
   /**
-   * 获取指定国家下的所有省/州
+   * 获取指定国家下的所有省/州（异步）
    */
-  const getProvinces = useCallback((country: string): string[] => {
+  const getProvinces = useCallback(async (country: string): Promise<string[]> => {
     return getProvincesInCountry(country);
   }, []);
 
   /**
-   * 获取指定省/州下的所有市/区
+   * 获取指定省/州下的所有市/区（异步）
    */
-  const getDistricts = useCallback((country: string, province: string): string[] => {
+  const getDistricts = useCallback(async (country: string, province: string): Promise<string[]> => {
     return getDistrictsInProvinceByCountry(country, province);
   }, []);
 
   /**
-   * 获取完整的行政区域信息
+   * 获取完整的行政区域信息（异步）
    */
-  const getRegion = useCallback((region: Region): AdministrativeRegion => {
+  const getRegion = useCallback(async (region: Region): Promise<AdministrativeRegion> => {
     return getAdministrativeRegion(region);
   }, []);
 
   /**
-   * 验证区域是否存在
+   * 验证区域是否存在（异步）
    */
-  const validateRegion = useCallback((region: Region): boolean => {
+  const validateRegion = useCallback(async (region: Region): Promise<boolean> => {
     return isValidRegion(region);
   }, []);
 

@@ -6,13 +6,14 @@ import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Calendar } from "../ui/calendar";
 import { format } from "date-fns";
 import { Region, DataType, InsuranceProduct, DateRange } from "./types";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { cn } from "../../lib/utils";
 import { Card } from "../ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { ScrollArea } from "../ui/scroll-area";
 import { REGION_HIERARCHY } from "../../lib/regionData";
 import { useRegionData } from "../../hooks/useRegionData";
+import { AdministrativeRegion } from "../../types";
 
 interface ControlPanelProps {
   isMinimized: boolean;
@@ -82,13 +83,37 @@ export function ControlPanel({
   // State for search
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
+  const [searchResults, setSearchResults] = useState<AdministrativeRegion[]>([]);
+  const [isSearching, setIsSearching] = useState<boolean>(false);
 
-  // Search results
-  const searchResults = useMemo(() => {
+  // Search results (async)
+  useEffect(() => {
     if (!searchQuery || searchQuery.trim().length === 0) {
-      return [];
+      setSearchResults([]);
+      return;
     }
-    return searchRegions(searchQuery);
+
+    let cancelled = false;
+    setIsSearching(true);
+
+    searchRegions(searchQuery)
+      .then((results) => {
+        if (!cancelled) {
+          setSearchResults(results);
+          setIsSearching(false);
+        }
+      })
+      .catch((error) => {
+        console.error('Search error:', error);
+        if (!cancelled) {
+          setSearchResults([]);
+          setIsSearching(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [searchQuery, searchRegions]);
 
   // Handle search input change

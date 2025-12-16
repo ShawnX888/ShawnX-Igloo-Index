@@ -135,8 +135,8 @@ export async function reverseGeocode(
       };
     }
 
-    // 获取完整的行政区域信息（包含边界数据）
-    return getAdministrativeRegion(matchedRegion);
+    // 获取完整的行政区域信息（包含边界数据，异步）
+    return await getAdministrativeRegion(matchedRegion);
   } catch (error) {
     console.error('Reverse geocoding error:', error);
     throw error;
