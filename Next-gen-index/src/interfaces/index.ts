@@ -5,5 +5,6 @@
 export * from './dataGenerator';
 export * from './productLibrary';
 export * from './riskCalculation';
+export * from './riskCalculationService';
 export * from './mapService';
 
