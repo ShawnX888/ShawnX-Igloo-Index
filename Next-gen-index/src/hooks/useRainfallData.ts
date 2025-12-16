@@ -1,14 +1,19 @@
 /**
- * 降雨量数据Hook
- * 提供数据生成、缓存和补充功能
+ * 降雨量数据Hook（向后兼容）
+ * 内部使用useWeatherData，转换为RainfallData格式
+ * 
+ * @deprecated 推荐使用 useWeatherData 替代
  */
 
-import { useMemo } from 'react';
-import { Region, DateRange, RainfallType, RegionData } from '../types';
-import { rainfallDataGenerator } from '../lib/rainfallDataGenerator';
+import { Region, DateRange, DataType, RegionData } from '../types';
+import { useWeatherData, useDailyWeatherData } from './useWeatherData';
+import { 
+  convertRegionWeatherDataToRegionData,
+  convertRegionDataToRegionWeatherData 
+} from '../lib/dataAdapters';
 
 /**
- * 使用降雨量数据的Hook
+ * 使用降雨量数据的Hook（向后兼容）
  * 
  * @param selectedRegion 选中的区域
  * @param dateRange 时间范围
@@ -18,26 +23,17 @@ import { rainfallDataGenerator } from '../lib/rainfallDataGenerator';
 export function useRainfallData(
   selectedRegion: Region,
   dateRange: DateRange,
-  rainfallType: RainfallType
+  rainfallType: DataType
 ): RegionData {
-  return useMemo(() => {
-    // 验证输入参数
-    if (!selectedRegion || !dateRange || !dateRange.from || !dateRange.to) {
-      return {};
-    }
-
-    // 检查缓存
-    if (rainfallDataGenerator.hasData(selectedRegion, dateRange, rainfallType)) {
-      return rainfallDataGenerator.generate(selectedRegion, dateRange, rainfallType);
-    }
-
-    // 生成新数据
-    return rainfallDataGenerator.generate(selectedRegion, dateRange, rainfallType);
-  }, [selectedRegion, dateRange, rainfallType]);
+  // 使用通用天气数据Hook，指定weatherType为'rainfall'
+  const weatherData = useWeatherData(selectedRegion, dateRange, rainfallType, 'rainfall');
+  
+  // 转换为RegionData格式（向后兼容）
+  return convertRegionWeatherDataToRegionData(weatherData);
 }
 
 /**
- * 获取日级数据（从小时级数据累计）
+ * 获取日级数据（从小时级数据累计）（向后兼容）
  * 
  * @param hourlyData 小时级数据
  * @param dateRange 时间范围
@@ -47,18 +43,13 @@ export function useDailyData(
   hourlyData: RegionData,
   dateRange: DateRange
 ): RegionData {
-  return useMemo(() => {
-    if (!hourlyData || Object.keys(hourlyData).length === 0) {
-      return {};
-    }
-
-    const dailyData: RegionData = {};
-
-    for (const [district, data] of Object.entries(hourlyData)) {
-      dailyData[district] = rainfallDataGenerator.getDailyData(data, dateRange);
-    }
-
-    return dailyData;
-  }, [hourlyData, dateRange]);
+  // 转换为RegionWeatherData格式
+  const weatherData = convertRegionDataToRegionWeatherData(hourlyData, 'rainfall');
+  
+  // 使用通用日级数据Hook
+  const dailyWeatherData = useDailyWeatherData(weatherData, dateRange, 'rainfall');
+  
+  // 转换回RegionData格式
+  return convertRegionWeatherDataToRegionData(dailyWeatherData);
 }
 

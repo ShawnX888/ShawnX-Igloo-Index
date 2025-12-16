@@ -6,9 +6,10 @@ import { MapWorkspace } from "./MapWorkspace";
 import { DataDashboard } from "./DataDashboard";
 import { ContextualAssistant } from "./ContextualAssistant";
 import { ProductSelector } from "./ProductSelector";
-import { Region, RainfallType, RiskData, InsuranceProduct, DateRange } from "./types";
+import { Region, DataType, RiskData, InsuranceProduct, DateRange } from "./types";
 import { initialRiskData } from "../../lib/mockData";
-import { useRainfallData, useDailyData } from "../../hooks/useRainfallData";
+import { useWeatherData, useDailyWeatherData } from "../../hooks/useWeatherData";
+import { convertRegionWeatherDataToRegionData } from "../../lib/dataAdapters";
 import { addDays } from "date-fns";
 
 export function Dashboard({ 
@@ -21,10 +22,10 @@ export function Dashboard({
   // --- STATE ---
   const [selectedRegion, setSelectedRegion] = useState<Region>({
     country: "Indonesia",
-    province: "West Java",
-    district: "Jakarta Selatan" // Default as per prompt
+    province: "Jakarta",
+    district: "Jakarta Selatan"
   });
-  const [rainfallType, setRainfallType] = useState<RainfallType>("historical");
+  const [rainfallType, setRainfallType] = useState<DataType>("historical"); // 使用DataType替代RainfallType
   
   // Default: Historical logic (7 days ago same time to Now - 1 hour)
   const today = new Date();
@@ -48,21 +49,20 @@ export function Dashboard({
   const [riskData] = useState<RiskData[]>(initialRiskData);
 
   // --- CENTRALIZED DATA GENERATION ---
-  // 使用新的数据生成器生成所有区域的数据
-  const allRegionsHourlyData = useRainfallData(selectedRegion, dateRange, rainfallType);
+  // 使用通用天气数据生成器生成所有区域的数据（weatherType: 'rainfall'）
+  const allRegionsHourlyWeatherData = useWeatherData(selectedRegion, dateRange, rainfallType, 'rainfall');
   
   // 生成日级数据（从小时级数据累计）
-  const allRegionsDailyData = useDailyData(allRegionsHourlyData, dateRange);
+  const allRegionsDailyWeatherData = useDailyWeatherData(allRegionsHourlyWeatherData, dateRange, 'rainfall');
   
-  // 为了兼容现有代码，同时提供小时级和日级数据
-  // 根据使用场景选择合适的数据粒度
+  // 为了兼容现有代码（MapWorkspace等可能仍使用RegionData格式），提供转换后的数据
   const allRegionsData = useMemo(() => {
-    // 返回小时级数据（更详细），如果需要日级数据可以从allRegionsDailyData获取
-    return allRegionsHourlyData;
-  }, [allRegionsHourlyData]);
+    // 转换为RegionData格式（向后兼容）
+    return convertRegionWeatherDataToRegionData(allRegionsHourlyWeatherData);
+  }, [allRegionsHourlyWeatherData]);
 
   // --- HANDLERS ---
-  const handleRainfallTypeChange = (type: RainfallType) => {
+  const handleRainfallTypeChange = (type: DataType) => {
     setRainfallType(type);
     const now = new Date();
     
@@ -172,7 +172,7 @@ export function Dashboard({
           dateRange={dateRange}
           selectedProduct={selectedProduct}
           onProductSelect={setSelectedProduct}
-          dailyData={allRegionsDailyData[selectedRegion.district] || allRegionsData[selectedRegion.district] || []}
+          dailyData={allRegionsDailyWeatherData[selectedRegion.district] || allRegionsHourlyWeatherData[selectedRegion.district] || []}
           onNavigateToProduct={onNavigateToProduct}
         />
       </div>

@@ -1,6 +1,6 @@
 
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, AreaChart, Area, ComposedChart, Line, Cell } from 'recharts';
-import { Region, RainfallType, InsuranceProduct, DateRange } from "./types";
+import { Region, DataType, InsuranceProduct, DateRange, WeatherData } from "./types";
 import { rainfallHistory, rainfallHourly, rainfallPrediction } from "../../lib/mockData";
 import { useState, useEffect, useMemo } from 'react';
 import { Tabs, TabsList, TabsTrigger } from "../ui/tabs";
@@ -14,11 +14,11 @@ import { format, addDays, differenceInDays } from "date-fns";
 
 interface DataDashboardProps {
   selectedRegion: Region;
-  rainfallType: RainfallType;
+  rainfallType: DataType; // 使用DataType替代RainfallType
   dateRange: DateRange;
   selectedProduct: InsuranceProduct | null;
   onProductSelect: (product: InsuranceProduct | null) => void;
-  dailyData: any[];
+  dailyData: WeatherData[]; // 使用WeatherData替代any[]
   onNavigateToProduct: (section?: string) => void;
 }
 
@@ -45,7 +45,7 @@ export function DataDashboard({ selectedRegion, rainfallType, dateRange, selecte
      const multiplier = rainfallType === 'predicted' ? 0.8 : 1.0;
      const hourlyData: any[] = [];
 
-     dailyData.forEach((day: any, dayIndex: number) => {
+     dailyData.forEach((day: WeatherData, dayIndex: number) => {
          const dayHours = rainfallHourly.map((h, hIndex) => {
              const dateObj = new Date(day.date);
              const dateStr = format(dateObj, "yyyy-MM-dd");
@@ -54,7 +54,8 @@ export function DataDashboard({ selectedRegion, rainfallType, dateRange, selecte
                  ...h,
                  date: dateStr, 
                  fullDate: fullDateStr, 
-                 amount: h.amount * multiplier * (0.8 + Math.sin(dayIndex * 24 + hIndex) * 0.4)
+                 value: (h.amount || day.value) * multiplier * (0.8 + Math.sin(dayIndex * 24 + hIndex) * 0.4),
+                 amount: (h.amount || day.value) * multiplier * (0.8 + Math.sin(dayIndex * 24 + hIndex) * 0.4) // 临时兼容
              };
          });
          hourlyData.push(...dayHours);
@@ -63,7 +64,17 @@ export function DataDashboard({ selectedRegion, rainfallType, dateRange, selecte
   }, [rainfallType, dailyData]);
 
   // Choose data based on view mode
-  const data = viewMode === 'daily' ? dailyData : generatedHourlyData;
+  // 确保数据格式统一：为 dailyData 添加 amount 字段以兼容图表
+  const data = useMemo(() => {
+    if (viewMode === 'daily') {
+      // 为 WeatherData 添加 amount 字段（向后兼容）
+      return dailyData.map(item => ({
+        ...item,
+        amount: item.value || (item as any).amount || 0
+      }));
+    }
+    return generatedHourlyData;
+  }, [viewMode, dailyData, generatedHourlyData]);
 
   // --- ANALYSIS CHART LOGIC ---
   const analysisData = useMemo(() => {
@@ -73,11 +84,13 @@ export function DataDashboard({ selectedRegion, rainfallType, dateRange, selecte
      if (selectedProduct.id === 'daily') {
         const threshold = 100;
         // Use generatedHourlyData
-        return generatedHourlyData.map((item, index) => {
-            let sum = item.amount;
+        return generatedHourlyData.map((item: any, index) => {
+            const itemValue = item.value || item.amount || 0;
+            let sum = itemValue;
             for (let i = 1; i < 4; i++) {
                 const prev = generatedHourlyData[index - i];
-                sum += prev ? prev.amount : 0;
+                const prevValue = prev ? (prev.value || prev.amount || 0) : 0;
+                sum += prevValue;
             }
             return {
                 ...item,
@@ -93,10 +106,12 @@ export function DataDashboard({ selectedRegion, rainfallType, dateRange, selecte
          const threshold = 300;
          // Use dailyData
          return dailyData.map((item, index) => {
-             let sum = item.amount;
+             const itemValue = item.value || (item as any).amount || 0;
+             let sum = itemValue;
              for (let i = 1; i < 7; i++) {
                  const prev = dailyData[index - i];
-                 sum += prev ? prev.amount : 0; 
+                 const prevValue = prev ? (prev.value || (prev as any).amount || 0) : 0;
+                 sum += prevValue; 
              }
              return {
                  ...item,
@@ -110,12 +125,13 @@ export function DataDashboard({ selectedRegion, rainfallType, dateRange, selecte
      // 3. Monthly Product: Daily View, Area Chart, Monthly Cumulative
      if (selectedProduct.id === 'drought') {
          const threshold = 60; 
-         const totalRain = dailyData.reduce((acc, curr) => acc + curr.amount, 0);
+         const totalRain = dailyData.reduce((acc, curr) => acc + (curr.value || (curr as any).amount || 0), 0);
          const isTriggered = totalRain < threshold;
 
          let runningSum = 0;
          return dailyData.map(item => {
-             runningSum += item.amount;
+             const itemValue = item.value || (item as any).amount || 0;
+             runningSum += itemValue;
              return {
                  ...item,
                  cumulative: runningSum,
@@ -202,23 +218,29 @@ export function DataDashboard({ selectedRegion, rainfallType, dateRange, selecte
      }
 
      return dailyData
-        .filter(d => d.amount > 60) // Threshold for generating "Events"
-        .map((d, i) => ({
-            id: i,
-            date: format(new Date(d.date), "yyyy-MM-dd"),
-            time: "14:00", // Mock time
-            level: d.amount > 100 ? "High" : "Medium",
-            tierNum: d.amount > 100 ? 3 : 1,
-            type: d.amount > 100 ? "Flash Flood" : "Heavy Rain",
-            description: d.amount > 100 
-                ? `Rainfall (${d.amount.toFixed(0)}mm) exceeded critical threshold`
-                : `Heavy rainfall detected (${d.amount.toFixed(0)}mm)`
-        }));
+        .filter(d => {
+            const value = d.value || (d as any).amount || 0;
+            return value > 60;
+        })
+        .map((d, i) => {
+            const value = d.value || (d as any).amount || 0;
+            return {
+                id: i,
+                date: format(new Date(d.date), "yyyy-MM-dd"),
+                time: "14:00", // Mock time
+                level: value > 100 ? "High" : "Medium",
+                tierNum: value > 100 ? 3 : 1,
+                type: value > 100 ? "Flash Flood" : "Heavy Rain",
+                description: value > 100 
+                    ? `Rainfall (${value.toFixed(0)}mm) exceeded critical threshold`
+                    : `Heavy rainfall detected (${value.toFixed(0)}mm)`
+            };
+        });
   }, [dailyData, selectedProduct, analysisData]);
 
   // --- SUMMARY METRICS ---
   const summaryMetrics = useMemo(() => {
-    const totalRain = data.reduce((acc, curr) => acc + curr.amount, 0);
+    const totalRain = data.reduce((acc: number, curr: any) => acc + (curr.value || curr.amount || 0), 0);
     const avgRain = data.length > 0 ? totalRain / data.length : 0;
     
     // Count triggers from generatedRiskEvents

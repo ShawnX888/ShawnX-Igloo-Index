@@ -1,0 +1,68 @@
+/**
+ * 通用天气数据Hook
+ * 提供数据生成、缓存和补充功能，支持多种天气类型
+ */
+
+import { useMemo } from 'react';
+import { Region, DateRange, DataType, WeatherType, RegionWeatherData } from '../types';
+import { weatherDataGenerator } from '../lib/weatherDataGenerator';
+
+/**
+ * 使用天气数据的Hook
+ * 
+ * @param selectedRegion 选中的区域
+ * @param dateRange 时间范围
+ * @param dataType 数据类型（历史/预测）
+ * @param weatherType 天气类型（降雨量/温度/风速等）
+ * @returns 区域天气数据集合
+ */
+export function useWeatherData(
+  selectedRegion: Region,
+  dateRange: DateRange,
+  dataType: DataType,
+  weatherType: WeatherType
+): RegionWeatherData {
+  return useMemo(() => {
+    // 验证输入参数
+    if (!selectedRegion || !dateRange || !dateRange.from || !dateRange.to) {
+      return {};
+    }
+
+    // 检查缓存
+    if (weatherDataGenerator.hasData(selectedRegion, dateRange, dataType, weatherType)) {
+      return weatherDataGenerator.generate(selectedRegion, dateRange, dataType, weatherType);
+    }
+
+    // 生成新数据
+    return weatherDataGenerator.generate(selectedRegion, dateRange, dataType, weatherType);
+  }, [selectedRegion, dateRange, dataType, weatherType]);
+}
+
+/**
+ * 获取日级数据（从小时级数据累计）
+ * 
+ * @param hourlyData 小时级数据
+ * @param dateRange 时间范围
+ * @param weatherType 天气类型
+ * @returns 日级数据
+ */
+export function useDailyWeatherData(
+  hourlyData: RegionWeatherData,
+  dateRange: DateRange,
+  weatherType: WeatherType
+): RegionWeatherData {
+  return useMemo(() => {
+    if (!hourlyData || Object.keys(hourlyData).length === 0) {
+      return {};
+    }
+
+    const dailyData: RegionWeatherData = {};
+
+    for (const [district, data] of Object.entries(hourlyData)) {
+      dailyData[district] = weatherDataGenerator.getDailyData(data, dateRange, weatherType);
+    }
+
+    return dailyData;
+  }, [hourlyData, dateRange, weatherType]);
+}
+

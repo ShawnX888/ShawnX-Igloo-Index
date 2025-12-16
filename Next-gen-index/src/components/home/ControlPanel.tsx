@@ -5,7 +5,7 @@ import { Input } from "../ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Calendar } from "../ui/calendar";
 import { format } from "date-fns";
-import { Region, RainfallType, InsuranceProduct, DateRange } from "./types";
+import { Region, DataType, InsuranceProduct, DateRange } from "./types";
 import { useState, useMemo } from "react";
 import { cn } from "../../lib/utils";
 import { Card } from "../ui/card";
@@ -20,8 +20,8 @@ interface ControlPanelProps {
   onMinimize: () => void;
   selectedRegion: Region;
   setSelectedRegion: (region: Region) => void;
-  rainfallType: RainfallType;
-  setRainfallType: (type: RainfallType) => void;
+  rainfallType: DataType; // 使用DataType替代RainfallType
+  setRainfallType: (type: DataType) => void;
   dateRange: DateRange;
   setDateRange: (range: DateRange) => void;
   selectedProduct: InsuranceProduct | null;

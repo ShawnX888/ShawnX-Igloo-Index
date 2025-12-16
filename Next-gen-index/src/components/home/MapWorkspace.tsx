@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "motion/react";
-import { Region, RainfallType, RiskData, InsuranceProduct, DateRange } from "./types";
+import { Region, DataType, RiskData, InsuranceProduct, DateRange } from "./types";
 import { useState, useMemo, useEffect, useRef } from "react";
 import { Layers, CloudRain, AlertTriangle, Locate } from "lucide-react";
 import { cn } from "../../lib/utils";
@@ -16,7 +16,7 @@ import type { MapConfig } from "../../types/map";
 
 interface MapWorkspaceProps {
   selectedRegion: Region;
-  rainfallType: RainfallType;
+  rainfallType: DataType; // 使用DataType替代RainfallType
   riskData: RiskData[];
   selectedProduct: InsuranceProduct | null;
   setSelectedRegion: (region: Region) => void;

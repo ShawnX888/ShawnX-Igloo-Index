@@ -4,16 +4,16 @@ import { useState } from "react";
 import { Button } from "../ui/button";
 import { ScrollArea } from "../ui/scroll-area";
 import { cn } from "../../lib/utils";
-import { Region, RainfallType, InsuranceProduct } from "./types";
+import { Region, DataType, InsuranceProduct } from "./types";
 
 interface ContextualAssistantProps {
   isMinimized: boolean;
   onMaximize: () => void;
   onMinimize: () => void;
   selectedRegion: Region;
-  rainfallType: RainfallType;
+  rainfallType: DataType; // 使用DataType替代RainfallType
   className?: string;
-  setRainfallType: (type: RainfallType) => void;
+  setRainfallType: (type: DataType) => void;
   setSelectedRegion: (region: Region) => void;
   setSelectedProduct: (product: InsuranceProduct | null) => void;
 }

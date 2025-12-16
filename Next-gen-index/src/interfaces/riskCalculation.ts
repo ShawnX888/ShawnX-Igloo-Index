@@ -2,7 +2,7 @@
  * 风险计算引擎接口定义
  */
 
-import { Product, Region, DateRange, RainfallData, RiskEvent, RiskStatistics } from '../types';
+import { Product, Region, DateRange, WeatherData, RiskEvent, RiskStatistics } from '../types';
 
 /**
  * 风险计算引擎接口
@@ -13,14 +13,14 @@ export interface RiskCalculationEngine {
    * @param product 产品对象
    * @param region 区域信息
    * @param dateRange 时间范围
-   * @param rainfallData 降雨量数据数组
+   * @param weatherData 天气数据数组（支持多种天气类型）
    * @returns 风险事件列表
    */
   calculateRiskEvents(
     product: Product,
     region: Region,
     dateRange: DateRange,
-    rainfallData: RainfallData[]
+    weatherData: WeatherData[]
   ): RiskEvent[];
 
   /**

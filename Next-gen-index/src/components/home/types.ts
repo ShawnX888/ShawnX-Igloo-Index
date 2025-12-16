@@ -4,7 +4,10 @@
  */
 
 // 从统一类型系统导入
-export type { Region, RainfallType, DateRange } from '../../types';
+export type { Region, DateRange, DataType, WeatherType, WeatherData, RegionWeatherData } from '../../types';
+
+// 向后兼容：RainfallType 作为 DataType 的别名
+export type { RainfallType } from '../../types';
 
 // InsuranceProduct 类型（向后兼容的简化版本）
 // 注意：这是现有代码使用的简化版本，完整的 Product 类型在 types/product.ts 中定义

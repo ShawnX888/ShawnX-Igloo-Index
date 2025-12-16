@@ -3,7 +3,7 @@
  */
 
 import { AdministrativeRegion } from './region';
-import { RainfallData } from './data';
+import { WeatherData } from './data';
 import { RiskEvent } from './risk';
 
 /**
@@ -50,10 +50,14 @@ export interface LayerConfig {
 export interface HeatmapData {
   /** 区域信息 */
   region: AdministrativeRegion;
-  /** 降雨量数据 */
-  rainfall: number;
+  /** 天气数据值（根据天气类型有不同的单位和含义） */
+  value: number;
+  /** 天气类型 */
+  weatherType?: 'rainfall' | 'temperature' | 'wind' | 'humidity' | 'pressure' | 'snowfall';
   /** 数据类型 */
   type: 'historical' | 'predicted';
+  /** 向后兼容：降雨量数据（已废弃，使用value替代） */
+  rainfall?: number;
 }
 
 /**
