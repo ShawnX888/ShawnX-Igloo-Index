@@ -276,14 +276,18 @@ function generateDailyWeatherData(
   dateRange: DateRange,
   weatherType: WeatherType
 ): WeatherData[] {
-  const dailyMap = new Map<string, { value: number; riskCounts: { low: number; medium: number; high: number } }>();
+  const dailyMap = new Map<string, { 
+    value: number; 
+    count: number; // 用于计算平均值
+    riskCounts: { low: number; medium: number; high: number } 
+  }>();
 
   hourlyData.forEach(item => {
     const date = new Date(item.date);
     const dayKey = format(startOfDay(date), 'yyyy-MM-dd');
 
     if (!dailyMap.has(dayKey)) {
-      dailyMap.set(dayKey, { value: 0, riskCounts: { low: 0, medium: 0, high: 0 } });
+      dailyMap.set(dayKey, { value: 0, count: 0, riskCounts: { low: 0, medium: 0, high: 0 } });
     }
 
     const dayData = dailyMap.get(dayKey)!;
@@ -292,15 +296,13 @@ function generateDailyWeatherData(
     if (weatherType === 'rainfall' || weatherType === 'snowfall') {
       // 累计值
       dayData.value += item.value;
-    } else if (weatherType === 'temperature') {
-      // 平均值
-      const count = dailyMap.get(dayKey)?.value || 0;
-      dayData.value = (dayData.value * count + item.value) / (count + 1);
     } else {
-      // 其他类型使用平均值
-      const count = dailyMap.get(dayKey)?.value || 0;
-      dayData.value = (dayData.value * count + item.value) / (count + 1);
+      // 其他类型（temperature, wind, humidity, pressure）使用平均值
+      dayData.value = (dayData.value * dayData.count + item.value) / (dayData.count + 1);
     }
+    
+    // 更新计数
+    dayData.count++;
 
     if (item.risk === 'low') dayData.riskCounts.low++;
     if (item.risk === 'medium') dayData.riskCounts.medium++;

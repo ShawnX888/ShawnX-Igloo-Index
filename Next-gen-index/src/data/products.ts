@@ -57,7 +57,7 @@ export const PRODUCT_LIBRARY_CONFIG: ProductLibraryConfig = {
     },
     {
       id: 'weekly',
-      name: 'Weekly Accumulation',
+      name: 'Weekly Accumulation Rainfall',
       type: 'weekly',
       weatherType: 'rainfall',
       description: '7-day cumulative rainfall within one month > threshold, once per month per policy',

@@ -60,9 +60,26 @@ export class ProductLibraryImpl implements IProductLibrary {
       return false;
     }
 
+    // 检查天气类型
+    if (!product.weatherType) {
+      return false;
+    }
+
     // 检查风险规则
     const { riskRules } = product;
     if (!riskRules.triggerType || !riskRules.timeWindow || !riskRules.thresholds || !riskRules.calculation) {
+      return false;
+    }
+
+    // 检查风险规则的天气类型必须与产品天气类型一致
+    if (riskRules.weatherType !== product.weatherType) {
+      console.warn(`Product ${product.id}: riskRules.weatherType (${riskRules.weatherType}) does not match product.weatherType (${product.weatherType})`);
+      return false;
+    }
+
+    // 检查触发类型必须与产品类型一致
+    if (riskRules.triggerType !== product.type) {
+      console.warn(`Product ${product.id}: riskRules.triggerType (${riskRules.triggerType}) does not match product.type (${product.type})`);
       return false;
     }
 
@@ -97,6 +114,31 @@ export class ProductLibraryImpl implements IProductLibrary {
     // 检查计算配置
     if (!riskRules.calculation.aggregation || !riskRules.calculation.operator) {
       return false;
+    }
+
+    // 验证 payoutRules（如果存在）
+    if (product.payoutRules) {
+      const { payoutRules } = product;
+      
+      // 检查理赔额度百分比配置
+      if (!payoutRules.payoutPercentages) {
+        console.warn(`Product ${product.id}: payoutRules.payoutPercentages is missing`);
+        return false;
+      }
+
+      const { payoutPercentages } = payoutRules;
+      if (typeof payoutPercentages.tier1 !== 'number' || 
+          typeof payoutPercentages.tier2 !== 'number' || 
+          typeof payoutPercentages.tier3 !== 'number') {
+        console.warn(`Product ${product.id}: payoutPercentages must have tier1, tier2, and tier3 as numbers`);
+        return false;
+      }
+
+      // 验证理赔额度百分比是否符合标准（tier1: 20%, tier2: 50%, tier3: 100%）
+      // 注意：这里只做警告，不强制要求，因为未来可能有不同的配置
+      if (payoutPercentages.tier1 !== 20 || payoutPercentages.tier2 !== 50 || payoutPercentages.tier3 !== 100) {
+        console.warn(`Product ${product.id}: payoutPercentages may not match standard values (tier1: 20%, tier2: 50%, tier3: 100%)`);
+      }
     }
 
     return true;
