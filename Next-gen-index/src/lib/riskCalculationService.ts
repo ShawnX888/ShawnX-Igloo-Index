@@ -10,7 +10,6 @@ import {
   WeatherData,
   RiskEvent,
   RiskStatistics,
-  Product,
 } from '../types';
 import { RiskCalculationService as IRiskCalculationService } from '../interfaces/riskCalculationService';
 import { ProductLibrary } from '../interfaces/productLibrary';
@@ -85,16 +84,19 @@ export class RiskCalculationServiceImpl implements IRiskCalculationService {
     dateRange: DateRange,
     weatherData: WeatherData[]
   ): RiskStatistics {
-    // 1. 计算风险事件
-    const events = this.calculateRiskEvents(productId, region, dateRange, weatherData);
-
-    // 2. 计算统计信息
     try {
+      // 1. 计算风险事件
+      const events = this.calculateRiskEvents(productId, region, dateRange, weatherData);
+
+      // 2. 计算统计信息
       const statistics = this.calculationEngine.calculateRiskStatistics(events);
       return statistics;
     } catch (error) {
+      // 提供一致的错误处理，包含步骤信息
+      // 无论错误来自步骤1（计算风险事件）还是步骤2（计算统计信息），都提供统一的错误上下文
+      const errorMessage = error instanceof Error ? error.message : String(error);
       throw new Error(
-        `Failed to calculate risk statistics for product ${productId}: ${error instanceof Error ? error.message : String(error)}`
+        `Failed to calculate risk statistics for product ${productId}: ${errorMessage}`
       );
     }
   }

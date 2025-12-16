@@ -667,25 +667,23 @@ export class RiskCalculationEngineImpl implements IRiskCalculationEngine {
   /**
    * 阈值判断逻辑
    * 返回最高级别的触发阈值（tier3 > tier2 > tier1）
+   * 
+   * 逻辑说明：
+   * - 对于 `>` 或 `>=`：找到所有触发的阈值，返回阈值值最大的那个（更严格的触发条件）
+   * - 对于 `<` 或 `<=`：找到所有触发的阈值，返回阈值值最小的那个（更严格的触发条件）
+   * - 对于 `==`：找到所有触发的阈值，返回最高层级的那个
+   * 
+   * 这样可以正确处理阈值配置错误的情况（例如 tier3 阈值小于 tier2 阈值）
    */
   private checkThreshold(
     value: number,
     thresholds: Threshold[],
     operator: CalculationConfig['operator']
   ): Threshold | null {
-    // 按级别优先级排序（tier3 > tier2 > tier1）
-    const levelPriority: Record<RiskTier, number> = {
-      tier3: 3,
-      tier2: 2,
-      tier1: 1,
-    };
+    // 找到所有触发的阈值
+    const triggeredThresholds: Threshold[] = [];
 
-    const sortedThresholds = [...thresholds].sort(
-      (a, b) => levelPriority[b.level] - levelPriority[a.level]
-    );
-
-    // 检查所有阈值，找到最高级别的触发阈值
-    for (const threshold of sortedThresholds) {
+    for (const threshold of thresholds) {
       let triggered = false;
 
       switch (operator) {
@@ -707,12 +705,68 @@ export class RiskCalculationEngineImpl implements IRiskCalculationEngine {
       }
 
       if (triggered) {
-        // 返回最高级别的阈值
-        return threshold;
+        triggeredThresholds.push(threshold);
       }
     }
 
-    return null;
+    if (triggeredThresholds.length === 0) {
+      return null;
+    }
+
+    // 根据操作符确定最严格的触发条件
+    if (operator === '>' || operator === '>=') {
+      // 对于大于操作符，阈值值越大表示条件越严格
+      // 返回阈值值最大的那个（最严格的触发条件）
+      const maxThreshold = triggeredThresholds.reduce((max, current) =>
+        current.value > max.value ? current : max
+      );
+      
+      // 如果多个阈值有相同的最大值，返回最高层级的那个
+      const maxValue = maxThreshold.value;
+      const sameMaxThresholds = triggeredThresholds.filter(t => t.value === maxValue);
+      if (sameMaxThresholds.length > 1) {
+        const levelPriority: Record<RiskTier, number> = {
+          tier3: 3,
+          tier2: 2,
+          tier1: 1,
+        };
+        return sameMaxThresholds.reduce((max, current) =>
+          levelPriority[current.level] > levelPriority[max.level] ? current : max
+        );
+      }
+      return maxThreshold;
+    } else if (operator === '<' || operator === '<=') {
+      // 对于小于操作符，阈值值越小表示条件越严格
+      // 返回阈值值最小的那个（最严格的触发条件）
+      const minThreshold = triggeredThresholds.reduce((min, current) =>
+        current.value < min.value ? current : min
+      );
+      
+      // 如果多个阈值有相同的最小值，返回最高层级的那个
+      const minValue = minThreshold.value;
+      const sameMinThresholds = triggeredThresholds.filter(t => t.value === minValue);
+      if (sameMinThresholds.length > 1) {
+        const levelPriority: Record<RiskTier, number> = {
+          tier3: 3,
+          tier2: 2,
+          tier1: 1,
+        };
+        return sameMinThresholds.reduce((max, current) =>
+          levelPriority[current.level] > levelPriority[max.level] ? current : max
+        );
+      }
+      return minThreshold;
+    } else {
+      // 对于等于操作符，返回最高层级的那个
+      const levelPriority: Record<RiskTier, number> = {
+        tier3: 3,
+        tier2: 2,
+        tier1: 1,
+      };
+      return triggeredThresholds.reduce((max, current) =>
+        levelPriority[current.level] > levelPriority[max.level] ? current : max
+      );
+    }
   }
 
   /**
