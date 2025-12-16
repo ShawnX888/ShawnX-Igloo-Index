@@ -176,6 +176,6 @@ export class ProductLibraryImpl implements IProductLibrary {
 export const productLibrary = new ProductLibraryImpl();
 
 // 导出类型和接口
-export type { Product, ProductType, RiskLevel, Threshold, RiskRule, CalculationConfig } from '../types/product';
+export type { Product, ProductType, RiskLevel, Threshold, RiskRule, CalculationConfig, PayoutRule } from '../types/product';
 export type { ProductLibrary } from '../interfaces/productLibrary';
 

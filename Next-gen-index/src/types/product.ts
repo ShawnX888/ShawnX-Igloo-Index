@@ -56,6 +56,23 @@ export interface RiskRule {
 }
 
 /**
+ * 保单级的赔付原则（仅用于教育展示，不参与计算）
+ */
+export interface PayoutRule {
+  /** 赔付频率限制（仅用于教育展示） */
+  frequencyLimit?: string; // 如 "once per day per policy", "once per month per policy"
+  
+  /** 理赔额度百分比（仅用于教育展示，前端展示百分比数值）
+   * tier 1: 20%, tier 2: 50%, tier 3: 100%
+   */
+  payoutPercentages: {
+    tier1: number; // 20
+    tier2: number; // 50
+    tier3: number; // 100
+  };
+}
+
+/**
  * 保险产品
  */
 export interface Product {
@@ -71,8 +88,10 @@ export interface Product {
   description: string;
   /** 产品图标 */
   icon: string;
-  /** 风险事件触发规则 */
+  /** 产品级的风险事件触发规则（用于计算） */
   riskRules: RiskRule;
+  /** 保单级的赔付原则（可选，仅用于教育展示，不参与计算） */
+  payoutRules?: PayoutRule;
 }
 
 /**
