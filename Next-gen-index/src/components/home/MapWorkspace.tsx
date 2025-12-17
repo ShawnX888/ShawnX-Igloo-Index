@@ -11,6 +11,7 @@ import {
 } from "../../lib/googleMaps";
 import { useRegionBoundaryLayer } from "../../hooks/useRegionBoundaryLayer";
 import { useRainfallHeatmapLayer } from "../../hooks/useRainfallHeatmapLayer";
+import { useRiskEventMarkersLayer } from "../../hooks/useRiskEventMarkersLayer";
 import { getDistrictsInProvince } from "../../lib/regionData";
 import { useWeatherData } from "../../hooks/useWeatherData";
 
@@ -69,6 +70,42 @@ function RainfallHeatmapLayerRenderer({
     province,
     rainfallData,
     dataType,
+    visible,
+  });
+  return null;
+}
+
+// 风险事件标记图层渲染组件（用于条件渲染）
+function RiskEventMarkersLayerRenderer({
+  map,
+  districts,
+  country,
+  province,
+  riskData,
+  selectedRegion,
+  dataType,
+  selectedProduct,
+  visible,
+}: {
+  map: google.maps.Map;
+  districts: string[];
+  country: string;
+  province: string;
+  riskData: RiskData[];
+  selectedRegion: Region;
+  dataType: DataType;
+  selectedProduct: InsuranceProduct | null;
+  visible: boolean;
+}) {
+  useRiskEventMarkersLayer({
+    map,
+    districts,
+    country,
+    province,
+    riskData,
+    selectedRegion,
+    dataType,
+    selectedProduct,
     visible,
   });
   return null;
@@ -226,6 +263,21 @@ export function MapWorkspace({ selectedRegion, rainfallType, riskData, selectedP
           rainfallData={allRegionsWeatherData}
           dataType={rainfallType}
           visible={layers.heatmap}
+        />
+      )}
+
+      {/* 风险事件标记图层 - 边界图层下方 */}
+      {mapsLoaded && mapInstanceRef.current && (
+        <RiskEventMarkersLayerRenderer
+          map={mapInstanceRef.current}
+          districts={districts}
+          country={selectedRegion.country}
+          province={selectedRegion.province}
+          riskData={riskData}
+          selectedRegion={selectedRegion}
+          dataType={rainfallType}
+          selectedProduct={selectedProduct}
+          visible={layers.events}
         />
       )}
 

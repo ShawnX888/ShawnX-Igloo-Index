@@ -213,6 +213,9 @@ export function getDefaultMapConfig(): google.maps.MapOptions {
     },
     zoom: 11,
     mapTypeId: 'roadmap',
+    // Map ID 用于启用 Advanced Markers
+    // 使用 Google 提供的演示 Map ID，生产环境应替换为自己的 Map ID
+    mapId: 'DEMO_MAP_ID',
     disableDefaultUI: false,
     zoomControl: true,
     mapTypeControl: false,
