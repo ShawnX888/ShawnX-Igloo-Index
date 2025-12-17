@@ -1,4 +1,4 @@
-import { Region, DataType, RiskData, InsuranceProduct, DateRange } from "./types";
+import { Region, DataType, RiskData, InsuranceProduct, DateRange, RegionWeatherData } from "./types";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { Layers, CloudRain, AlertTriangle, Locate } from "lucide-react";
 import { cn } from "../../lib/utils";
@@ -10,7 +10,9 @@ import {
   getDefaultMapConfig 
 } from "../../lib/googleMaps";
 import { useRegionBoundaryLayer } from "../../hooks/useRegionBoundaryLayer";
+import { useRainfallHeatmapLayer } from "../../hooks/useRainfallHeatmapLayer";
 import { getDistrictsInProvince } from "../../lib/regionData";
+import { useWeatherData } from "../../hooks/useWeatherData";
 
 // 区域边界图层渲染组件（用于条件渲染）
 function RegionBoundaryLayerRenderer({
@@ -20,6 +22,7 @@ function RegionBoundaryLayerRenderer({
   country,
   province,
   onRegionSelect,
+  heatmapVisible = false,
 }: {
   map: google.maps.Map;
   selectedRegion: Region;
@@ -27,6 +30,7 @@ function RegionBoundaryLayerRenderer({
   country: string;
   province: string;
   onRegionSelect: (region: Region) => void;
+  heatmapVisible?: boolean;
 }) {
   useRegionBoundaryLayer({
     map,
@@ -35,6 +39,37 @@ function RegionBoundaryLayerRenderer({
     country,
     province,
     onRegionSelect,
+    heatmapVisible,
+  });
+  return null;
+}
+
+// 降雨量热力图图层渲染组件（用于条件渲染）
+function RainfallHeatmapLayerRenderer({
+  map,
+  districts,
+  country,
+  province,
+  rainfallData,
+  dataType,
+  visible,
+}: {
+  map: google.maps.Map;
+  districts: string[];
+  country: string;
+  province: string;
+  rainfallData: RegionWeatherData;
+  dataType: DataType;
+  visible: boolean;
+}) {
+  useRainfallHeatmapLayer({
+    map,
+    districts,
+    country,
+    province,
+    rainfallData,
+    dataType,
+    visible,
   });
   return null;
 }
@@ -47,10 +82,10 @@ interface MapWorkspaceProps {
   setSelectedRegion: (region: Region) => void;
   activeInputMode: "manual" | "chat";
   dateRange: DateRange;
-  allRegionsData?: Record<string, any[]>;
+  allRegionsWeatherData?: RegionWeatherData;
 }
 
-export function MapWorkspace({ selectedRegion, rainfallType, riskData, selectedProduct, setSelectedRegion, activeInputMode, dateRange, allRegionsData }: MapWorkspaceProps) {
+export function MapWorkspace({ selectedRegion, rainfallType, riskData, selectedProduct, setSelectedRegion, activeInputMode, dateRange, allRegionsWeatherData }: MapWorkspaceProps) {
   // Google Maps 相关 refs
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<google.maps.Map | null>(null);
@@ -181,7 +216,20 @@ export function MapWorkspace({ selectedRegion, rainfallType, riskData, selectedP
         </div>
       )}
 
-      {/* 区域边界图层 - 只在地图加载完成后渲染 */}
+      {/* 降雨量热力图图层 - 底层 */}
+      {mapsLoaded && mapInstanceRef.current && allRegionsWeatherData && (
+        <RainfallHeatmapLayerRenderer
+          map={mapInstanceRef.current}
+          districts={districts}
+          country={selectedRegion.country}
+          province={selectedRegion.province}
+          rainfallData={allRegionsWeatherData}
+          dataType={rainfallType}
+          visible={layers.heatmap}
+        />
+      )}
+
+      {/* 区域边界图层 - 最上层（用于点击交互） */}
       {mapsLoaded && mapInstanceRef.current && (
         <RegionBoundaryLayerRenderer
           map={mapInstanceRef.current}
@@ -190,8 +238,9 @@ export function MapWorkspace({ selectedRegion, rainfallType, riskData, selectedP
           country={selectedRegion.country}
           province={selectedRegion.province}
           onRegionSelect={setSelectedRegion}
+          heatmapVisible={layers.heatmap && !!allRegionsWeatherData}
         />
-        )}
+      )}
 
       {/* Layer Controls (Position depends on mode) - 显示在Google Maps之上 */}
       <div className={cn(

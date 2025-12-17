@@ -108,7 +108,7 @@ export function Dashboard({
           setSelectedRegion={setSelectedRegion}
           activeInputMode={activeInputMode}
           dateRange={dateRange}
-          allRegionsData={allRegionsData}
+          allRegionsWeatherData={allRegionsHourlyWeatherData}
         />
 
         {/* Overlay: Manual Controls (Top Left) */}

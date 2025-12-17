@@ -47,6 +47,8 @@ interface RegionBoundaryLayerConfig {
   province: string;
   /** 区域选择回调函数 */
   onRegionSelect?: (region: Region) => void;
+  /** 热力图图层是否可见（影响填充样式） */
+  heatmapVisible?: boolean;
 }
 
 /**
@@ -131,9 +133,12 @@ export function useRegionBoundaryLayer({
   country,
   province,
   onRegionSelect,
+  heatmapVisible = false,
 }: RegionBoundaryLayerConfig) {
   const dataLayerRef = useRef<google.maps.Data | null>(null);
   const isInitializedRef = useRef(false);
+  const pulseIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pulseStateRef = useRef(0); // 0-3 脉动状态
 
   // 初始化数据图层
   useEffect(() => {
@@ -174,19 +179,29 @@ export function useRegionBoundaryLayer({
         });
 
         // 设置默认样式
+        // 填充规则：
+        // - 未选中区域：始终透明
+        // - 选中区域：热力图可见时透明，否则蓝色高亮
         dataLayer.setStyle((feature) => {
           const featureDistrict = feature.getProperty('district');
-          // 支持 Google 名称和 GADM 名称的匹配
           const gadmSelectedDistrict = googleToGadmName(selectedRegion.district);
           const isSelected = featureDistrict === selectedRegion.district || 
                             featureDistrict === gadmSelectedDistrict;
 
+          // 填充颜色和透明度
+          let fillColor = 'transparent';
+          let fillOpacity = 0;
+          if (isSelected && !heatmapVisible) {
+            fillColor = '#E3F2FD';
+            fillOpacity = 0.6;
+          }
+
           return {
-            fillColor: isSelected ? '#E3F2FD' : '#F5F5F5',
-            fillOpacity: isSelected ? 0.6 : 0.2,
-            strokeColor: isSelected ? '#4285F4' : '#999999',
+            fillColor,
+            fillOpacity,
+            strokeColor: isSelected ? '#4285F4' : '#C0C0C0',
             strokeWeight: isSelected ? 3 : 1,
-            strokeOpacity: isSelected ? 1 : 0.5,
+            strokeOpacity: isSelected ? 1 : 0.4,
           };
         });
 
@@ -250,7 +265,7 @@ export function useRegionBoundaryLayer({
       }
       isInitializedRef.current = false;
     };
-  }, [map, country, province, districts.join(','), selectedRegion.district]); // 依赖：地图实例、国家、省/州、市/区列表、选中区域
+  }, [map, country, province, districts.join(','), selectedRegion.district, heatmapVisible]); // 依赖：地图实例、国家、省/州、市/区列表、选中区域、热力图可见性
 
   // 更新选中区域的样式
   useEffect(() => {
@@ -261,17 +276,87 @@ export function useRegionBoundaryLayer({
     // 更新所有区域的样式
     dataLayerRef.current.forEach((feature) => {
       const district = feature.getProperty('district');
-      const isSelected = selectedRegion.district === district;
+      const gadmSelectedDistrict = googleToGadmName(selectedRegion.district);
+      const isSelected = district === selectedRegion.district || district === gadmSelectedDistrict;
+
+      // 填充颜色和透明度
+      let fillColor = 'transparent';
+      let fillOpacity = 0;
+      if (isSelected && !heatmapVisible) {
+        fillColor = '#E3F2FD';
+        fillOpacity = 0.6;
+      }
 
       dataLayerRef.current!.overrideStyle(feature, {
-        fillColor: isSelected ? '#E3F2FD' : '#F5F5F5',
-        fillOpacity: isSelected ? 0.6 : 0.3,
-        strokeColor: isSelected ? '#4285F4' : 'transparent',
-        strokeWeight: isSelected ? 3 : 0,
-        strokeOpacity: isSelected ? 1 : 0,
+        fillColor,
+        fillOpacity,
+        strokeColor: isSelected ? '#4285F4' : '#C0C0C0',
+        strokeWeight: isSelected ? 3 : 1,
+        strokeOpacity: isSelected ? 1 : 0.4,
       });
     });
-  }, [selectedRegion]);
+  }, [selectedRegion, heatmapVisible]);
+
+  // 选中区域边框脉动动画（仅在热力图可见时激活）
+  useEffect(() => {
+    // 清除之前的动画
+    if (pulseIntervalRef.current) {
+      clearInterval(pulseIntervalRef.current);
+      pulseIntervalRef.current = null;
+    }
+
+    if (!heatmapVisible) {
+      return;
+    }
+
+    // 延迟启动动画，确保 dataLayer 已初始化
+    const startPulse = () => {
+      if (!dataLayerRef.current) {
+        return;
+      }
+
+      // 脉动动画：边框颜色在橙色系中渐变 + 宽度变化（与蓝色热力图形成对比）
+      const pulseStyles = [
+        { color: '#E65100', weight: 3 },   // 深橙
+        { color: '#F57C00', weight: 4 },
+        { color: '#FF9800', weight: 5 },   // 亮橙
+        { color: '#FFB74D', weight: 5 },   // 更亮
+        { color: '#FF9800', weight: 4 },
+        { color: '#F57C00', weight: 3 },
+      ];
+      
+      pulseIntervalRef.current = setInterval(() => {
+        if (!dataLayerRef.current) return;
+        
+        pulseStateRef.current = (pulseStateRef.current + 1) % pulseStyles.length;
+        const { color, weight } = pulseStyles[pulseStateRef.current];
+
+        dataLayerRef.current.forEach((feature) => {
+          const district = feature.getProperty('district');
+          const gadmSelectedDistrict = googleToGadmName(selectedRegion.district);
+          const isSelected = district === selectedRegion.district || district === gadmSelectedDistrict;
+
+          if (isSelected) {
+            dataLayerRef.current!.overrideStyle(feature, {
+              strokeColor: color,
+              strokeWeight: weight,
+            });
+          }
+        });
+      }, 300); // 每300ms更新一次
+    };
+
+    // 延迟100ms启动，确保图层已加载
+    const delayTimer = setTimeout(startPulse, 100);
+
+    return () => {
+      clearTimeout(delayTimer);
+      if (pulseIntervalRef.current) {
+        clearInterval(pulseIntervalRef.current);
+        pulseIntervalRef.current = null;
+      }
+    };
+  }, [selectedRegion.district, heatmapVisible, country, province]);
 
   // 当地图或选中区域变化时，自动定位到选中区域
   useEffect(() => {
