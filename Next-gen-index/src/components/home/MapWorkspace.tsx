@@ -1,5 +1,5 @@
 import { Region, DataType, RiskData, InsuranceProduct, DateRange } from "./types";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Layers, CloudRain, AlertTriangle, Locate } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
@@ -9,6 +9,35 @@ import {
   createMap, 
   getDefaultMapConfig 
 } from "../../lib/googleMaps";
+import { useRegionBoundaryLayer } from "../../hooks/useRegionBoundaryLayer";
+import { getDistrictsInProvince } from "../../lib/regionData";
+
+// 区域边界图层渲染组件（用于条件渲染）
+function RegionBoundaryLayerRenderer({
+  map,
+  selectedRegion,
+  districts,
+  country,
+  province,
+  onRegionSelect,
+}: {
+  map: google.maps.Map;
+  selectedRegion: Region;
+  districts: string[];
+  country: string;
+  province: string;
+  onRegionSelect: (region: Region) => void;
+}) {
+  useRegionBoundaryLayer({
+    map,
+    selectedRegion,
+    districts,
+    country,
+    province,
+    onRegionSelect,
+  });
+  return null;
+}
 
 interface MapWorkspaceProps {
   selectedRegion: Region;
@@ -34,6 +63,11 @@ export function MapWorkspace({ selectedRegion, rainfallType, riskData, selectedP
     events: true,  // Layer 3 & 4
   });
 
+  // 获取当前区域所属省/州下的所有市/区列表
+  const districts = useMemo(() => {
+    return getDistrictsInProvince(selectedRegion);
+  }, [selectedRegion]);
+
   // 初始化 Google Maps
   useEffect(() => {
     const initMap = async () => {
@@ -51,6 +85,11 @@ export function MapWorkspace({ selectedRegion, rainfallType, riskData, selectedP
       }
 
       try {
+        // 验证 API Key 格式（基本检查）
+        if (!apiKey || apiKey.length < 20) {
+          throw new Error('Invalid API Key format. API Key should be at least 20 characters long.');
+        }
+
         // 初始化加载器
         const importLibrary = await initGoogleMapsLoader({
           apiKey,
@@ -61,6 +100,11 @@ export function MapWorkspace({ selectedRegion, rainfallType, riskData, selectedP
 
         // 加载所需的库（Data Layer 是 Maps API 的一部分，不需要单独加载）
         await loadGoogleMapsLibraries(importLibrary, ['maps', 'marker']);
+
+        // 验证 Google Maps API 是否完全加载
+        if (!window.google?.maps?.Map) {
+          throw new Error('Google Maps Map class not available after loading libraries');
+        }
 
         // 创建地图配置（使用步骤02中定义的类型）
         const defaultConfig = getDefaultMapConfig();
@@ -81,7 +125,17 @@ export function MapWorkspace({ selectedRegion, rainfallType, riskData, selectedP
         setMapsError(null);
       } catch (error) {
         console.error('Failed to initialize Google Maps:', error);
-        setMapsError(error instanceof Error ? error.message : 'Failed to load Google Maps');
+        const errorMessage = error instanceof Error ? error.message : 'Failed to load Google Maps';
+        setMapsError(errorMessage);
+        
+        // 提供更详细的错误信息
+        if (errorMessage.includes('API Key') || errorMessage.includes('timeout')) {
+          console.error('Troubleshooting tips:');
+          console.error('1. Check if VITE_GOOGLE_MAPS_API_KEY is set in .env file');
+          console.error('2. Verify the API Key is valid in Google Cloud Console');
+          console.error('3. Ensure "Maps JavaScript API" is enabled');
+          console.error('4. Check API Key restrictions (HTTP referrers, IP addresses)');
+        }
       }
     };
 
@@ -127,6 +181,17 @@ export function MapWorkspace({ selectedRegion, rainfallType, riskData, selectedP
         </div>
       )}
 
+      {/* 区域边界图层 - 只在地图加载完成后渲染 */}
+      {mapsLoaded && mapInstanceRef.current && (
+        <RegionBoundaryLayerRenderer
+          map={mapInstanceRef.current}
+          selectedRegion={selectedRegion}
+          districts={districts}
+          country={selectedRegion.country}
+          province={selectedRegion.province}
+          onRegionSelect={setSelectedRegion}
+        />
+        )}
 
       {/* Layer Controls (Position depends on mode) - 显示在Google Maps之上 */}
       <div className={cn(
