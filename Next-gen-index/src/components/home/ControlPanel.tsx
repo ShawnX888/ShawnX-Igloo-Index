@@ -202,10 +202,10 @@ export function ControlPanel({
       </div>
 
       {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto p-3">
-        <div className="space-y-3 pb-2">
+      <div className="flex-1 overflow-y-auto p-4">
+        <div className="space-y-5 pb-2">
             {/* 1. Region Selection (Step-by-Step Cascading) */}
-            <div className="space-y-2">
+            <div className="space-y-3">
               <div className="flex items-center gap-1.5 text-gray-900 font-semibold border-b border-gray-100 pb-1.5">
                  <MapPin className="w-3.5 h-3.5 text-red-600" />
                  <h3 className="text-xs">Location</h3>
@@ -368,7 +368,7 @@ export function ControlPanel({
             </div>
 
           {/* 2. Weather Type (Read-only, reserved for future expansion) */}
-          <div className="space-y-2">
+          <div className="space-y-3">
             <div className="flex items-center gap-1.5 text-gray-900 font-semibold border-b border-gray-100 pb-1.5">
                <Cloud className="w-3.5 h-3.5 text-cyan-600" />
                <h3 className="text-xs">Weather Type</h3>
@@ -381,7 +381,7 @@ export function ControlPanel({
           </div>
 
           {/* 3. Data Type */}
-          <div className="space-y-2">
+          <div className="space-y-3">
             <div className="flex items-center gap-1.5 text-gray-900 font-semibold border-b border-gray-100 pb-1.5">
                <Droplets className="w-3.5 h-3.5 text-blue-600" />
                <h3 className="text-xs">Data Source</h3>
@@ -408,8 +408,8 @@ export function ControlPanel({
               </button>
             </div>
 
-            {/* Date Time Picker (Always visible, read-only for Predicted) */}
-             <div className="bg-gray-50 p-3 rounded-lg border border-gray-100 space-y-3">
+            {/* Date Time Picker - Unified Range Selector */}
+             <div className="bg-gray-50 p-3 rounded-lg border border-gray-100 space-y-3 mt-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5 text-[10px] font-semibold text-gray-500 uppercase">
                      <Clock className="w-3 h-3" /> {weatherDataType === 'predicted' ? 'Forecast Window' : 'Time Window'}
@@ -426,73 +426,113 @@ export function ControlPanel({
                   )}
                 </div>
                 
-                <div className="space-y-2">
-                  {/* Start Time */}
-                  <div className="space-y-0.5">
-                    <label className="text-[10px] text-gray-400 font-medium ml-1">START TIME</label>
-                    <div className="flex gap-1.5">
-                       <Popover>
-                        <PopoverTrigger asChild>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            disabled={weatherDataType === 'predicted'}
-                            className={cn(
-                              "flex-1 justify-start text-left font-normal bg-white border-gray-200 h-8 text-xs disabled:opacity-80 disabled:bg-gray-100",
-                              weatherDataType === 'predicted' && "text-gray-500"
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-3 w-3 text-gray-400" />
-                            {format(dateRange.from, "MMM dd, yyyy")}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={dateRange.from} onSelect={(d) => d && setDateRange({...dateRange, from: d})} /></PopoverContent>
-                       </Popover>
-                       <Input 
-                         type="number" min={0} max={23} 
-                         value={dateRange.startHour} 
-                         disabled={weatherDataType === 'predicted'}
-                         onChange={(e) => setDateRange({...dateRange, startHour: parseInt(e.target.value)})}
-                         className="w-12 bg-white border-gray-200 text-center h-8 text-xs p-0 disabled:opacity-80 disabled:bg-gray-100"
-                         placeholder="00"
-                       />
-                       <div className="flex items-center text-[10px] text-gray-400 font-medium">H</div>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      disabled={weatherDataType === 'predicted'}
+                      className={cn(
+                        "w-full justify-between h-auto py-2 text-left bg-white border-gray-200",
+                        weatherDataType === 'predicted' && "opacity-80 bg-gray-100 text-gray-500"
+                      )}
+                    >
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-[10px] text-gray-400 uppercase font-medium">Time Range</span>
+                        <span className="text-xs font-medium text-gray-900">
+                          {format(dateRange.from, "MMM dd")} {String(dateRange.startHour).padStart(2, '0')}:00 → {format(dateRange.to, "MMM dd")} {String(dateRange.endHour).padStart(2, '0')}:00
+                        </span>
+                      </div>
+                      <CalendarIcon className="h-4 w-4 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  
+                  <PopoverContent className="w-auto p-4" align="start">
+                    {/* Calendar Range Selection */}
+                    <Calendar 
+                      mode="range" 
+                      fixedWeeks
+                      disabled={{
+                        before: new Date(Date.now() - 39 * 24 * 60 * 60 * 1000),
+                        after: new Date()
+                      }}
+                      selected={{ from: dateRange.from, to: dateRange.to }}
+                      onSelect={(range) => {
+                        if (range?.from) {
+                          setDateRange({ 
+                            ...dateRange, 
+                            from: range.from, 
+                            to: range.to || range.from 
+                          });
+                        }
+                      }}
+                      numberOfMonths={1}
+                    />
+                    
+                    {/* Hour Selection */}
+                    <div className="flex gap-4 mt-4 pt-4 border-t border-gray-200">
+                      <div className="flex-1">
+                        <label className="text-[10px] text-gray-500 mb-1 block font-medium">Start Hour</label>
+                        <Select 
+                          value={String(dateRange.startHour)} 
+                          onValueChange={(v) => setDateRange({...dateRange, startHour: parseInt(v)})}
+                        >
+                          <SelectTrigger className="h-8 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <ScrollArea className="h-48">
+                              {Array.from({length: 24}, (_, i) => (
+                                <SelectItem key={i} value={String(i)}>{String(i).padStart(2, '0')}:00</SelectItem>
+                              ))}
+                            </ScrollArea>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="flex-1">
+                        <label className="text-[10px] text-gray-500 mb-1 block font-medium">End Hour</label>
+                        <Select 
+                          value={String(dateRange.endHour)} 
+                          onValueChange={(v) => setDateRange({...dateRange, endHour: parseInt(v)})}
+                        >
+                          <SelectTrigger className="h-8 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <ScrollArea className="h-48">
+                              {(() => {
+                                const now = new Date();
+                                const isToday = dateRange.to.toDateString() === now.toDateString();
+                                const maxHour = isToday ? Math.max(0, now.getHours() - 1) : 23;
+                                return Array.from({length: maxHour + 1}, (_, i) => (
+                                  <SelectItem key={i} value={String(i)}>{String(i).padStart(2, '0')}:00</SelectItem>
+                                ));
+                              })()}
+                            </ScrollArea>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
-                  </div>
-
-                  {/* End Time */}
-                  <div className="space-y-0.5">
-                    <label className="text-[10px] text-gray-400 font-medium ml-1">END TIME</label>
-                    <div className="flex gap-1.5">
-                       <Popover>
-                        <PopoverTrigger asChild>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            disabled={weatherDataType === 'predicted'}
-                            className={cn(
-                              "flex-1 justify-start text-left font-normal bg-white border-gray-200 h-8 text-xs disabled:opacity-80 disabled:bg-gray-100",
-                              weatherDataType === 'predicted' && "text-gray-500"
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-3 w-3 text-gray-400" />
-                            {format(dateRange.to, "MMM dd, yyyy")}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={dateRange.to} onSelect={(d) => d && setDateRange({...dateRange, to: d})} /></PopoverContent>
-                       </Popover>
-                       <Input 
-                         type="number" min={0} max={23} 
-                         value={dateRange.endHour} 
-                         disabled={weatherDataType === 'predicted'}
-                         onChange={(e) => setDateRange({...dateRange, endHour: parseInt(e.target.value)})}
-                         className="w-12 bg-white border-gray-200 text-center h-8 text-xs p-0 disabled:opacity-80 disabled:bg-gray-100"
-                         placeholder="23"
-                       />
-                       <div className="flex items-center text-[10px] text-gray-400 font-medium">H</div>
+                    
+                    {/* Quick Presets */}
+                    <div className="flex gap-2 mt-3 pt-3 border-t border-gray-200">
+                      <Button size="sm" variant="outline" className="text-xs flex-1"
+                        onClick={() => {
+                          const now = new Date();
+                          const endHour = Math.max(0, now.getHours() - 1);
+                          const from = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                          setDateRange({ from, to: now, startHour: endHour, endHour });
+                        }}>Last 7 Days</Button>
+                      <Button size="sm" variant="outline" className="text-xs flex-1"
+                        onClick={() => {
+                          const now = new Date();
+                          const endHour = Math.max(0, now.getHours() - 1);
+                          const from = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                          setDateRange({ from, to: now, startHour: endHour, endHour });
+                        }}>Last 30 Days</Button>
                     </div>
-                  </div>
-                </div>
+                  </PopoverContent>
+                </Popover>
              </div>
           </div>
 
