@@ -23,7 +23,7 @@ export function Dashboard({
   const [selectedRegion, setSelectedRegion] = useState<Region>({
     country: "Indonesia",
     province: "Jakarta",
-    district: "Jakarta Selatan"
+    district: "JakartaSelatan"
   });
   const [rainfallType, setRainfallType] = useState<DataType>("historical"); // 使用DataType替代RainfallType
   

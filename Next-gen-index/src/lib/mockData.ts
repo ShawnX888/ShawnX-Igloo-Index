@@ -1,42 +1,19 @@
+/**
+ * Mock 数据模块
+ * 
+ * 注意：此文件的静态数据已清空，mock 数据现在在页面加载时动态生成
+ * 请使用 weatherDataGenerator.ts 和 rainfallDataGenerator.ts 生成数据
+ */
 
 import { RiskData } from "../types/risk";
 
-export const initialRiskData: RiskData[] = [
-  { id: "1", region: { country: "Indonesia", province: "West Java", district: "Bandung" }, weatherType: "rainfall", value: 120, riskLevel: "high", events: 5 },
-  { id: "2", region: { country: "Indonesia", province: "West Java", district: "Bekasi" }, weatherType: "rainfall", value: 45, riskLevel: "low", events: 1 },
-  { id: "3", region: { country: "Indonesia", province: "West Java", district: "Bogor" }, weatherType: "rainfall", value: 85, riskLevel: "medium", events: 3 },
-  { id: "4", region: { country: "Indonesia", province: "West Java", district: "Depok" }, weatherType: "rainfall", value: 60, riskLevel: "medium", events: 2 },
-  { id: "5", region: { country: "Indonesia", province: "West Java", district: "Cimahi" }, weatherType: "rainfall", value: 30, riskLevel: "low", events: 0 },
-];
+// 空数据，实际数据在运行时根据选择的区域动态生成
+export const initialRiskData: RiskData[] = [];
 
-export const rainfallHistory = [
-  { date: "2023-12-01", amount: 12, risk: 0 },
-  { date: "2023-12-02", amount: 45, risk: 0 },
-  { date: "2023-12-03", amount: 80, risk: 1 },
-  { date: "2023-12-04", amount: 150, risk: 5 }, // High Risk Event
-  { date: "2023-12-05", amount: 90, risk: 2 },
-  { date: "2023-12-06", amount: 20, risk: 0 },
-  { date: "2023-12-07", amount: 5, risk: 0 },
-];
+export const rainfallHistory: { date: string; amount: number; risk: number }[] = [];
 
-export const rainfallPrediction = [
-  { date: "2023-12-08", amount: 10, risk: 0 },
-  { date: "2023-12-09", amount: 15, risk: 0 },
-  { date: "2023-12-10", amount: 110, risk: 4 }, // Predicted High Risk
-  { date: "2023-12-11", amount: 40, risk: 1 },
-  { date: "2023-12-12", amount: 5, risk: 0 },
-  { date: "2023-12-13", amount: 0, risk: 0 },
-  { date: "2023-12-14", amount: 2, risk: 0 },
-];
+export const rainfallPrediction: { date: string; amount: number; risk: number }[] = [];
 
-export const rainfallHourly = Array.from({ length: 24 }, (_, i) => ({
-  hour: `${i}:00`,
-  amount: Math.random() * (i > 12 && i < 18 ? 30 : 5), // Peak in afternoon
-  risk: i > 12 && i < 18 ? Math.floor(Math.random() * 2) : 0
-}));
+export const rainfallHourly: { hour: string; amount: number; risk: number }[] = [];
 
-export const riskEvents = [
-  { id: 1, date: "2023-12-04", time: "14:00", level: "High", type: "Flash Flood", description: "Rainfall exceeded 100mm threshold" },
-  { id: 2, date: "2023-12-04", time: "16:30", level: "Medium", type: "Water Level", description: "River level warning" },
-  { id: 3, date: "2023-12-05", time: "09:00", level: "Medium", type: "Landslide Risk", description: "Soil saturation high" },
-];
+export const riskEvents: { id: number; date: string; time: string; level: string; type: string; description: string }[] = [];

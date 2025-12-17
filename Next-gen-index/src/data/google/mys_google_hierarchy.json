@@ -1,0 +1,180 @@
+{
+  "Malaysia": {
+    "Johor Darul Ta'zim": [
+      "Sri Gading",
+      "Masai",
+      "Keluang",
+      "KotaTinggi",
+      "Kulaijaya",
+      "Ledang",
+      "Mersing",
+      "Muar",
+      "Pontian",
+      "Segamat"
+    ],
+    "Kedah": [
+      "Baling",
+      "Serdang",
+      "KotaSetar",
+      "KualaMuda",
+      "KubangPasu",
+      "Kulim",
+      "Langkawi",
+      "PadangTerap",
+      "Pendang",
+      "PokokSena",
+      "Sik",
+      "Yan"
+    ],
+    "Kelantan": [
+      "Melor",
+      "Gua Musang",
+      "Jeli",
+      "KotaBharu",
+      "KualaKrai",
+      "Machang",
+      "Pasir Mas",
+      "PasirPutih",
+      "TanahMerah",
+      "Tumpat"
+    ],
+    "Wilayah Persekutuan Kuala Lumpur": [
+      "Kuala Lumpur"
+    ],
+    "Labuan Federal Territory": [
+      "Labuan"
+    ],
+    "Malacca": [
+      "Alor Gajah",
+      "Jasin",
+      "MelakaTengah"
+    ],
+    "Negeri Sembilan": [
+      "Titi",
+      "Bahau",
+      "KualaPilah",
+      "PortDickson",
+      "Rembau",
+      "Seremban",
+      "Gemencheh"
+    ],
+    "Pahang": [
+      "Karak",
+      "Teriang",
+      "CameronHighlands",
+      "Jerantut",
+      "Kuantan",
+      "Lipis",
+      "Maran",
+      "Pekan",
+      "Raub",
+      "Rompin",
+      "Temerloh"
+    ],
+    "Perak": [
+      "Sungkai",
+      "Teluk Intan",
+      "HuluPerak",
+      "Kampar",
+      "Kerian",
+      "Kinta",
+      "Sungai Siput",
+      "LarutandMatang",
+      "Manjung",
+      "PerakTengah"
+    ],
+    "Perlis": [
+      "Kangar"
+    ],
+    "Penang": [
+      "Balik Pulau",
+      "Sungai Jawi",
+      "SeberangPeraiTengah",
+      "SeberangPeraiUtara",
+      "TimurLaut"
+    ],
+    "Putrajaya": [
+      "Putrajaya"
+    ],
+    "Sabah": [
+      "Beaufort",
+      "Pamol",
+      "Keningau",
+      "Kinabatangan",
+      "KotaBelud",
+      "KotaKinabalu",
+      "Kota Marudu",
+      "KualaPenyu",
+      "Kudat",
+      "Kunak",
+      "LahadDatu",
+      "Sapulut",
+      "Papar",
+      "Penampang",
+      "Pitas",
+      "Putatan",
+      "Ranau",
+      "Sandakan",
+      "Semporna",
+      "Sipitang",
+      "Tambunan",
+      "Wallace Bay",
+      "Tenom",
+      "Tongod",
+      "Tuaran"
+    ],
+    "Sarawak": [
+      "Asajaya",
+      "Bau",
+      "Belaga",
+      "Betong",
+      "Bintulu",
+      "Dalat",
+      "Bintangor",
+      "Julau",
+      "Kanowit",
+      "Kapit",
+      "Kuching",
+      "Lawas",
+      "Limbang",
+      "LubokAntu",
+      "Lundu",
+      "Marudi",
+      "Matu",
+      "Meradong",
+      "Miri",
+      "Mukah",
+      "Pakan",
+      "Kota Samarahan",
+      "Saratok",
+      "Sarikei",
+      "Selangau",
+      "Serian",
+      "Sibu",
+      "Simunjan",
+      "Song",
+      "SriAman",
+      "Tatau"
+    ],
+    "Selangor": [
+      "Selayang",
+      "Hulu Langat",
+      "HuluSelangor",
+      "Klang",
+      "KualaLangat",
+      "KualaSelangor",
+      "Shah Alam",
+      "SabakBernam",
+      "Sepang"
+    ],
+    "Terengganu": [
+      "Jerteh",
+      "Al-Muktafi Billah Shah",
+      "HuluTerengganu",
+      "Kemaman",
+      "KualaTerengganu",
+      "Marang",
+      "Permaisuri"
+    ]
+  }
+}

@@ -4,6 +4,7 @@
  */
 
 import { Region, AdministrativeRegion, LatLngLiteral } from '../types';
+import { GOOGLE_TO_GADM } from '../data/regions';
 
 // 类型定义
 interface ConvertedRegion {
@@ -88,17 +89,63 @@ async function ensureDataLoaded(): Promise<void> {
 }
 
 /**
+ * 查找区域数据（支持 Google 名称和 GADM 名称）
+ */
+function findRegionData(region: Region): ConvertedRegion | null {
+  if (!cachedIndex) return null;
+  
+  // 直接查找
+  let data = cachedIndex[region.country]?.[region.province]?.[region.district];
+  if (data) return data;
+  
+  // 尝试将 Google 名称转换为 GADM 名称
+  const gadmProvince = GOOGLE_TO_GADM[region.province] || region.province;
+  const gadmDistrict = GOOGLE_TO_GADM[region.district] || region.district;
+  
+  data = cachedIndex[region.country]?.[gadmProvince]?.[gadmDistrict];
+  if (data) return data;
+  
+  // 只转换省份
+  data = cachedIndex[region.country]?.[gadmProvince]?.[region.district];
+  if (data) return data;
+  
+  // 只转换区
+  data = cachedIndex[region.country]?.[region.province]?.[gadmDistrict];
+  return data || null;
+}
+
+/**
  * 获取区域边界数据
  */
 export async function getRegionBoundary(region: Region): Promise<LatLngLiteral[]> {
   await ensureDataLoaded();
   
-  if (!cachedIndex) {
-    return [];
-  }
+  const data = findRegionData(region);
+  return data?.boundary || [];
+}
 
-  const converted = cachedIndex[region.country]?.[region.province]?.[region.district];
-  return converted?.boundary || [];
+/**
+ * 查找区域中心点（支持 Google 名称和 GADM 名称）
+ */
+function findRegionCenter(region: Region): LatLngLiteral | null {
+  if (!cachedCenters) return null;
+  
+  // 直接查找
+  let center = cachedCenters[region.country]?.[region.province]?.[region.district];
+  if (center) return center;
+  
+  // 尝试将 Google 名称转换为 GADM 名称
+  const gadmProvince = GOOGLE_TO_GADM[region.province] || region.province;
+  const gadmDistrict = GOOGLE_TO_GADM[region.district] || region.district;
+  
+  center = cachedCenters[region.country]?.[gadmProvince]?.[gadmDistrict];
+  if (center) return center;
+  
+  center = cachedCenters[region.country]?.[gadmProvince]?.[region.district];
+  if (center) return center;
+  
+  center = cachedCenters[region.country]?.[region.province]?.[gadmDistrict];
+  return center || null;
 }
 
 /**
@@ -106,12 +153,7 @@ export async function getRegionBoundary(region: Region): Promise<LatLngLiteral[]
  */
 export async function getRegionCenter(region: Region): Promise<LatLngLiteral | null> {
   await ensureDataLoaded();
-  
-  if (!cachedCenters) {
-    return null;
-  }
-
-  return cachedCenters[region.country]?.[region.province]?.[region.district] || null;
+  return findRegionCenter(region);
 }
 
 /**
@@ -120,21 +162,17 @@ export async function getRegionCenter(region: Region): Promise<LatLngLiteral | n
 export async function getAdministrativeRegion(region: Region): Promise<AdministrativeRegion | null> {
   await ensureDataLoaded();
   
-  if (!cachedIndex) {
-    return null;
-  }
-
-  const converted = cachedIndex[region.country]?.[region.province]?.[region.district];
-  if (!converted) {
+  const data = findRegionData(region);
+  if (!data) {
     return null;
   }
 
   return {
-    country: converted.country,
-    province: converted.province,
-    district: converted.district,
-    center: converted.center,
-    boundary: converted.boundary,
+    country: data.country,
+    province: data.province,
+    district: data.district,
+    center: data.center,
+    boundary: data.boundary,
   };
 }
 

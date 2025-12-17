@@ -5,7 +5,7 @@
 
 import { useEffect, useRef } from 'react';
 import { Region, AdministrativeRegion, LatLngLiteral } from '../types';
-import { getDistrictsInProvince, getAdministrativeRegion } from '../lib/regionData';
+import { getDistrictsInProvince, getAdministrativeRegion, googleToGadmName, gadmToGoogleName } from '../lib/regionData';
 
 /**
  * GeoJSON Feature格式
@@ -60,6 +60,9 @@ function convertBoundaryToGeoJSONCoordinates(
 
 /**
  * 将区域边界数据转换为GeoJSON格式
+ * 
+ * 注意：传入的 province 和 districts 可能是 Google 名称，
+ * 需要先转换为 GADM 名称再查询边界数据
  */
 async function convertRegionsToGeoJSON(
   country: string,
@@ -68,20 +71,19 @@ async function convertRegionsToGeoJSON(
 ): Promise<GeoJSON> {
   const features: GeoJSONFeature[] = [];
 
-  // 限定范围：只加载指定省/州下的所有市/区的边界数据
-  // districts 参数应该已经通过 getDistrictsInProvince 过滤，只包含同一省/州下的市/区
-  console.log(`Loading boundaries for ${districts.length} districts in ${province}, ${country}`);
+  // 将 Google 名称转换为 GADM 名称
+  const gadmProvince = googleToGadmName(province);
+  
+  console.log(`Loading boundaries for ${districts.length} districts in ${province} (GADM: ${gadmProvince}), ${country}`);
 
-  // 为每个市/区创建Feature（仅限当前省/州）
+  // 为每个市/区创建Feature
   for (const district of districts) {
-    const region: Region = { country, province, district };
+    // 将 Google 区名转换为 GADM 区名
+    const gadmDistrict = googleToGadmName(district);
+    
+    // 使用 GADM 名称查询边界数据
+    const region: Region = { country, province: gadmProvince, district: gadmDistrict };
     const adminRegion = await getAdministrativeRegion(region);
-
-    // 双重验证：确保区域属于指定的省/州（防止数据错误）
-    if (adminRegion.province !== province || adminRegion.country !== country) {
-      console.warn(`Skipping ${district}: province/country mismatch (expected ${province}, ${country}, got ${adminRegion.province}, ${adminRegion.country})`);
-      continue;
-    }
 
     if (adminRegion.boundary && adminRegion.boundary.length > 0) {
       const coordinates = convertBoundaryToGeoJSONCoordinates(adminRegion.boundary);
@@ -97,15 +99,18 @@ async function convertRegionsToGeoJSON(
       features.push({
         type: 'Feature',
         properties: {
+          // 保留原始 Google 名称用于 UI 显示
           country: adminRegion.country,
-          province: adminRegion.province,
-          district: adminRegion.district,
+          province: province, // 使用 Google 名称
+          district: district, // 使用 Google 名称
         },
         geometry: {
           type: 'Polygon',
           coordinates: [coordinates],
         },
       });
+    } else {
+      console.warn(`No boundary data for ${district} (GADM: ${gadmDistrict})`);
     }
   }
 
@@ -164,23 +169,24 @@ export function useRegionBoundaryLayer({
         }
 
         // 加载GeoJSON数据
-        // 注意: loadGeoJson 只接受 URL 字符串，addGeoJson 接受 GeoJSON 对象
-        // 使用 addGeoJson 直接加载 GeoJSON 对象
         dataLayer.addGeoJson(geoJSON as any, {
           idPropertyName: 'district',
         });
 
         // 设置默认样式
         dataLayer.setStyle((feature) => {
-          const district = feature.getProperty('district');
-          const isSelected = selectedRegion.district === district;
+          const featureDistrict = feature.getProperty('district');
+          // 支持 Google 名称和 GADM 名称的匹配
+          const gadmSelectedDistrict = googleToGadmName(selectedRegion.district);
+          const isSelected = featureDistrict === selectedRegion.district || 
+                            featureDistrict === gadmSelectedDistrict;
 
           return {
             fillColor: isSelected ? '#E3F2FD' : '#F5F5F5',
-            fillOpacity: isSelected ? 0.6 : 0.3,
-            strokeColor: isSelected ? '#4285F4' : 'transparent',
-            strokeWeight: isSelected ? 3 : 0,
-            strokeOpacity: isSelected ? 1 : 0,
+            fillOpacity: isSelected ? 0.6 : 0.2,
+            strokeColor: isSelected ? '#4285F4' : '#999999',
+            strokeWeight: isSelected ? 3 : 1,
+            strokeOpacity: isSelected ? 1 : 0.5,
           };
         });
 

@@ -199,7 +199,7 @@ export function MapWorkspace({ selectedRegion, rainfallType, riskData, selectedP
          activeInputMode === 'manual' ? "right-6" : "left-6"
       )}>
         <button 
-           onClick={() => setSelectedRegion({...selectedRegion, district: 'Jakarta Selatan'})}
+           onClick={() => setSelectedRegion({...selectedRegion, district: 'JakartaSelatan'})}
            className="p-2 rounded hover:bg-gray-100 text-gray-500 hover:text-blue-600 transition-colors"
            title="My Location"
         >

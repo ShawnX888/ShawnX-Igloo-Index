@@ -1,79 +1,99 @@
 /**
  * 行政区域数据管理模块
- * 提供区域层级数据、边界数据、搜索和GPS转换功能
  * 
- * 优先使用 GADM 真实数据，如果不可用则回退到简化数据
+ * 数据来源：
+ * - UI 展示和 API 调用：使用 Google 官方名称
+ * - 边界和中心点：使用 GADM 数据
+ * - 名称转换：通过映射表实现
  */
 
 import { Region, AdministrativeRegion, LatLngLiteral, RegionSearchOptions } from '../types';
-import { REGION_HIERARCHY, REGION_CENTERS } from '../data/regions';
+import { 
+  REGION_HIERARCHY, 
+  REGION_CENTERS,
+  GADM_TO_GOOGLE,
+  GOOGLE_TO_GADM,
+  gadmToGoogleName,
+  googleToGadmName
+} from '../data/regions';
 import * as gadmLoader from './gadmDataLoader';
 
 // 重新导出，保持向后兼容
-export { REGION_HIERARCHY };
+export { REGION_HIERARCHY, GADM_TO_GOOGLE, GOOGLE_TO_GADM, gadmToGoogleName, googleToGadmName };
+
+/**
+ * 获取区域中心点坐标
+ * 使用 GADM 数据
+ */
+export async function getRegionCenter(region: Region): Promise<LatLngLiteral | null> {
+  // 优先从 gadmLoader 获取
+  const gadmCenter = await gadmLoader.getRegionCenter(region);
+  if (gadmCenter) {
+    return gadmCenter;
+  }
+  
+  // 回退到静态 GADM 数据
+  return getRegionCenterSync(region);
+}
+
+/**
+ * 同步获取区域中心点
+ * 支持 Google 名称或 GADM 名称
+ */
+export function getRegionCenterSync(region: Region): LatLngLiteral | null {
+  // 先尝试直接查找
+  let center = REGION_CENTERS[region.country]?.[region.province]?.[region.district];
+  if (center) return center;
+  
+  // 尝试将 Google 名称转换为 GADM 名称
+  const gadmProvince = googleToGadmName(region.province);
+  const gadmDistrict = googleToGadmName(region.district);
+  
+  center = REGION_CENTERS[region.country]?.[gadmProvince]?.[gadmDistrict];
+  if (center) return center;
+  
+  // 尝试只转换省份
+  center = REGION_CENTERS[region.country]?.[gadmProvince]?.[region.district];
+  if (center) return center;
+  
+  // 尝试只转换区
+  center = REGION_CENTERS[region.country]?.[region.province]?.[gadmDistrict];
+  return center || null;
+}
 
 /**
  * 生成简化的区域边界（矩形边界）
- * 实际应用中应该使用真实的GeoJSON边界数据
  */
 function generateSimplifiedBoundary(center: LatLngLiteral, size: number = 0.1): LatLngLiteral[] {
   const { lat, lng } = center;
   const halfSize = size / 2;
   
   return [
-    { lat: lat - halfSize, lng: lng - halfSize }, // 左下
-    { lat: lat - halfSize, lng: lng + halfSize }, // 右下
-    { lat: lat + halfSize, lng: lng + halfSize }, // 右上
-    { lat: lat + halfSize, lng: lng - halfSize }, // 左上
-    { lat: lat - halfSize, lng: lng - halfSize }  // 闭合
+    { lat: lat - halfSize, lng: lng - halfSize },
+    { lat: lat - halfSize, lng: lng + halfSize },
+    { lat: lat + halfSize, lng: lng + halfSize },
+    { lat: lat + halfSize, lng: lng - halfSize },
+    { lat: lat - halfSize, lng: lng - halfSize }
   ];
 }
 
 /**
- * 获取区域中心点坐标
- * 优先使用 GADM 数据，如果不可用则使用静态数据
- */
-export async function getRegionCenter(region: Region): Promise<LatLngLiteral | null> {
-  // 优先尝试从 GADM 数据获取
-  const gadmCenter = await gadmLoader.getRegionCenter(region);
-  if (gadmCenter) {
-    return gadmCenter;
-  }
-  
-  // 回退到静态数据
-  return REGION_CENTERS[region.country]?.[region.province]?.[region.district] || null;
-}
-
-/**
- * 同步版本（保持向后兼容，使用静态数据）
- */
-export function getRegionCenterSync(region: Region): LatLngLiteral | null {
-  return REGION_CENTERS[region.country]?.[region.province]?.[region.district] || null;
-}
-
-/**
  * 获取区域边界
- * 优先使用 GADM 真实边界数据，如果不可用则使用简化边界
+ * 优先使用 GADM 真实边界数据
  */
 export async function getRegionBoundary(region: Region): Promise<LatLngLiteral[]> {
-  // 优先尝试从 GADM 数据获取真实边界
+  // 优先从 GADM loader 获取
   const gadmBoundary = await gadmLoader.getRegionBoundary(region);
   if (gadmBoundary && gadmBoundary.length > 0) {
     return gadmBoundary;
   }
   
   // 回退到简化边界
-  const center = getRegionCenterSync(region);
-  if (center) {
-    return generateSimplifiedBoundary(center);
-  }
-  
-  // 如果没有中心点数据，返回默认边界（雅加达）
-  return generateSimplifiedBoundary({ lat: -6.2088, lng: 106.8456 });
+  return getRegionBoundarySync(region);
 }
 
 /**
- * 同步版本（保持向后兼容，使用简化边界）
+ * 同步获取区域边界
  */
 export function getRegionBoundarySync(region: Region): LatLngLiteral[] {
   const center = getRegionCenterSync(region);
@@ -81,33 +101,24 @@ export function getRegionBoundarySync(region: Region): LatLngLiteral[] {
     return generateSimplifiedBoundary(center);
   }
   
+  // 默认边界（雅加达）
   return generateSimplifiedBoundary({ lat: -6.2088, lng: 106.8456 });
 }
 
 /**
  * 获取完整的行政区域信息
- * 优先使用 GADM 数据，如果不可用则使用简化数据
  */
 export async function getAdministrativeRegion(region: Region): Promise<AdministrativeRegion> {
-  // 优先尝试从 GADM 数据获取
   const gadmRegion = await gadmLoader.getAdministrativeRegion(region);
   if (gadmRegion) {
     return gadmRegion;
   }
   
-  // 回退到简化数据
-  const center = getRegionCenterSync(region) || { lat: -6.2088, lng: 106.8456 };
-  const boundary = getRegionBoundarySync(region);
-  
-  return {
-    ...region,
-    center,
-    boundary
-  };
+  return getAdministrativeRegionSync(region);
 }
 
 /**
- * 同步版本（保持向后兼容）
+ * 同步获取行政区域信息
  */
 export function getAdministrativeRegionSync(region: Region): AdministrativeRegion {
   const center = getRegionCenterSync(region) || { lat: -6.2088, lng: 106.8456 };
@@ -136,7 +147,6 @@ export function getDistrictsInProvince(region: Region): string[] {
 
 /**
  * 获取所有国家列表
- * 优先使用 GADM 数据，如果不可用则使用静态数据
  */
 export async function getAllCountries(): Promise<string[]> {
   const gadmCountries = await gadmLoader.getAllCountries();
@@ -147,7 +157,7 @@ export async function getAllCountries(): Promise<string[]> {
 }
 
 /**
- * 同步版本（保持向后兼容）
+ * 同步获取所有国家列表
  */
 export function getAllCountriesSync(): string[] {
   return Object.keys(REGION_HIERARCHY);
@@ -155,7 +165,6 @@ export function getAllCountriesSync(): string[] {
 
 /**
  * 获取指定国家下的所有省/州
- * 优先使用 GADM 数据，如果不可用则使用静态数据
  */
 export async function getProvincesInCountry(country: string): Promise<string[]> {
   const gadmProvinces = await gadmLoader.getProvincesInCountry(country);
@@ -166,7 +175,7 @@ export async function getProvincesInCountry(country: string): Promise<string[]> 
 }
 
 /**
- * 同步版本（保持向后兼容）
+ * 同步获取指定国家下的所有省/州
  */
 export function getProvincesInCountrySync(country: string): string[] {
   return Object.keys(REGION_HIERARCHY[country] || {});
@@ -174,7 +183,6 @@ export function getProvincesInCountrySync(country: string): string[] {
 
 /**
  * 获取指定省/州下的所有市/区
- * 优先使用 GADM 数据，如果不可用则使用静态数据
  */
 export async function getDistrictsInProvinceByCountry(
   country: string,
@@ -188,127 +196,10 @@ export async function getDistrictsInProvinceByCountry(
 }
 
 /**
- * 同步版本（保持向后兼容）
+ * 同步获取指定省/州下的所有市/区
  */
 export function getDistrictsInProvinceByCountrySync(country: string, province: string): string[] {
   return REGION_HIERARCHY[country]?.[province] || [];
-}
-
-/**
- * 模糊搜索区域
- * 支持按国家、省/州、市/区名称搜索
- * 优先使用 GADM 数据，如果不可用则使用静态数据
- */
-export async function searchRegions(
-  query: string,
-  options?: RegionSearchOptions
-): Promise<AdministrativeRegion[]> {
-  if (!query || query.trim().length === 0) {
-    return [];
-  }
-
-  // 优先尝试使用 GADM 数据搜索
-  const gadmResults = await gadmLoader.searchRegions(query, options);
-  if (gadmResults.length > 0) {
-    return gadmResults;
-  }
-
-  // 回退到静态数据搜索
-  const searchQuery = query.toLowerCase().trim();
-  const results: AdministrativeRegion[] = [];
-
-  // 遍历所有区域
-  for (const [country, provinces] of Object.entries(REGION_HIERARCHY)) {
-    // 国家过滤
-    if (options?.country && country !== options.country) {
-      continue;
-    }
-
-    // 检查国家名称是否匹配
-    const countryMatch = country.toLowerCase().includes(searchQuery);
-
-    for (const [province, districts] of Object.entries(provinces)) {
-      // 省/州过滤
-      if (options?.province && province !== options.province) {
-        continue;
-      }
-
-      // 检查省/州名称是否匹配
-      const provinceMatch = province.toLowerCase().includes(searchQuery);
-
-      for (const district of districts) {
-        // 检查市/区名称是否匹配
-        const districtMatch = district.toLowerCase().includes(searchQuery);
-
-        // 如果任何层级匹配，添加到结果
-        if (countryMatch || provinceMatch || districtMatch) {
-          const region: Region = { country, province, district };
-          results.push(getAdministrativeRegionSync(region));
-        }
-      }
-    }
-  }
-
-  // 按匹配度排序（精确匹配优先）
-  return results.sort((a, b) => {
-    const aScore = getMatchScore(a, searchQuery);
-    const bScore = getMatchScore(b, searchQuery);
-    return bScore - aScore;
-  });
-}
-
-/**
- * 同步版本（保持向后兼容）
- */
-export function searchRegionsSync(
-  query: string,
-  options?: RegionSearchOptions
-): AdministrativeRegion[] {
-  if (!query || query.trim().length === 0) {
-    return [];
-  }
-
-  const searchQuery = query.toLowerCase().trim();
-  const results: AdministrativeRegion[] = [];
-
-  // 遍历所有区域
-  for (const [country, provinces] of Object.entries(REGION_HIERARCHY)) {
-    // 国家过滤
-    if (options?.country && country !== options.country) {
-      continue;
-    }
-
-    // 检查国家名称是否匹配
-    const countryMatch = country.toLowerCase().includes(searchQuery);
-
-    for (const [province, districts] of Object.entries(provinces)) {
-      // 省/州过滤
-      if (options?.province && province !== options.province) {
-        continue;
-      }
-
-      // 检查省/州名称是否匹配
-      const provinceMatch = province.toLowerCase().includes(searchQuery);
-
-      for (const district of districts) {
-        // 检查市/区名称是否匹配
-        const districtMatch = district.toLowerCase().includes(searchQuery);
-
-        // 如果任何层级匹配，添加到结果
-        if (countryMatch || provinceMatch || districtMatch) {
-          const region: Region = { country, province, district };
-          results.push(getAdministrativeRegionSync(region));
-        }
-      }
-    }
-  }
-
-  // 按匹配度排序（精确匹配优先）
-  return results.sort((a, b) => {
-    const aScore = getMatchScore(a, searchQuery);
-    const bScore = getMatchScore(b, searchQuery);
-    return bScore - aScore;
-  });
 }
 
 /**
@@ -318,7 +209,6 @@ function getMatchScore(region: AdministrativeRegion, query: string): number {
   let score = 0;
   const lowerQuery = query.toLowerCase();
 
-  // 精确匹配得分最高
   if (region.district.toLowerCase() === lowerQuery) score += 100;
   else if (region.district.toLowerCase().startsWith(lowerQuery)) score += 50;
   else if (region.district.toLowerCase().includes(lowerQuery)) score += 25;
@@ -333,8 +223,73 @@ function getMatchScore(region: AdministrativeRegion, query: string): number {
 }
 
 /**
+ * 模糊搜索区域
+ */
+export async function searchRegions(
+  query: string,
+  options?: RegionSearchOptions
+): Promise<AdministrativeRegion[]> {
+  if (!query || query.trim().length === 0) {
+    return [];
+  }
+
+  // 优先使用 GADM 数据搜索
+  const gadmResults = await gadmLoader.searchRegions(query, options);
+  if (gadmResults.length > 0) {
+    return gadmResults;
+  }
+
+  return searchRegionsSync(query, options);
+}
+
+/**
+ * 同步搜索区域
+ */
+export function searchRegionsSync(
+  query: string,
+  options?: RegionSearchOptions
+): AdministrativeRegion[] {
+  if (!query || query.trim().length === 0) {
+    return [];
+  }
+
+  const searchQuery = query.toLowerCase().trim();
+  const results: AdministrativeRegion[] = [];
+
+  for (const [country, provinces] of Object.entries(REGION_HIERARCHY)) {
+    if (options?.country && country !== options.country) {
+      continue;
+    }
+
+    const countryMatch = country.toLowerCase().includes(searchQuery);
+
+    for (const [province, districts] of Object.entries(provinces)) {
+      if (options?.province && province !== options.province) {
+        continue;
+      }
+
+      const provinceMatch = province.toLowerCase().includes(searchQuery);
+
+      for (const district of districts) {
+        const districtMatch = district.toLowerCase().includes(searchQuery);
+
+        if (countryMatch || provinceMatch || districtMatch) {
+          const region: Region = { country, province, district };
+          results.push(getAdministrativeRegionSync(region));
+        }
+      }
+    }
+  }
+
+  return results.sort((a, b) => {
+    const aScore = getMatchScore(a, searchQuery);
+    const bScore = getMatchScore(b, searchQuery);
+    return bScore - aScore;
+  });
+}
+
+/**
  * 验证区域是否存在
- * 优先使用 GADM 数据，如果不可用则使用静态数据
  */
 export async function isValidRegion(region: Region): Promise<boolean> {
   const gadmValid = await gadmLoader.isValidRegion(region);
@@ -342,12 +297,11 @@ export async function isValidRegion(region: Region): Promise<boolean> {
     return true;
   }
   
-  const districts = REGION_HIERARCHY[region.country]?.[region.province] || [];
-  return districts.includes(region.district);
+  return isValidRegionSync(region);
 }
 
 /**
- * 同步版本（保持向后兼容）
+ * 同步验证区域是否存在
  */
 export function isValidRegionSync(region: Region): boolean {
   const districts = REGION_HIERARCHY[region.country]?.[region.province] || [];
@@ -355,14 +309,13 @@ export function isValidRegionSync(region: Region): boolean {
 }
 
 /**
- * 查找最接近的区域（用于GPS定位后的区域匹配）
+ * 查找最接近的区域（用于 GPS 定位后的区域匹配）
  */
 export function findClosestRegion(
   country: string,
   province?: string,
   district?: string
 ): Region | null {
-  // 如果所有信息都匹配，直接返回
   if (country && province && district) {
     const districts = REGION_HIERARCHY[country]?.[province] || [];
     if (districts.includes(district)) {
@@ -370,7 +323,6 @@ export function findClosestRegion(
     }
   }
 
-  // 如果只有国家和省/州匹配
   if (country && province) {
     const districts = REGION_HIERARCHY[country]?.[province] || [];
     if (districts.length > 0) {
@@ -378,7 +330,6 @@ export function findClosestRegion(
     }
   }
 
-  // 如果只有国家匹配
   if (country) {
     const provinces = Object.keys(REGION_HIERARCHY[country] || {});
     if (provinces.length > 0) {
@@ -391,4 +342,3 @@ export function findClosestRegion(
 
   return null;
 }
-
