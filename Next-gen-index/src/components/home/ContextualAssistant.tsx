@@ -11,9 +11,9 @@ interface ContextualAssistantProps {
   onMaximize: () => void;
   onMinimize: () => void;
   selectedRegion: Region;
-  rainfallType: DataType; // 使用DataType替代RainfallType
+  weatherDataType: DataType;
   className?: string;
-  setRainfallType: (type: DataType) => void;
+  setWeatherDataType: (type: DataType) => void;
   setSelectedRegion: (region: Region) => void;
   setSelectedProduct: (product: InsuranceProduct | null) => void;
 }
@@ -23,9 +23,9 @@ export function ContextualAssistant({
   onMaximize,
   onMinimize,
   selectedRegion, 
-  rainfallType, 
+  weatherDataType, 
   className,
-  setRainfallType,
+  setWeatherDataType,
   setSelectedRegion,
   setSelectedProduct
 }: ContextualAssistantProps) {
@@ -87,7 +87,7 @@ export function ContextualAssistant({
                {/* Suggestion Chips */}
                <div className="flex flex-wrap gap-2">
                   <button 
-                    onClick={() => setRainfallType('predicted')}
+                    onClick={() => setWeatherDataType('predicted')}
                     className="text-xs bg-white border border-gray-200 px-3 py-1.5 rounded-full hover:bg-purple-50 hover:text-purple-600 hover:border-purple-200 transition-colors"
                   >
                     Show Predicted Rain

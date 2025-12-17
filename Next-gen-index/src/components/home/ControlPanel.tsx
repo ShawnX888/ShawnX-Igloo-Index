@@ -1,5 +1,5 @@
 
-import { Calendar as CalendarIcon, ChevronDown, ChevronRight, ChevronLeft, MapPin, Droplets, ShieldCheck, Clock, Search, Minimize2, Settings2, X } from "lucide-react";
+import { Calendar as CalendarIcon, ChevronDown, ChevronRight, ChevronLeft, MapPin, Droplets, ShieldCheck, Clock, Search, Minimize2, Settings2, X, Cloud } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
@@ -21,8 +21,9 @@ interface ControlPanelProps {
   onMinimize: () => void;
   selectedRegion: Region;
   setSelectedRegion: (region: Region) => void;
-  rainfallType: DataType; // 使用DataType替代RainfallType
-  setRainfallType: (type: DataType) => void;
+  /** 天气数据类型：历史/预测 */
+  weatherDataType: DataType;
+  setWeatherDataType: (type: DataType) => void;
   dateRange: DateRange;
   setDateRange: (range: DateRange) => void;
   selectedProduct: InsuranceProduct | null;
@@ -43,8 +44,8 @@ export function ControlPanel({
   onMinimize,
   selectedRegion,
   setSelectedRegion,
-  rainfallType,
-  setRainfallType,
+  weatherDataType,
+  setWeatherDataType,
   dateRange,
   setDateRange,
   selectedProduct,
@@ -52,24 +53,6 @@ export function ControlPanel({
   onNavigateToProduct
 }: ControlPanelProps) {
   
-  // If minimized, show a horizontal floating button
-  if (isMinimized) {
-    return (
-      <div className="flex items-center justify-start pointer-events-auto">
-        <Button 
-          onClick={onMaximize}
-          className="h-12 px-5 bg-white border border-gray-200 shadow-lg text-gray-700 hover:text-blue-600 hover:bg-gray-50 hover:border-blue-200 rounded-full flex items-center gap-3 transition-all duration-300 group"
-        >
-          <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center group-hover:bg-blue-600 transition-colors">
-            <Settings2 className="w-4 h-4 text-blue-600 group-hover:text-white" />
-          </div>
-          <span className="font-semibold text-sm">Map Settings</span>
-          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse ml-1" />
-        </Button>
-      </div>
-    );
-  }
-
   // 使用区域数据管理模块
   const HIERARCHY = REGION_HIERARCHY;
   const { search: searchRegions } = useRegionData();
@@ -85,6 +68,10 @@ export function ControlPanel({
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
   const [searchResults, setSearchResults] = useState<AdministrativeRegion[]>([]);
   const [isSearching, setIsSearching] = useState<boolean>(false);
+
+  // State for scroll fade indicators
+  const [countryScrollState, setCountryScrollState] = useState<{ top: boolean; bottom: boolean }>({ top: false, bottom: true });
+  const [provinceScrollState, setProvinceScrollState] = useState<{ top: boolean; bottom: boolean }>({ top: false, bottom: true });
 
   // Search results (async)
   useEffect(() => {
@@ -115,6 +102,24 @@ export function ControlPanel({
       cancelled = true;
     };
   }, [searchQuery, searchRegions]);
+
+  // If minimized, show a horizontal floating button
+  if (isMinimized) {
+    return (
+      <div className="flex items-center justify-start pointer-events-auto">
+        <Button 
+          onClick={onMaximize}
+          className="h-12 px-5 bg-white border border-gray-200 shadow-lg text-gray-700 hover:text-blue-600 hover:bg-gray-50 hover:border-blue-200 rounded-full flex items-center gap-3 transition-all duration-300 group"
+        >
+          <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center group-hover:bg-blue-600 transition-colors">
+            <Settings2 className="w-4 h-4 text-blue-600 group-hover:text-white" />
+          </div>
+          <span className="font-semibold text-sm">Map Settings</span>
+          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse ml-1" />
+        </Button>
+      </div>
+    );
+  }
 
   // Handle search input change
   const handleSearchChange = (value: string) => {
@@ -168,6 +173,22 @@ export function ControlPanel({
   const countries = Object.keys(HIERARCHY);
   const provinces = tempCountry ? Object.keys(HIERARCHY[tempCountry] || {}) : [];
   const districts = tempCountry && tempProvince ? (HIERARCHY[tempCountry][tempProvince] || []) : [];
+
+  // Handle scroll for country list
+  const handleCountryScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.currentTarget;
+    const atTop = target.scrollTop <= 5;
+    const atBottom = target.scrollHeight - target.scrollTop - target.clientHeight <= 5;
+    setCountryScrollState({ top: !atTop, bottom: !atBottom });
+  };
+
+  // Handle scroll for province list
+  const handleProvinceScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.currentTarget;
+    const atTop = target.scrollTop <= 5;
+    const atBottom = target.scrollHeight - target.scrollTop - target.clientHeight <= 5;
+    setProvinceScrollState({ top: !atTop, bottom: !atBottom });
+  };
 
   return (
     <Card className="w-[360px] h-full flex flex-col bg-white shadow-xl border-0 rounded-xl overflow-hidden animate-in slide-in-from-left fade-in duration-300">
@@ -255,16 +276,31 @@ export function ControlPanel({
                    {locationStep === 1 && (
                        <div className="p-1">
                            <div className="px-2 py-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Select Country</div>
-                           {countries.map(c => (
-                               <div 
-                                 key={c} 
-                                 onClick={() => handleCountrySelect(c)}
-                                 className="flex items-center justify-between px-2 py-1.5 hover:bg-gray-100 rounded-md cursor-pointer text-sm"
-                               >
-                                  <span>{c}</span>
-                                  <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
-                               </div>
-                           ))}
+                           <div className="relative">
+                             <div 
+                               className="max-h-[200px] overflow-y-auto"
+                               onScroll={handleCountryScroll}
+                             >
+                               {countries.map(c => (
+                                   <div 
+                                     key={c} 
+                                     onClick={() => handleCountrySelect(c)}
+                                     className="flex items-center justify-between px-2 py-1.5 hover:bg-gray-100 rounded-md cursor-pointer text-sm"
+                                   >
+                                      <span>{c}</span>
+                                      <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
+                                   </div>
+                               ))}
+                             </div>
+                             {/* Top fade - covers text */}
+                             {countryScrollState.top && (
+                               <div className="absolute top-0 left-0 right-0 h-12 pointer-events-none z-20" style={{ background: 'linear-gradient(to bottom, white 0%, white 20%, rgba(255,255,255,0) 100%)' }} />
+                             )}
+                             {/* Bottom fade - covers text */}
+                             {countryScrollState.bottom && countries.length > 6 && (
+                               <div className="absolute bottom-0 left-0 right-0 h-12 pointer-events-none z-20" style={{ background: 'linear-gradient(to top, white 0%, white 20%, rgba(255,255,255,0) 100%)' }} />
+                             )}
+                           </div>
                        </div>
                    )}
 
@@ -277,17 +313,30 @@ export function ControlPanel({
                               </Button>
                               <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Select Province in {tempCountry}</span>
                            </div>
-                           <div className="max-h-[200px] overflow-y-auto">
-                               {provinces.map(p => (
-                                   <div 
-                                     key={p} 
-                                     onClick={() => handleProvinceSelect(p)}
-                                     className="flex items-center justify-between px-2 py-1.5 hover:bg-gray-100 rounded-md cursor-pointer text-sm"
-                                   >
-                                      <span>{p}</span>
-                                      <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
-                                   </div>
-                               ))}
+                           <div className="relative">
+                             <div 
+                               className="max-h-[200px] overflow-y-auto"
+                               onScroll={handleProvinceScroll}
+                             >
+                                 {provinces.map(p => (
+                                     <div 
+                                       key={p} 
+                                       onClick={() => handleProvinceSelect(p)}
+                                       className="flex items-center justify-between px-2 py-1.5 hover:bg-gray-100 rounded-md cursor-pointer text-sm"
+                                     >
+                                        <span>{p}</span>
+                                        <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
+                                     </div>
+                                 ))}
+                             </div>
+                             {/* Top fade - covers text */}
+                             {provinceScrollState.top && (
+                               <div className="absolute top-0 left-0 right-0 h-12 pointer-events-none z-20" style={{ background: 'linear-gradient(to bottom, white 0%, white 20%, rgba(255,255,255,0) 100%)' }} />
+                             )}
+                             {/* Bottom fade - covers text */}
+                             {provinceScrollState.bottom && provinces.length > 6 && (
+                               <div className="absolute bottom-0 left-0 right-0 h-12 pointer-events-none z-20" style={{ background: 'linear-gradient(to top, white 0%, white 20%, rgba(255,255,255,0) 100%)' }} />
+                             )}
                            </div>
                        </div>
                    )}
@@ -302,9 +351,9 @@ export function ControlPanel({
                               <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Select District in {tempProvince}</span>
                            </div>
                            <div className="max-h-[200px] overflow-y-auto">
-                               {districts.map(d => (
+                               {districts.map((d, idx) => (
                                    <div 
-                                     key={d} 
+                                     key={`${d}-${idx}`} 
                                      onClick={() => handleDistrictSelect(d)}
                                      className="flex items-center justify-between px-2 py-1.5 hover:bg-blue-50 text-gray-900 hover:text-blue-700 rounded-md cursor-pointer text-sm"
                                    >
@@ -318,7 +367,20 @@ export function ControlPanel({
               </Popover>
             </div>
 
-          {/* 2. Data Type */}
+          {/* 2. Weather Type (Read-only, reserved for future expansion) */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-1.5 text-gray-900 font-semibold border-b border-gray-100 pb-1.5">
+               <Cloud className="w-3.5 h-3.5 text-cyan-600" />
+               <h3 className="text-xs">Weather Type</h3>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg border border-gray-100">
+              <Droplets className="w-4 h-4 text-blue-500" />
+              <span className="text-sm font-medium text-gray-700">Rainfall</span>
+              <span className="ml-auto text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">Default</span>
+            </div>
+          </div>
+
+          {/* 3. Data Type */}
           <div className="space-y-2">
             <div className="flex items-center gap-1.5 text-gray-900 font-semibold border-b border-gray-100 pb-1.5">
                <Droplets className="w-3.5 h-3.5 text-blue-600" />
@@ -327,22 +389,22 @@ export function ControlPanel({
             
             <div className="flex bg-gray-100 p-0.5 rounded-lg">
               <button 
-                onClick={() => setRainfallType('historical')}
+                onClick={() => setWeatherDataType('historical')}
                 className={cn(
                   "flex-1 py-1.5 text-xs font-medium rounded-md transition-all",
-                  rainfallType === 'historical' ? "bg-white shadow-sm text-blue-600" : "text-gray-500 hover:text-gray-700"
+                  weatherDataType === 'historical' ? "bg-white shadow-sm text-blue-600" : "text-gray-500 hover:text-gray-700"
                 )}
               >
                 Historical
               </button>
               <button 
-                onClick={() => setRainfallType('predicted')}
+                onClick={() => setWeatherDataType('predicted')}
                 className={cn(
                   "flex-1 py-1.5 text-xs font-medium rounded-md transition-all",
-                  rainfallType === 'predicted' ? "bg-white shadow-sm text-purple-600" : "text-gray-500 hover:text-gray-700"
+                  weatherDataType === 'predicted' ? "bg-white shadow-sm text-purple-600" : "text-gray-500 hover:text-gray-700"
                 )}
               >
-                Predicted
+                Forecast
               </button>
             </div>
 
@@ -350,11 +412,16 @@ export function ControlPanel({
              <div className="bg-gray-50 p-3 rounded-lg border border-gray-100 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5 text-[10px] font-semibold text-gray-500 uppercase">
-                     <Clock className="w-3 h-3" /> {rainfallType === 'predicted' ? 'Forecast Window' : 'Time Window'}
+                     <Clock className="w-3 h-3" /> {weatherDataType === 'predicted' ? 'Forecast Window' : 'Time Window'}
                   </div>
-                  {rainfallType === 'predicted' && (
+                  {weatherDataType === 'predicted' && (
                     <span className="text-[10px] text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-100 font-medium">
                       Next 10 Days
+                    </span>
+                  )}
+                  {weatherDataType === 'historical' && (
+                    <span className="text-[10px] text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100 font-medium">
+                      Max 40 Days
                     </span>
                   )}
                 </div>
@@ -369,10 +436,10 @@ export function ControlPanel({
                           <Button 
                             variant="outline" 
                             size="sm" 
-                            disabled={rainfallType === 'predicted'}
+                            disabled={weatherDataType === 'predicted'}
                             className={cn(
                               "flex-1 justify-start text-left font-normal bg-white border-gray-200 h-8 text-xs disabled:opacity-80 disabled:bg-gray-100",
-                              rainfallType === 'predicted' && "text-gray-500"
+                              weatherDataType === 'predicted' && "text-gray-500"
                             )}
                           >
                             <CalendarIcon className="mr-2 h-3 w-3 text-gray-400" />
@@ -384,7 +451,7 @@ export function ControlPanel({
                        <Input 
                          type="number" min={0} max={23} 
                          value={dateRange.startHour} 
-                         disabled={rainfallType === 'predicted'}
+                         disabled={weatherDataType === 'predicted'}
                          onChange={(e) => setDateRange({...dateRange, startHour: parseInt(e.target.value)})}
                          className="w-12 bg-white border-gray-200 text-center h-8 text-xs p-0 disabled:opacity-80 disabled:bg-gray-100"
                          placeholder="00"
@@ -402,10 +469,10 @@ export function ControlPanel({
                           <Button 
                             variant="outline" 
                             size="sm" 
-                            disabled={rainfallType === 'predicted'}
+                            disabled={weatherDataType === 'predicted'}
                             className={cn(
                               "flex-1 justify-start text-left font-normal bg-white border-gray-200 h-8 text-xs disabled:opacity-80 disabled:bg-gray-100",
-                              rainfallType === 'predicted' && "text-gray-500"
+                              weatherDataType === 'predicted' && "text-gray-500"
                             )}
                           >
                             <CalendarIcon className="mr-2 h-3 w-3 text-gray-400" />
@@ -417,7 +484,7 @@ export function ControlPanel({
                        <Input 
                          type="number" min={0} max={23} 
                          value={dateRange.endHour} 
-                         disabled={rainfallType === 'predicted'}
+                         disabled={weatherDataType === 'predicted'}
                          onChange={(e) => setDateRange({...dateRange, endHour: parseInt(e.target.value)})}
                          className="w-12 bg-white border-gray-200 text-center h-8 text-xs p-0 disabled:opacity-80 disabled:bg-gray-100"
                          placeholder="23"

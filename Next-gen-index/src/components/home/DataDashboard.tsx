@@ -14,7 +14,7 @@ import { format, addDays, differenceInDays } from "date-fns";
 
 interface DataDashboardProps {
   selectedRegion: Region;
-  rainfallType: DataType; // 使用DataType替代RainfallType
+  weatherDataType: DataType;
   dateRange: DateRange;
   selectedProduct: InsuranceProduct | null;
   onProductSelect: (product: InsuranceProduct | null) => void;
@@ -22,7 +22,7 @@ interface DataDashboardProps {
   onNavigateToProduct: (section?: string) => void;
 }
 
-export function DataDashboard({ selectedRegion, rainfallType, dateRange, selectedProduct, onProductSelect, dailyData, onNavigateToProduct }: DataDashboardProps) {
+export function DataDashboard({ selectedRegion, weatherDataType, dateRange, selectedProduct, onProductSelect, dailyData, onNavigateToProduct }: DataDashboardProps) {
   const [viewMode, setViewMode] = useState<"daily" | "hourly">("daily");
 
   // Automatically switch view mode based on product selection
@@ -42,7 +42,7 @@ export function DataDashboard({ selectedRegion, rainfallType, dateRange, selecte
   const generatedHourlyData = useMemo(() => {
      if (!dailyData || dailyData.length === 0) return [];
 
-     const multiplier = rainfallType === 'predicted' ? 0.8 : 1.0;
+     const multiplier = weatherDataType === 'predicted' ? 0.8 : 1.0;
      const hourlyData: any[] = [];
 
      dailyData.forEach((day: WeatherData, dayIndex: number) => {
@@ -61,7 +61,7 @@ export function DataDashboard({ selectedRegion, rainfallType, dateRange, selecte
          hourlyData.push(...dayHours);
      });
      return hourlyData;
-  }, [rainfallType, dailyData]);
+  }, [weatherDataType, dailyData]);
 
   // Choose data based on view mode
   // 确保数据格式统一：为 dailyData 添加 amount 字段以兼容图表
@@ -301,11 +301,11 @@ export function DataDashboard({ selectedRegion, rainfallType, dateRange, selecte
             {/* Historical/Predicted Badge */}
             <Badge className={cn(
                "h-7 px-3 text-[11px] font-bold uppercase tracking-wider rounded-lg border-0 shadow-none pointer-events-none",
-               rainfallType === 'historical' 
+               weatherDataType === 'historical' 
                   ? "bg-blue-100 text-blue-700 hover:bg-blue-100" 
                   : "bg-purple-100 text-purple-700 hover:bg-purple-100"
             )}>
-               {rainfallType}
+               {weatherDataType}
             </Badge>
 
             {/* Product Badge */}

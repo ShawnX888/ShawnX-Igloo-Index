@@ -113,7 +113,7 @@ function RiskEventMarkersLayerRenderer({
 
 interface MapWorkspaceProps {
   selectedRegion: Region;
-  rainfallType: DataType; // 使用DataType替代RainfallType
+  weatherDataType: DataType;
   riskData: RiskData[];
   selectedProduct: InsuranceProduct | null;
   setSelectedRegion: (region: Region) => void;
@@ -122,7 +122,7 @@ interface MapWorkspaceProps {
   allRegionsWeatherData?: RegionWeatherData;
 }
 
-export function MapWorkspace({ selectedRegion, rainfallType, riskData, selectedProduct, setSelectedRegion, activeInputMode, dateRange, allRegionsWeatherData }: MapWorkspaceProps) {
+export function MapWorkspace({ selectedRegion, weatherDataType, riskData, selectedProduct, setSelectedRegion, activeInputMode, dateRange, allRegionsWeatherData }: MapWorkspaceProps) {
   // Google Maps 相关 refs
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<google.maps.Map | null>(null);
@@ -261,7 +261,7 @@ export function MapWorkspace({ selectedRegion, rainfallType, riskData, selectedP
           country={selectedRegion.country}
           province={selectedRegion.province}
           rainfallData={allRegionsWeatherData}
-          dataType={rainfallType}
+          dataType={weatherDataType}
           visible={layers.heatmap}
         />
       )}
@@ -275,7 +275,7 @@ export function MapWorkspace({ selectedRegion, rainfallType, riskData, selectedP
           province={selectedRegion.province}
           riskData={riskData}
           selectedRegion={selectedRegion}
-          dataType={rainfallType}
+          dataType={weatherDataType}
           selectedProduct={selectedProduct}
           visible={layers.events}
         />
@@ -326,42 +326,42 @@ export function MapWorkspace({ selectedRegion, rainfallType, riskData, selectedP
              <div className="space-y-2">
                 {/* Historical Rainfall */}
                 <div 
-                   onClick={() => rainfallType === 'historical' && setLayers(p => ({...p, heatmap: !p.heatmap}))}
+                   onClick={() => weatherDataType === 'historical' && setLayers(p => ({...p, heatmap: !p.heatmap}))}
                    className={cn(
                       "flex items-center gap-3 p-3 rounded-lg border transition-all cursor-pointer select-none",
-                      rainfallType === 'historical' 
+                      weatherDataType === 'historical' 
                          ? (layers.heatmap ? "bg-blue-50 border-blue-200 shadow-sm" : "bg-white border-gray-100 hover:border-blue-200")
                          : "bg-gray-50 border-transparent opacity-50 cursor-not-allowed"
                    )}
                 >
-                   <div className={cn("p-1.5 rounded-md", rainfallType === 'historical' && layers.heatmap ? "bg-blue-100 text-blue-600" : "bg-gray-100 text-gray-400")}>
+                   <div className={cn("p-1.5 rounded-md", weatherDataType === 'historical' && layers.heatmap ? "bg-blue-100 text-blue-600" : "bg-gray-100 text-gray-400")}>
                       <CloudRain className="w-4 h-4" />
                    </div>
                    <div className="flex-1">
-                      <div className={cn("text-xs font-semibold", rainfallType === 'historical' ? "text-gray-900" : "text-gray-400")}>Historical Rainfall</div>
-                      {rainfallType === 'historical' && <div className="text-[10px] text-gray-500">Heatmap Layer</div>}
+                      <div className={cn("text-xs font-semibold", weatherDataType === 'historical' ? "text-gray-900" : "text-gray-400")}>Historical Rainfall</div>
+                      {weatherDataType === 'historical' && <div className="text-[10px] text-gray-500">Heatmap Layer</div>}
                    </div>
-                   {rainfallType === 'historical' && layers.heatmap && <div className="w-2 h-2 rounded-full bg-blue-500" />}
+                   {weatherDataType === 'historical' && layers.heatmap && <div className="w-2 h-2 rounded-full bg-blue-500" />}
                 </div>
 
                 {/* Predicted Rainfall */}
                 <div 
-                   onClick={() => rainfallType === 'predicted' && setLayers(p => ({...p, heatmap: !p.heatmap}))}
+                   onClick={() => weatherDataType === 'predicted' && setLayers(p => ({...p, heatmap: !p.heatmap}))}
                    className={cn(
                       "flex items-center gap-3 p-3 rounded-lg border transition-all cursor-pointer select-none",
-                      rainfallType === 'predicted' 
+                      weatherDataType === 'predicted' 
                          ? (layers.heatmap ? "bg-purple-50 border-purple-200 shadow-sm" : "bg-white border-gray-100 hover:border-purple-200")
                          : "bg-gray-50 border-transparent opacity-50 cursor-not-allowed"
                    )}
                 >
-                   <div className={cn("p-1.5 rounded-md", rainfallType === 'predicted' && layers.heatmap ? "bg-purple-100 text-purple-600" : "bg-gray-100 text-gray-400")}>
+                   <div className={cn("p-1.5 rounded-md", weatherDataType === 'predicted' && layers.heatmap ? "bg-purple-100 text-purple-600" : "bg-gray-100 text-gray-400")}>
                       <CloudRain className="w-4 h-4" />
                    </div>
                    <div className="flex-1">
-                      <div className={cn("text-xs font-semibold", rainfallType === 'predicted' ? "text-gray-900" : "text-gray-400")}>Predicted Rainfall</div>
-                      {rainfallType === 'predicted' && <div className="text-[10px] text-gray-500">Forecast Layer</div>}
+                      <div className={cn("text-xs font-semibold", weatherDataType === 'predicted' ? "text-gray-900" : "text-gray-400")}>Predicted Rainfall</div>
+                      {weatherDataType === 'predicted' && <div className="text-[10px] text-gray-500">Forecast Layer</div>}
                    </div>
-                   {rainfallType === 'predicted' && layers.heatmap && <div className="w-2 h-2 rounded-full bg-purple-500" />}
+                   {weatherDataType === 'predicted' && layers.heatmap && <div className="w-2 h-2 rounded-full bg-purple-500" />}
                 </div>
                 
                 <div className="h-px bg-gray-100 my-2" />

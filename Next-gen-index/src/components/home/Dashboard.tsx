@@ -25,7 +25,7 @@ export function Dashboard({
     province: "Jakarta",
     district: "JakartaSelatan"
   });
-  const [rainfallType, setRainfallType] = useState<DataType>("historical"); // 使用DataType替代RainfallType
+  const [weatherDataType, setWeatherDataType] = useState<DataType>("historical");
   
   // Default: Historical logic (7 days ago same time to Now - 1 hour)
   const today = new Date();
@@ -50,7 +50,7 @@ export function Dashboard({
 
   // --- CENTRALIZED DATA GENERATION ---
   // 使用通用天气数据生成器生成所有区域的数据（weatherType: 'rainfall'）
-  const allRegionsHourlyWeatherData = useWeatherData(selectedRegion, dateRange, rainfallType, 'rainfall');
+  const allRegionsHourlyWeatherData = useWeatherData(selectedRegion, dateRange, weatherDataType, 'rainfall');
   
   // 生成日级数据（从小时级数据累计）
   const allRegionsDailyWeatherData = useDailyWeatherData(allRegionsHourlyWeatherData, dateRange, 'rainfall');
@@ -62,8 +62,8 @@ export function Dashboard({
   }, [allRegionsHourlyWeatherData]);
 
   // --- HANDLERS ---
-  const handleRainfallTypeChange = (type: DataType) => {
-    setRainfallType(type);
+  const handleWeatherDataTypeChange = (type: DataType) => {
+    setWeatherDataType(type);
     const now = new Date();
     
     if (type === 'predicted') {
@@ -102,7 +102,7 @@ export function Dashboard({
       <div className="relative h-[600px] w-full border-b border-gray-200 overflow-hidden shrink-0 group">
         <MapWorkspace 
           selectedRegion={selectedRegion} 
-          rainfallType={rainfallType}
+          weatherDataType={weatherDataType}
           riskData={riskData}
           selectedProduct={selectedProduct}
           setSelectedRegion={setSelectedRegion}
@@ -119,8 +119,8 @@ export function Dashboard({
               onMinimize={() => handleInputModeChange('chat')}
               selectedRegion={selectedRegion}
               setSelectedRegion={setSelectedRegion}
-              rainfallType={rainfallType}
-              setRainfallType={handleRainfallTypeChange}
+              weatherDataType={weatherDataType}
+              setWeatherDataType={handleWeatherDataTypeChange}
               dateRange={dateRange}
               setDateRange={setDateRange}
               selectedProduct={selectedProduct}
@@ -154,9 +154,9 @@ export function Dashboard({
             onMaximize={() => handleInputModeChange('chat')}
             onMinimize={() => handleInputModeChange('manual')}
             selectedRegion={selectedRegion}
-            rainfallType={rainfallType}
+            weatherDataType={weatherDataType}
             // Passing setters to allow AI to control state
-            setRainfallType={setRainfallType}
+            setWeatherDataType={setWeatherDataType}
             setSelectedRegion={setSelectedRegion}
             setSelectedProduct={setSelectedProduct}
           />
@@ -168,7 +168,7 @@ export function Dashboard({
       <div className="w-full bg-white relative z-10">
         <DataDashboard 
           selectedRegion={selectedRegion}
-          rainfallType={rainfallType}
+          weatherDataType={weatherDataType}
           dateRange={dateRange}
           selectedProduct={selectedProduct}
           onProductSelect={setSelectedProduct}
