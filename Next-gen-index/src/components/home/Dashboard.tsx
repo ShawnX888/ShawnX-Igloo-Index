@@ -9,6 +9,7 @@ import { ProductSelector } from "./ProductSelector";
 import { Region, DataType, RiskData, InsuranceProduct, DateRange } from "./types";
 import { initialRiskData } from "../../lib/mockData";
 import { useWeatherData, useDailyWeatherData } from "../../hooks/useWeatherData";
+import { useRiskAnalysis } from "../../hooks/useRiskAnalysis";
 import { convertRegionWeatherDataToRegionData } from "../../lib/dataAdapters";
 import { addDays } from "date-fns";
 
@@ -45,13 +46,25 @@ export function Dashboard({
   // Input Mode: "manual" or "chat". Default "chat" as per prompt.
   const [activeInputMode, setActiveInputMode] = useState<"manual" | "chat">("chat");
 
-  // Mock data
-  const [riskData] = useState<RiskData[]>(initialRiskData);
-
   // --- CENTRALIZED DATA GENERATION ---
   // 使用通用天气数据生成器生成所有区域的数据（weatherType: 'rainfall'）
   const allRegionsHourlyWeatherData = useWeatherData(selectedRegion, dateRange, weatherDataType, 'rainfall');
   
+  // 使用中心化风险分析 Hook 计算风险事件和统计信息
+  const { 
+    riskEvents, 
+    mapMarkersData, 
+    detailedStatistics, 
+    isCalculated 
+  } = useRiskAnalysis(
+    selectedRegion,
+    dateRange,
+    selectedProduct,
+    'rainfall',
+    weatherDataType,
+    allRegionsHourlyWeatherData
+  );
+
   // 生成日级数据（从小时级数据累计）
   const allRegionsDailyWeatherData = useDailyWeatherData(allRegionsHourlyWeatherData, dateRange, 'rainfall');
   
@@ -103,7 +116,7 @@ export function Dashboard({
         <MapWorkspace 
           selectedRegion={selectedRegion} 
           weatherDataType={weatherDataType}
-          riskData={riskData}
+          riskData={mapMarkersData}
           selectedProduct={selectedProduct}
           setSelectedRegion={setSelectedRegion}
           activeInputMode={activeInputMode}
