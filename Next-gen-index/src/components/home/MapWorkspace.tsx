@@ -12,7 +12,7 @@ import {
 import { useRegionBoundaryLayer } from "../../hooks/useRegionBoundaryLayer";
 import { useRainfallHeatmapLayer } from "../../hooks/useRainfallHeatmapLayer";
 import { useRiskEventMarkersLayer } from "../../hooks/useRiskEventMarkersLayer";
-import { getDistrictsInProvince, getProvinceCentersSync } from "../../lib/regionData";
+import { getDistrictsInProvince } from "../../lib/regionData";
 import { useWeatherData } from "../../hooks/useWeatherData";
 import { getGPSLocation, GPSStatus, GPSLocationError } from "../../lib/gpsLocation";
 
@@ -162,44 +162,14 @@ export function MapWorkspace({ selectedRegion, weatherDataType, riskData, select
         // A. 设置选中区域，触发数据加载
         setSelectedRegion(targetRegion);
         
-        // B. 阶段 1：快速切换到用户精确坐标 (District 级别)
+        // B. 定位到用户精确坐标 (District 级别)
         map.setCenter({ lat: result.latitude, lng: result.longitude });
         map.setZoom(13);
         
-        // 监听 'idle' 事件，确保阶段 1 的定位移动和瓦片加载彻底完成后再计时
-        // 这解决了地图未加载完成就开始执行阶段 2 的问题
-        google.maps.event.addListenerOnce(map, 'idle', () => {
-          setGpsStatus('success');
-
-          // C. 阶段 2：停顿 1 秒后执行 Province 视图平滑过渡
-          setTimeout(() => {
-            if (!mapInstanceRef.current) return;
-
-            const provinceCenters = getProvinceCentersSync(targetRegion.country, targetRegion.province);
-
-            if (provinceCenters.length > 0) {
-              const bounds = new google.maps.LatLngBounds();
-              provinceCenters.forEach(center => bounds.extend(center));
-              
-              // D. 阶段 3：平滑缩放并自适应全省视野
-              // 使用 panTo 辅助 fitBounds 往往能强制触发更明显的平滑过渡动画
-              mapInstanceRef.current.panTo(bounds.getCenter());
-              
-              // 延迟 100ms 调用 fitBounds，确保 panTo 的意图被识别，从而产生平滑缩放效果
-              setTimeout(() => {
-                if (mapInstanceRef.current) {
-                  mapInstanceRef.current.fitBounds(bounds, {
-                    padding: 100 
-                  });
-                }
-              }, 100);
-            }
-            
-            // 预留足够时间让 3 秒的视觉过程完成
-            setTimeout(() => setGpsStatus('idle'), 3500);
-          }, 1000);
-        });
-
+        setGpsStatus('success');
+        
+        // 3秒后重置状态
+        setTimeout(() => setGpsStatus('idle'), 3000);
       } else {
         throw { type: 'REGION_NOT_FOUND', message: 'Could not determine your location region' };
       }

@@ -4,8 +4,8 @@
  */
 
 import { useEffect, useRef } from 'react';
-import { Region, AdministrativeRegion, LatLngLiteral } from '../types';
-import { getDistrictsInProvince, getAdministrativeRegion, googleToGadmName, gadmToGoogleName } from '../lib/regionData';
+import { Region, LatLngLiteral } from '../types';
+import { getAdministrativeRegion, googleToGadmName } from '../lib/regionData';
 
 /**
  * GeoJSON Feature格式
