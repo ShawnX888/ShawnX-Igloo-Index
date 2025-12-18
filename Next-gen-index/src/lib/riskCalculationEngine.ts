@@ -781,6 +781,21 @@ export class RiskCalculationEngineImpl implements IRiskCalculationEngine {
     value: number
   ): RiskEvent {
     const id = `${product.id}-${region.district}-${new Date(timestamp).toISOString()}-${level}`;
+    const levelLabel = level.replace('tier', 'Tier ');
+    const { timeWindow, calculation } = product.riskRules;
+    
+    // 生成时间窗口标签
+    let timeLabel = '';
+    if (timeWindow.type === 'daily' || timeWindow.type === 'day') {
+      timeLabel = `${timeWindow.size}-day`;
+    } else if (timeWindow.type === 'hourly' || timeWindow.type === 'hour') {
+      timeLabel = `${timeWindow.size}-hour`;
+    } else if (timeWindow.type === 'monthly' || timeWindow.type === 'month') {
+      timeLabel = 'Monthly';
+    }
+
+    const weatherLabel = product.weatherType === 'rainfall' ? 'Rainfall' : product.weatherType;
+    const operatorLabel = (calculation.operator === '<' || calculation.operator === '<=') ? 'fell below' : 'exceeded';
 
     return {
       id,
@@ -790,9 +805,9 @@ export class RiskCalculationEngineImpl implements IRiskCalculationEngine {
       dataType,
       weatherType: product.weatherType,
       level,
-      type: product.type,
+      type: `${product.name} (${levelLabel})`,
       value,
-      description: `${product.name} - ${level} risk event`,
+      description: `${timeLabel} ${weatherLabel} (${value.toFixed(1)}mm) ${operatorLabel} ${levelLabel} threshold`,
     };
   }
 }

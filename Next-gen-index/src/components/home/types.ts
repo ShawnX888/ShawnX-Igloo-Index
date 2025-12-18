@@ -5,6 +5,7 @@
 
 // 从统一类型系统导入
 export type { Region, DateRange, DataType, WeatherType, WeatherData, RegionWeatherData } from '../../types';
+export type { RiskEvent, RiskStatistics } from '../../types';
 
 // 向后兼容：RainfallType 作为 DataType 的别名
 export type { RainfallType } from '../../types';

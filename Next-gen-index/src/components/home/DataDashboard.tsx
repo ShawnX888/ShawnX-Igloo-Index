@@ -1,7 +1,6 @@
 
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, AreaChart, Area, ComposedChart, Cell } from 'recharts';
-import { Region, DataType, InsuranceProduct, DateRange, WeatherData } from "./types";
-import { rainfallHourly } from "../../lib/mockData";
+import { Region, DataType, InsuranceProduct, DateRange, WeatherData, RiskEvent, RiskStatistics } from "./types";
 import { useState, useEffect, useMemo } from 'react';
 import { Tabs, TabsList, TabsTrigger } from "../ui/tabs";
 import { cn } from '../../lib/utils';
@@ -11,6 +10,7 @@ import { Card, CardContent } from '../ui/card';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
 import { PRODUCTS } from './ControlPanel';
 import { format } from "date-fns";
+import { productLibrary } from "../../lib/productLibrary";
 
 interface DataDashboardProps {
   selectedRegion: Region;
@@ -19,13 +19,10 @@ interface DataDashboardProps {
   selectedProduct: InsuranceProduct | null;
   onProductSelect: (product: InsuranceProduct | null) => void;
   dailyData: WeatherData[]; 
+  hourlyData: WeatherData[];
+  riskEvents: RiskEvent[];
+  statistics: RiskStatistics;
   onNavigateToProduct: (section?: string) => void;
-}
-
-interface HourlyWeatherData extends WeatherData {
-  fullDate: string;
-  hour: string;
-  amount: number;
 }
 
 interface AnalysisItem extends WeatherData {
@@ -35,21 +32,20 @@ interface AnalysisItem extends WeatherData {
   isTriggered?: boolean;
   threshold?: number;
   totalRain?: number;
-  fullDate?: string;
-  hour?: string;
 }
 
-interface RiskEventDisplay {
-  id: number | string;
-  date: string;
-  time: string;
-  level: string;
-  tierNum: number;
-  type: string;
-  description: string;
-}
-
-export function DataDashboard({ selectedRegion, weatherDataType, dateRange, selectedProduct, onProductSelect, dailyData, onNavigateToProduct }: DataDashboardProps) {
+export function DataDashboard({ 
+  selectedRegion, 
+  weatherDataType, 
+  dateRange, 
+  selectedProduct, 
+  onProductSelect, 
+  dailyData, 
+  hourlyData,
+  riskEvents,
+  statistics,
+  onNavigateToProduct 
+}: DataDashboardProps) {
   const [viewMode, setViewMode] = useState<"daily" | "hourly">("daily");
 
   // Automatically switch view mode based on product selection
@@ -62,276 +58,152 @@ export function DataDashboard({ selectedRegion, weatherDataType, dateRange, sele
       }
     }
   }, [selectedProduct]);
-  
-  // --- DATA GENERATION LOGIC ---
-  
-  // Generate Hourly Data (Simulated for the selected date range)
-  const generatedHourlyData = useMemo<HourlyWeatherData[]>(() => {
-     if (!dailyData || dailyData.length === 0) return [];
 
-     const multiplier = weatherDataType === 'predicted' ? 0.8 : 1.0;
-     const hourlyData: HourlyWeatherData[] = [];
+  // --- DATA FORMATTING FOR TREND CHART ---
+  const trendData = useMemo(() => {
+    const sourceData = viewMode === 'daily' ? dailyData : hourlyData;
+    return sourceData.map(item => ({
+      ...item,
+      amount: item.value || 0
+    }));
+  }, [viewMode, dailyData, hourlyData]);
 
-     dailyData.forEach((day: WeatherData, dayIndex: number) => {
-         const dayHours = rainfallHourly.map((h, hIndex) => {
-             const dateObj = new Date(day.date);
-             const dateStr = format(dateObj, "yyyy-MM-dd");
-             const fullDateStr = `${dateStr}T${h.hour}:00`; 
-             const val = (h.amount || day.value) * multiplier * (0.8 + Math.sin(dayIndex * 24 + hIndex) * 0.4);
-             return {
-                 ...day,
-                 date: dateStr, 
-                 hour: h.hour,
-                 fullDate: fullDateStr, 
-                 value: val,
-                 amount: val 
-             };
-         });
-         hourlyData.push(...dayHours);
-     });
-     return hourlyData;
-  }, [weatherDataType, dailyData]);
-
-  // Choose data based on view mode
-  // 确保数据格式统一：为 dailyData 添加 amount 字段以兼容图表
-  const data = useMemo<AnalysisItem[]>(() => {
-    if (viewMode === 'daily') {
-      // 为 WeatherData 添加 amount 字段（向后兼容）
-      return dailyData.map(item => ({
-        ...item,
-        amount: item.value || 0
-      }));
-    }
-    return generatedHourlyData;
-  }, [viewMode, dailyData, generatedHourlyData]);
-
-  // --- ANALYSIS CHART LOGIC ---
+  // --- ANALYSIS CHART LOGIC (REFACTORED TO USE PRODUCT LIBRARY) ---
   const analysisData = useMemo<AnalysisItem[]>(() => {
-     if (!selectedProduct) return [];
+    if (!selectedProduct) return [];
 
-     // 1. Daily Product: Hourly View, 4-hour Rolling Sum
-     if (selectedProduct.id === 'daily') {
-        const threshold = 100;
-        // Use generatedHourlyData
-        return generatedHourlyData.map((item, index) => {
-            const itemValue = item.value || 0;
-            let sum = itemValue;
-            for (let i = 1; i < 4; i++) {
-                const prev = generatedHourlyData[index - i];
-                const prevValue = prev ? (prev.value || 0) : 0;
-                sum += prevValue;
-            }
-            return {
-                ...item,
-                rollingSum: sum,
-                isTriggered: sum > threshold,
-                threshold
-            };
-        });
-     }
+    const fullProduct = productLibrary.getProduct(selectedProduct.id);
+    if (!fullProduct || !fullProduct.riskRules) return [];
 
-     // 2. Weekly Product: Daily View, 7-day Rolling Sum
-     if (selectedProduct.id === 'weekly') {
-         const threshold = 300;
-         // Use dailyData
-         return dailyData.map((item, index) => {
-             const itemValue = item.value || 0;
-             let sum = itemValue;
-             for (let i = 1; i < 7; i++) {
-                 const prev = dailyData[index - i];
-                 const prevValue = prev ? (prev.value || 0) : 0;
-                 sum += prevValue; 
-             }
-             return {
-                 ...item,
-                 amount: itemValue,
-                 rollingSum: sum,
-                 isTriggered: sum > threshold,
-                 threshold
-             };
-         });
-     }
+    const { riskRules } = fullProduct;
+    const { timeWindow, calculation, thresholds } = riskRules;
+    const operator = calculation.operator;
+    
+    // Get the highest threshold for "Trigger" line on chart
+    const triggerThreshold = thresholds.find(t => t.level === 'tier1')?.value || 0;
 
-     // 3. Monthly Product: Daily View, Area Chart, Monthly Cumulative
-     if (selectedProduct.id === 'drought') {
-         const threshold = 60; 
-         const totalRain = dailyData.reduce((acc, curr) => acc + (curr.value || 0), 0);
-         const isTriggered = totalRain < threshold;
-
-         let runningSum = 0;
-         return dailyData.map(item => {
-             const itemValue = item.value || 0;
-             runningSum += itemValue;
-             return {
-                 ...item,
-                 amount: itemValue,
-                 cumulative: runningSum,
-                 totalRain, 
-                 isTriggered,
-                 threshold
-             };
-         });
-     }
-
-     return [];
-  }, [selectedProduct, dailyData, generatedHourlyData]);
-
-  // --- RISK EVENTS GENERATION ---
-  // Generate risk events dynamically based on the generated daily data
-  const generatedRiskEvents = useMemo<RiskEventDisplay[]>(() => {
-     if (selectedProduct && analysisData.length > 0) {
-        if (selectedProduct.id === 'daily') {
-            // Filter hourly data triggers
-            return analysisData
-                .filter((d) => d.isTriggered)
-                .map((d, i) => {
-                    let tier = "Tier 1";
-                    let level = "Medium";
-                    let tierNum = 1;
-                    const rollingSum = d.rollingSum || 0;
-                    if (rollingSum > 140) { tier = "Tier 3"; level = "High"; tierNum = 3; }
-                    else if (rollingSum > 120) { tier = "Tier 2"; level = "High"; tierNum = 2; }
-                    
-                    return {
-                        id: i,
-                        date: format(new Date(d.date), "yyyy-MM-dd"),
-                        time: (d.hour || "00") + ":00",
-                        level,
-                        tierNum,
-                        type: "Heavy Rain (" + tier + ")",
-                        description: `4h Rainfall (${rollingSum.toFixed(1)}mm) exceeded ${tier} threshold`
-                    };
-                });
+    if (fullProduct.type === 'daily') {
+      const windowSize = timeWindow.size;
+      return hourlyData.map((item, index) => {
+        let sum = 0;
+        for (let i = 0; i < windowSize; i++) {
+          const prev = hourlyData[index - i];
+          sum += prev ? prev.value : 0;
         }
-        if (selectedProduct.id === 'weekly') {
-             return analysisData
-                .filter((d) => d.isTriggered)
-                .map((d, i) => {
-                    let tier = "Tier 1";
-                    let level = "Medium";
-                    let tierNum = 1;
-                    const rollingSum = d.rollingSum || 0;
-                    if (rollingSum > 400) { tier = "Tier 3"; level = "High"; tierNum = 3; }
-                    else if (rollingSum > 350) { tier = "Tier 2"; level = "High"; tierNum = 2; }
-                    
-                    return {
-                        id: i,
-                        date: format(new Date(d.date), "yyyy-MM-dd"),
-                        time: "00:00",
-                        level,
-                        tierNum,
-                        type: "Weekly Accumulation (" + tier + ")",
-                        description: `7-day Rainfall (${rollingSum.toFixed(1)}mm) exceeded ${tier} threshold`
-                    };
-                });
-        }
-        if (selectedProduct.id === 'drought') {
-            // Drought is a single event for the month usually
-            const firstItem = analysisData[0];
-            if (firstItem && firstItem.isTriggered) {
-                let tier = "Tier 1";
-                let level = "Medium";
-                let tierNum = 1;
-                const total = firstItem.totalRain || 0;
-                if (total < 20) { tier = "Tier 3"; level = "High"; tierNum = 3; }
-                else if (total < 40) { tier = "Tier 2"; level = "High"; tierNum = 2; }
+        
+        const isTriggered = operator === '>' ? sum > triggerThreshold : 
+                          operator === '>=' ? sum >= triggerThreshold :
+                          operator === '<' ? sum < triggerThreshold :
+                          operator === '<=' ? sum <= triggerThreshold : sum === triggerThreshold;
 
-                return [{
-                    id: 1,
-                    date: format(new Date(firstItem.date), "yyyy-MM-dd"),
-                    time: "Month End",
-                    level,
-                    tierNum,
-                    type: "Drought (" + tier + ")",
-                    description: `Monthly Rainfall (${total.toFixed(1)}mm) fell below ${tier} threshold`
-                }];
-            }
-            return [];
-        }
-     }
+        return {
+          ...item,
+          amount: item.value,
+          rollingSum: sum,
+          isTriggered,
+          threshold: triggerThreshold
+        };
+      });
+    }
 
-     return dailyData
-        .filter(d => {
-            const value = d.value || 0;
-            return value > 60;
-        })
-        .map((d, i) => {
-            const value = d.value || 0;
-            return {
-                id: i,
-                date: format(new Date(d.date), "yyyy-MM-dd"),
-                time: "14:00", // Mock time
-                level: value > 100 ? "High" : "Medium",
-                tierNum: value > 100 ? 3 : 1,
-                type: value > 100 ? "Flash Flood" : "Heavy Rain",
-                description: value > 100 
-                    ? `Rainfall (${value.toFixed(0)}mm) exceeded critical threshold`
-                    : `Heavy rainfall detected (${value.toFixed(0)}mm)`
-            };
-        });
-  }, [dailyData, selectedProduct, analysisData]);
+    if (fullProduct.type === 'weekly') {
+      const windowSize = timeWindow.size;
+      return dailyData.map((item, index) => {
+        let sum = 0;
+        for (let i = 0; i < windowSize; i++) {
+          const prev = dailyData[index - i];
+          sum += prev ? prev.value : 0;
+        }
+        
+        const isTriggered = operator === '>' ? sum > triggerThreshold : 
+                          operator === '>=' ? sum >= triggerThreshold :
+                          operator === '<' ? sum < triggerThreshold :
+                          operator === '<=' ? sum <= triggerThreshold : sum === triggerThreshold;
+
+        return {
+          ...item,
+          amount: item.value,
+          rollingSum: sum,
+          isTriggered,
+          threshold: triggerThreshold
+        };
+      });
+    }
+
+    if (fullProduct.type === 'monthly') {
+      let runningSum = 0;
+      const totalRain = dailyData.reduce((acc, curr) => acc + curr.value, 0);
+      
+      return dailyData.map(item => {
+        runningSum += item.value;
+        const isTriggered = operator === '<' ? totalRain < triggerThreshold : 
+                           operator === '<=' ? totalRain <= triggerThreshold : false;
+
+        return {
+          ...item,
+          amount: item.value,
+          cumulative: runningSum,
+          totalRain,
+          isTriggered,
+          threshold: triggerThreshold
+        };
+      });
+    }
+
+    return [];
+  }, [selectedProduct, dailyData, hourlyData]);
 
   // --- SUMMARY METRICS ---
   const summaryMetrics = useMemo(() => {
-    const totalRain = data.reduce((acc, curr) => acc + (curr.value || curr.amount || 0), 0);
-    const avgRain = data.length > 0 ? totalRain / data.length : 0;
+    const totalRain = trendData.reduce((acc, curr) => acc + curr.amount, 0);
+    const avgRain = trendData.length > 0 ? totalRain / trendData.length : 0;
     
-    // Count triggers from generatedRiskEvents
-    const riskCount = generatedRiskEvents.length;
-    
-    // Determine Severity based on Tier Levels
-    // No events -> -
-    // Max Tier 1 -> Low
-    // Max Tier 2 -> Medium
-    // Max Tier 3 -> High
-    let severity = "-";
-    if (riskCount > 0) {
-        const maxTier = Math.max(...generatedRiskEvents.map((e) => e.tierNum || 0));
-        if (maxTier >= 3) severity = "High";
-        else if (maxTier === 2) severity = "Medium";
-        else severity = "Low";
-    }
-    
+    // Severity Label Mapping
+    const severityMap: Record<string, string> = {
+      'low': 'Low',
+      'medium': 'Medium',
+      'high': 'High',
+      'none': '-',
+      '-': '-'
+    };
+
     return {
-       timeWindow: viewMode === 'daily' ? `${data.length} Days` : `${data.length} Hours`,
+       timeWindow: viewMode === 'daily' ? `${trendData.length} Days` : `${trendData.length} Hours`,
        totalRain: totalRain.toFixed(1),
        avgRain: avgRain.toFixed(1),
-       riskCount,
-       severity,
+       riskCount: statistics.total,
+       severity: severityMap[statistics.severity] || statistics.severity,
        avgLabel: viewMode === 'daily' ? 'Avg. Daily Rainfall' : 'Avg. Hourly Rainfall'
     };
-  }, [data, viewMode, generatedRiskEvents]);
+  }, [trendData, viewMode, statistics]);
 
-    // Format Date Helper
-    const formatDateAxis = (val: string | number | Date) => {
-        try {
-            if (!val) return "";
-            const date = new Date(val);
-            if (isNaN(date.getTime())) return String(val);
+  // Format Date Helper
+  const formatDateAxis = (val: string | number | Date) => {
+    try {
+      if (!val) return "";
+      const date = new Date(val);
+      if (isNaN(date.getTime())) return String(val);
 
-            if (viewMode === 'daily') {
-                return format(date, "dd MMM"); 
-            }
-            return format(date, "dd/MM HH:mm");
-        } catch (e) {
-            return String(val);
-        }
-    };
+      if (viewMode === 'daily') {
+        return format(date, "dd MMM"); 
+      }
+      return format(date, "dd/MM HH:mm");
+    } catch (e) {
+      return String(val);
+    }
+  };
 
-    return (
+  return (
     <div className="w-full flex flex-col p-8 max-w-[1440px] mx-auto">
       {/* 1. Header & Summary Stats */}
       <div className="mb-8">
-         {/* Top Label */}
          <div className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 flex items-center gap-2">
             {selectedRegion.country} <span className="text-gray-300">•</span> {selectedRegion.province}
          </div>
          
-         {/* Main Title Row */}
          <div className="flex items-center gap-4">
             <h2 className="text-4xl font-extrabold text-gray-900 tracking-tight">{selectedRegion.district}</h2>
             
-            {/* Historical/Predicted Badge */}
             <Badge className={cn(
                "h-7 px-3 text-[11px] font-bold uppercase tracking-wider rounded-lg border-0 shadow-none pointer-events-none",
                weatherDataType === 'historical' 
@@ -341,7 +213,6 @@ export function DataDashboard({ selectedRegion, weatherDataType, dateRange, sele
                {weatherDataType}
             </Badge>
 
-            {/* Product Badge */}
             {selectedProduct && (
                <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -367,7 +238,6 @@ export function DataDashboard({ selectedRegion, weatherDataType, dateRange, sele
             )}
          </div>
 
-         {/* Time Range Subtitle */}
          {dateRange.from && dateRange.to && (
              <div className="flex items-center gap-2 mt-3 text-gray-500 font-medium animate-in fade-in slide-in-from-left-2 duration-500 delay-100 pl-1">
                 <Clock className="w-4 h-4 text-gray-400" />
@@ -470,9 +340,7 @@ export function DataDashboard({ selectedRegion, weatherDataType, dateRange, sele
 
       {/* 2. Main Chart Area */}
       <div className="space-y-8">
-         {/* Top Row: Main Rainfall Chart (Full Width) */}
          <div className="bg-white rounded-3xl border border-gray-100 p-8 shadow-sm h-[350px] flex flex-col">
-                 {/* Header with Toggle */}
                  <div className="flex items-center justify-between mb-2 shrink-0">
                     <div className="flex items-center gap-2">
                        <CloudRain className="w-5 h-5 text-blue-600" />
@@ -488,13 +356,12 @@ export function DataDashboard({ selectedRegion, weatherDataType, dateRange, sele
                  </div>
 
                  <div className="flex-1 relative min-h-0 w-full">
-                    {/* Y-Axis Label - Vertically Centered & Outside */}
                     <h4 className="absolute top-1/2 -left-6 transform -translate-y-1/2 -rotate-90 text-xs text-gray-400 font-medium origin-center whitespace-nowrap">
                       Rainfall (mm)
                     </h4>
 
                     <ResponsiveContainer width="100%" height="100%">
-                      <ComposedChart data={data} margin={{ top: 10, right: 10, left: 10, bottom: 20 }}>
+                      <ComposedChart data={trendData} margin={{ top: 10, right: 10, left: 10, bottom: 20 }}>
                         <defs>
                           <linearGradient id="colorBar" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
@@ -503,7 +370,7 @@ export function DataDashboard({ selectedRegion, weatherDataType, dateRange, sele
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                         <XAxis 
-                          dataKey={viewMode === 'daily' ? 'date' : 'fullDate'} 
+                          dataKey="date" 
                           axisLine={false} 
                           tickLine={false} 
                           tick={{fill: '#64748b', fontSize: 12}}
@@ -533,12 +400,8 @@ export function DataDashboard({ selectedRegion, weatherDataType, dateRange, sele
                     </ResponsiveContainer>
                  </div>
              </div>
-             
 
-
-         {/* Bottom Row: Product Analysis & Risk Analysis */}
          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-             {/* Left: Product Analysis Chart (Span 2) */}
              <div className="lg:col-span-2">
                 {selectedProduct && analysisData.length > 0 ? (
                     <div className="bg-white rounded-3xl border border-gray-100 p-8 shadow-sm h-[400px] animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -548,19 +411,17 @@ export function DataDashboard({ selectedRegion, weatherDataType, dateRange, sele
                               Analysis: {selectedProduct.name}
                            </h3>
                            <Badge variant="outline" className="ml-2 bg-green-50 text-green-700 border-green-200">
-                              Threshold: {selectedProduct.id === 'drought' ? '< 60mm/mo' : (selectedProduct.id === 'daily' ? '> 100mm/4h' : '> 300mm/week')}
+                              Threshold: {analysisData[0]?.threshold}mm
                            </Badge>
                         </div>
 
                         <div className="h-[280px] w-full relative">
-                           {/* Y-Axis Label */}
                            <h4 className="absolute top-1/2 -left-6 transform -translate-y-1/2 -rotate-90 text-xs text-gray-400 font-medium origin-center whitespace-nowrap">
-                              Cumulative (mm)
+                              {selectedProduct.id === 'drought' ? 'Cumulative (mm)' : 'Rolling (mm)'}
                            </h4>
 
                            <ResponsiveContainer width="100%" height="100%">
                               {selectedProduct.id === 'drought' ? (
-                                 // Monthly Product: Area Chart
                                  <AreaChart data={analysisData} margin={{ top: 10, right: 10, left: 20, bottom: 0 }}>
                                     <defs>
                                       <linearGradient id="colorAreaRed" x1="0" y1="0" x2="0" y2="1">
@@ -596,16 +457,15 @@ export function DataDashboard({ selectedRegion, weatherDataType, dateRange, sele
                                     />
                                  </AreaChart>
                               ) : (
-                                 // Daily/Weekly: Bar Chart with Threshold
                                  <BarChart data={analysisData} margin={{ top: 10, right: 10, left: 20, bottom: 0 }}>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                                     <XAxis 
-                                      dataKey={selectedProduct.id === 'daily' ? 'fullDate' : 'date'} 
+                                      dataKey="date" 
                                       axisLine={false} 
                                       tickLine={false} 
-                                      tick={{fill: '#64748b', fontSize: 12}}
+                                      tick={{fill: '#64748b', fontSize: 12}} 
                                       tickFormatter={formatDateAxis}
-                                      interval={selectedProduct.id === 'daily' ? 'preserveStartEnd' : 0}
+                                      interval="preserveStartEnd"
                                       minTickGap={50}
                                       dy={10}
                                     />
@@ -644,14 +504,13 @@ export function DataDashboard({ selectedRegion, weatherDataType, dateRange, sele
                 )}
              </div>
 
-             {/* Right: Risk Event Timeline (Span 1) */}
              <div className="lg:col-span-1 h-[400px]">
                {selectedProduct ? (
                  <div className="h-full bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden flex flex-col">
                    <div className="p-5 border-b border-gray-50 flex items-center justify-between">
                      <div>
                        <h3 className="font-bold text-gray-900">Risk Analysis</h3>
-                       <p className="text-xs text-gray-500 mt-0.5">Detected {generatedRiskEvents.length} trigger events</p>
+                       <p className="text-xs text-gray-500 mt-0.5">Detected {riskEvents.length} trigger events</p>
                      </div>
                      <Badge variant="outline" className={cn(
                         "transition-colors",
@@ -664,12 +523,12 @@ export function DataDashboard({ selectedRegion, weatherDataType, dateRange, sele
                      </Badge>
                    </div>
                    <div className="flex-1 overflow-y-auto p-5 space-y-5">
-                      {generatedRiskEvents.map((event, idx) => (
+                      {riskEvents.map((event, idx) => (
                          <div key={idx} className="relative pl-5 border-l-2 border-red-100 pb-2 last:pb-0">
                             <div className="absolute -left-[7px] top-1 w-3 h-3 rounded-full bg-red-500 border-2 border-white shadow-sm" />
                             <div className="flex items-center gap-2 mb-1.5">
-                              <span className="text-xs font-bold text-gray-500 uppercase">{event.date}</span>
-                              <span className="text-[10px] text-gray-400 font-medium">{event.time}</span>
+                              <span className="text-xs font-bold text-gray-500 uppercase">{format(new Date(event.timestamp), "yyyy-MM-dd")}</span>
+                              <span className="text-[10px] text-gray-400 font-medium">{format(new Date(event.timestamp), "HH:mm")}</span>
                             </div>
                             <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 hover:border-red-200 transition-colors">
                                <div className="flex items-center justify-between mb-1">
@@ -682,7 +541,6 @@ export function DataDashboard({ selectedRegion, weatherDataType, dateRange, sele
                    </div>
                  </div>
                ) : (
-                  // Placeholder when no product selected
                   <div className="h-full bg-gray-50/50 rounded-3xl border border-dashed border-gray-200 flex flex-col items-center justify-center text-center p-8">
                      <div className="w-20 h-20 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-6">
                        <ShieldCheck className="w-10 h-10 text-gray-300" />

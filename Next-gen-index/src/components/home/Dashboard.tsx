@@ -185,7 +185,10 @@ export function Dashboard({
           dateRange={dateRange}
           selectedProduct={selectedProduct}
           onProductSelect={setSelectedProduct}
-          dailyData={allRegionsDailyWeatherData[selectedRegion.district] || allRegionsHourlyWeatherData[selectedRegion.district] || []}
+          dailyData={allRegionsDailyWeatherData[selectedRegion.district] || []}
+          hourlyData={allRegionsHourlyWeatherData[selectedRegion.district] || []}
+          riskEvents={riskEvents}
+          statistics={detailedStatistics}
           onNavigateToProduct={onNavigateToProduct}
         />
       </div>
