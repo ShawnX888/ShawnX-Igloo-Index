@@ -309,6 +309,61 @@ export function isValidRegionSync(region: Region): boolean {
 }
 
 /**
+ * 查找最接近的区域（基于地理空间距离）
+ */
+export function findNearestRegions(
+  lat: number,
+  lng: number,
+  limit: number = 5
+): (AdministrativeRegion & { distance: number; googleDistrict: string })[] {
+  const results: (AdministrativeRegion & { distance: number; googleDistrict: string })[] = [];
+
+  for (const [country, provinces] of Object.entries(REGION_CENTERS)) {
+    for (const [province, districts] of Object.entries(provinces)) {
+      for (const [district, center] of Object.entries(districts)) {
+        const distance = calculateDistance(lat, lng, center.lat, center.lng);
+        
+        // 获取对应的 Google 名称用于 UI 显示和匹配
+        const googleProvince = gadmToGoogleName(province);
+        const googleDistrict = gadmToGoogleName(district);
+
+        results.push({
+          country,
+          province: googleProvince,
+          district: googleDistrict,
+          center,
+          boundary: generateSimplifiedBoundary(center),
+          distance,
+          gadmProvince: province,
+          gadmDistrict: district,
+          googleDistrict
+        });
+      }
+    }
+  }
+
+  return (results as any)
+    .sort((a, b) => a.distance - b.distance)
+    .slice(0, limit);
+}
+
+/**
+ * 计算两个坐标之间的距离 (Haversine formula)
+ * 单位：公里
+ */
+export function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // 地球半径 km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+/**
  * 查找最接近的区域（用于 GPS 定位后的区域匹配）
  */
 export function findClosestRegion(
@@ -341,4 +396,15 @@ export function findClosestRegion(
   }
 
   return null;
+}
+
+/**
+ * 获取省份内所有行政区的中心点坐标（用于计算全省视野范围）
+ */
+export function getProvinceCentersSync(country: string, province: string): LatLngLiteral[] {
+  const gadmProvince = googleToGadmName(province);
+  const districts = REGION_CENTERS[country]?.[gadmProvince] || REGION_CENTERS[country]?.[province];
+  
+  if (!districts) return [];
+  return Object.values(districts);
 }

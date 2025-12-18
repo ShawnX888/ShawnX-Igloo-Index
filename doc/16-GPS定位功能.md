@@ -54,11 +54,14 @@
      - 省/州（administrative_area_level_1）
      - 市/区（administrative_area_level_2或locality）
 
-3. **区域匹配与设置**
-   - 将定位结果转换为行政区域信息
-   - 如果定位成功，自动设置选中的区域
-   - 更新地图视图，自动缩放到定位区域
-   - 不限制特定地区，支持全球范围
+3. **区域匹配与设置（双重验证机制）**
+   - **地理预过滤**：计算当前 GPS 坐标与所有预存行政区中心点（GADM Centers）的距离。
+   - **候选人筛选**：筛选出距离最近的 3-5 个行政区作为候选人，按距离由近到远排序。
+   - **语义匹配**：将 Google Geocoding 返回的名称与候选人的 GADM 名称及 Google 映射名进行比对。
+   - **结果确定**：
+     - 若语义匹配成功，返回匹配到的标准区域。
+     - 若语义匹配失败，则采用“就近原则”，自动选择距离最近的第 1 个候选人。
+   - **数据一致性**：确保最终返回的区域必须存在于系统的 `REGION_HIERARCHY` 中，支持全球范围。
 
 4. **UI交互设计**
    - 定位按钮：位于地图控制区域（图层控制附近）
@@ -92,32 +95,31 @@ async function getCurrentPosition(): Promise<GeolocationPosition> {
 }
 ```
 
-#### 2. 反向地理编码
+#### 2. 反向地理编码（含双重验证逻辑）
 ```typescript
 // 伪代码示例
-async function reverseGeocode(
+async function matchGPSToRegion(
   lat: number,
   lng: number
 ): Promise<AdministrativeRegion | null> {
-  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-  const response = await fetch(
-    `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${apiKey}`
-  );
+  // 1. 地理预过滤：获取最近的 5 个候选人
+  const candidates = findNearestGadmRegions(lat, lng, 5);
   
-  const data = await response.json();
+  // 2. 实时反查 Google Geocoding 名称
+  const googleNames = await fetchGoogleGeocodeNames(lat, lng);
   
-  if (data.status !== 'OK' || !data.results.length) {
-    return null;
+  // 3. 语义匹配
+  for (const candidate of candidates) {
+    if (
+      isMatch(googleNames.district, candidate.gadmName) || 
+      isMatch(googleNames.district, candidate.mappedGoogleName)
+    ) {
+      return candidate;
+    }
   }
   
-  // 解析地址组件
-  const addressComponents = data.results[0].address_components;
-  const country = extractCountry(addressComponents);
-  const province = extractProvince(addressComponents);
-  const district = extractDistrict(addressComponents);
-  
-  // 返回区域信息（不限制特定地区）
-  return { country, province, district };
+  // 4. 兜底：返回距离最近的候选人
+  return candidates[0] || null;
 }
 ```
 
@@ -301,4 +303,4 @@ export function GPSLocationButton({ ... }: GPSButtonProps) { ... }
 
 **文档版本**：v1.0  
 **创建日期**：2025-01-27  
-**最后更新**：2025-01-27
+**最后更新**：2025-12-18
