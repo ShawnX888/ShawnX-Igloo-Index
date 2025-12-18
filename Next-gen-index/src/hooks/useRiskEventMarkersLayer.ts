@@ -234,6 +234,7 @@ export function useRiskEventMarkersLayer({
         position: center,
         content,
         title: `${districtName}: ${risk.events} events`,
+        gmpClickable: false, // 关键：确保标记不会拦截底层图层的点击事件
       });
 
       newMarkers.push(marker);

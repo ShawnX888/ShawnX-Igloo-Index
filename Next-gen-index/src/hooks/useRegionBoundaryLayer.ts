@@ -178,30 +178,14 @@ export function useRegionBoundaryLayer({
           idPropertyName: 'district',
         });
 
-        // 设置默认样式
-        // 填充规则：
-        // - 未选中区域：始终透明
-        // - 选中区域：热力图可见时透明，否则蓝色高亮
+        // 设置默认样式（基础样式）
         dataLayer.setStyle((feature) => {
-          const featureDistrict = feature.getProperty('district');
-          const gadmSelectedDistrict = googleToGadmName(selectedRegion.district);
-          const isSelected = featureDistrict === selectedRegion.district || 
-                            featureDistrict === gadmSelectedDistrict;
-
-          // 填充颜色和透明度
-          let fillColor = 'transparent';
-          let fillOpacity = 0;
-          if (isSelected && !heatmapVisible) {
-            fillColor = '#E3F2FD';
-            fillOpacity = 0.6;
-          }
-
           return {
-            fillColor,
-            fillOpacity,
-            strokeColor: isSelected ? '#4285F4' : '#C0C0C0',
-            strokeWeight: isSelected ? 3 : 1,
-            strokeOpacity: isSelected ? 1 : 0.4,
+            fillColor: 'transparent',
+            fillOpacity: 0,
+            strokeColor: '#C0C0C0',
+            strokeWeight: 1,
+            strokeOpacity: 0.4,
           };
         });
 
@@ -265,7 +249,7 @@ export function useRegionBoundaryLayer({
       }
       isInitializedRef.current = false;
     };
-  }, [map, country, province, districts.join(','), selectedRegion.district, heatmapVisible]); // 依赖：地图实例、国家、省/州、市/区列表、选中区域、热力图可见性
+  }, [map, country, province, districts.join(',')]); // 移除了 selectedRegion.district 和 heatmapVisible，避免不必要的重新加载
 
   // 更新选中区域的样式
   useEffect(() => {

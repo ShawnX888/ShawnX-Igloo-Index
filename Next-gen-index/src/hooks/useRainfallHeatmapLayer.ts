@@ -228,6 +228,7 @@ export function useRainfallHeatmapLayer({
             strokeColor: fillColor,
             strokeWeight: 0.5,
             strokeOpacity: 0.3,
+            clickable: false, // 关键：禁用点击，防止拦截底层图层的点击事件
           };
         });
 
