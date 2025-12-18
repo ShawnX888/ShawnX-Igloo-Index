@@ -1,16 +1,16 @@
 
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, AreaChart, Area, ComposedChart, Line, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, AreaChart, Area, ComposedChart, Cell } from 'recharts';
 import { Region, DataType, InsuranceProduct, DateRange, WeatherData } from "./types";
-import { rainfallHistory, rainfallHourly, rainfallPrediction } from "../../lib/mockData";
+import { rainfallHourly } from "../../lib/mockData";
 import { useState, useEffect, useMemo } from 'react';
 import { Tabs, TabsList, TabsTrigger } from "../ui/tabs";
 import { cn } from '../../lib/utils';
-import { AlertTriangle, CloudRain, Droplets, ShieldCheck, BarChart3, ChevronDown, Clock, Activity, Waves, Info, Zap } from 'lucide-react';
+import { AlertTriangle, CloudRain, ShieldCheck, BarChart3, ChevronDown, Clock, Activity, Waves, Info, Zap } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { Card, CardContent } from '../ui/card';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
 import { PRODUCTS } from './ControlPanel';
-import { format, addDays, differenceInDays } from "date-fns";
+import { format } from "date-fns";
 
 interface DataDashboardProps {
   selectedRegion: Region;
@@ -18,8 +18,35 @@ interface DataDashboardProps {
   dateRange: DateRange;
   selectedProduct: InsuranceProduct | null;
   onProductSelect: (product: InsuranceProduct | null) => void;
-  dailyData: WeatherData[]; // 使用WeatherData替代any[]
+  dailyData: WeatherData[]; 
   onNavigateToProduct: (section?: string) => void;
+}
+
+interface HourlyWeatherData extends WeatherData {
+  fullDate: string;
+  hour: string;
+  amount: number;
+}
+
+interface AnalysisItem extends WeatherData {
+  amount: number;
+  rollingSum?: number;
+  cumulative?: number;
+  isTriggered?: boolean;
+  threshold?: number;
+  totalRain?: number;
+  fullDate?: string;
+  hour?: string;
+}
+
+interface RiskEventDisplay {
+  id: number | string;
+  date: string;
+  time: string;
+  level: string;
+  tierNum: number;
+  type: string;
+  description: string;
 }
 
 export function DataDashboard({ selectedRegion, weatherDataType, dateRange, selectedProduct, onProductSelect, dailyData, onNavigateToProduct }: DataDashboardProps) {
@@ -39,23 +66,25 @@ export function DataDashboard({ selectedRegion, weatherDataType, dateRange, sele
   // --- DATA GENERATION LOGIC ---
   
   // Generate Hourly Data (Simulated for the selected date range)
-  const generatedHourlyData = useMemo(() => {
+  const generatedHourlyData = useMemo<HourlyWeatherData[]>(() => {
      if (!dailyData || dailyData.length === 0) return [];
 
      const multiplier = weatherDataType === 'predicted' ? 0.8 : 1.0;
-     const hourlyData: any[] = [];
+     const hourlyData: HourlyWeatherData[] = [];
 
      dailyData.forEach((day: WeatherData, dayIndex: number) => {
          const dayHours = rainfallHourly.map((h, hIndex) => {
              const dateObj = new Date(day.date);
              const dateStr = format(dateObj, "yyyy-MM-dd");
              const fullDateStr = `${dateStr}T${h.hour}:00`; 
+             const val = (h.amount || day.value) * multiplier * (0.8 + Math.sin(dayIndex * 24 + hIndex) * 0.4);
              return {
-                 ...h,
+                 ...day,
                  date: dateStr, 
+                 hour: h.hour,
                  fullDate: fullDateStr, 
-                 value: (h.amount || day.value) * multiplier * (0.8 + Math.sin(dayIndex * 24 + hIndex) * 0.4),
-                 amount: (h.amount || day.value) * multiplier * (0.8 + Math.sin(dayIndex * 24 + hIndex) * 0.4) // 临时兼容
+                 value: val,
+                 amount: val 
              };
          });
          hourlyData.push(...dayHours);
@@ -65,31 +94,31 @@ export function DataDashboard({ selectedRegion, weatherDataType, dateRange, sele
 
   // Choose data based on view mode
   // 确保数据格式统一：为 dailyData 添加 amount 字段以兼容图表
-  const data = useMemo(() => {
+  const data = useMemo<AnalysisItem[]>(() => {
     if (viewMode === 'daily') {
       // 为 WeatherData 添加 amount 字段（向后兼容）
       return dailyData.map(item => ({
         ...item,
-        amount: item.value || (item as any).amount || 0
+        amount: item.value || 0
       }));
     }
     return generatedHourlyData;
   }, [viewMode, dailyData, generatedHourlyData]);
 
   // --- ANALYSIS CHART LOGIC ---
-  const analysisData = useMemo(() => {
+  const analysisData = useMemo<AnalysisItem[]>(() => {
      if (!selectedProduct) return [];
 
      // 1. Daily Product: Hourly View, 4-hour Rolling Sum
      if (selectedProduct.id === 'daily') {
         const threshold = 100;
         // Use generatedHourlyData
-        return generatedHourlyData.map((item: any, index) => {
-            const itemValue = item.value || item.amount || 0;
+        return generatedHourlyData.map((item, index) => {
+            const itemValue = item.value || 0;
             let sum = itemValue;
             for (let i = 1; i < 4; i++) {
                 const prev = generatedHourlyData[index - i];
-                const prevValue = prev ? (prev.value || prev.amount || 0) : 0;
+                const prevValue = prev ? (prev.value || 0) : 0;
                 sum += prevValue;
             }
             return {
@@ -106,15 +135,16 @@ export function DataDashboard({ selectedRegion, weatherDataType, dateRange, sele
          const threshold = 300;
          // Use dailyData
          return dailyData.map((item, index) => {
-             const itemValue = item.value || (item as any).amount || 0;
+             const itemValue = item.value || 0;
              let sum = itemValue;
              for (let i = 1; i < 7; i++) {
                  const prev = dailyData[index - i];
-                 const prevValue = prev ? (prev.value || (prev as any).amount || 0) : 0;
+                 const prevValue = prev ? (prev.value || 0) : 0;
                  sum += prevValue; 
              }
              return {
                  ...item,
+                 amount: itemValue,
                  rollingSum: sum,
                  isTriggered: sum > threshold,
                  threshold
@@ -125,15 +155,16 @@ export function DataDashboard({ selectedRegion, weatherDataType, dateRange, sele
      // 3. Monthly Product: Daily View, Area Chart, Monthly Cumulative
      if (selectedProduct.id === 'drought') {
          const threshold = 60; 
-         const totalRain = dailyData.reduce((acc, curr) => acc + (curr.value || (curr as any).amount || 0), 0);
+         const totalRain = dailyData.reduce((acc, curr) => acc + (curr.value || 0), 0);
          const isTriggered = totalRain < threshold;
 
          let runningSum = 0;
          return dailyData.map(item => {
-             const itemValue = item.value || (item as any).amount || 0;
+             const itemValue = item.value || 0;
              runningSum += itemValue;
              return {
                  ...item,
+                 amount: itemValue,
                  cumulative: runningSum,
                  totalRain, 
                  isTriggered,
@@ -147,39 +178,41 @@ export function DataDashboard({ selectedRegion, weatherDataType, dateRange, sele
 
   // --- RISK EVENTS GENERATION ---
   // Generate risk events dynamically based on the generated daily data
-  const generatedRiskEvents = useMemo(() => {
+  const generatedRiskEvents = useMemo<RiskEventDisplay[]>(() => {
      if (selectedProduct && analysisData.length > 0) {
         if (selectedProduct.id === 'daily') {
             // Filter hourly data triggers
             return analysisData
-                .filter((d: any) => d.isTriggered)
-                .map((d: any, i: number) => {
+                .filter((d) => d.isTriggered)
+                .map((d, i) => {
                     let tier = "Tier 1";
                     let level = "Medium";
                     let tierNum = 1;
-                    if (d.rollingSum > 140) { tier = "Tier 3"; level = "High"; tierNum = 3; }
-                    else if (d.rollingSum > 120) { tier = "Tier 2"; level = "High"; tierNum = 2; }
+                    const rollingSum = d.rollingSum || 0;
+                    if (rollingSum > 140) { tier = "Tier 3"; level = "High"; tierNum = 3; }
+                    else if (rollingSum > 120) { tier = "Tier 2"; level = "High"; tierNum = 2; }
                     
                     return {
                         id: i,
                         date: format(new Date(d.date), "yyyy-MM-dd"),
-                        time: d.hour + ":00",
+                        time: (d.hour || "00") + ":00",
                         level,
                         tierNum,
                         type: "Heavy Rain (" + tier + ")",
-                        description: `4h Rainfall (${d.rollingSum.toFixed(1)}mm) exceeded ${tier} threshold`
+                        description: `4h Rainfall (${rollingSum.toFixed(1)}mm) exceeded ${tier} threshold`
                     };
                 });
         }
         if (selectedProduct.id === 'weekly') {
              return analysisData
-                .filter((d: any) => d.isTriggered)
-                .map((d: any, i: number) => {
+                .filter((d) => d.isTriggered)
+                .map((d, i) => {
                     let tier = "Tier 1";
                     let level = "Medium";
                     let tierNum = 1;
-                    if (d.rollingSum > 400) { tier = "Tier 3"; level = "High"; tierNum = 3; }
-                    else if (d.rollingSum > 350) { tier = "Tier 2"; level = "High"; tierNum = 2; }
+                    const rollingSum = d.rollingSum || 0;
+                    if (rollingSum > 400) { tier = "Tier 3"; level = "High"; tierNum = 3; }
+                    else if (rollingSum > 350) { tier = "Tier 2"; level = "High"; tierNum = 2; }
                     
                     return {
                         id: i,
@@ -188,7 +221,7 @@ export function DataDashboard({ selectedRegion, weatherDataType, dateRange, sele
                         level,
                         tierNum,
                         type: "Weekly Accumulation (" + tier + ")",
-                        description: `7-day Rainfall (${d.rollingSum.toFixed(1)}mm) exceeded ${tier} threshold`
+                        description: `7-day Rainfall (${rollingSum.toFixed(1)}mm) exceeded ${tier} threshold`
                     };
                 });
         }
@@ -199,7 +232,7 @@ export function DataDashboard({ selectedRegion, weatherDataType, dateRange, sele
                 let tier = "Tier 1";
                 let level = "Medium";
                 let tierNum = 1;
-                const total = firstItem.totalRain;
+                const total = firstItem.totalRain || 0;
                 if (total < 20) { tier = "Tier 3"; level = "High"; tierNum = 3; }
                 else if (total < 40) { tier = "Tier 2"; level = "High"; tierNum = 2; }
 
@@ -219,11 +252,11 @@ export function DataDashboard({ selectedRegion, weatherDataType, dateRange, sele
 
      return dailyData
         .filter(d => {
-            const value = d.value || (d as any).amount || 0;
+            const value = d.value || 0;
             return value > 60;
         })
         .map((d, i) => {
-            const value = d.value || (d as any).amount || 0;
+            const value = d.value || 0;
             return {
                 id: i,
                 date: format(new Date(d.date), "yyyy-MM-dd"),
@@ -240,7 +273,7 @@ export function DataDashboard({ selectedRegion, weatherDataType, dateRange, sele
 
   // --- SUMMARY METRICS ---
   const summaryMetrics = useMemo(() => {
-    const totalRain = data.reduce((acc: number, curr: any) => acc + (curr.value || curr.amount || 0), 0);
+    const totalRain = data.reduce((acc, curr) => acc + (curr.value || curr.amount || 0), 0);
     const avgRain = data.length > 0 ? totalRain / data.length : 0;
     
     // Count triggers from generatedRiskEvents
@@ -253,7 +286,7 @@ export function DataDashboard({ selectedRegion, weatherDataType, dateRange, sele
     // Max Tier 3 -> High
     let severity = "-";
     if (riskCount > 0) {
-        const maxTier = Math.max(...generatedRiskEvents.map((e: any) => e.tierNum || 0));
+        const maxTier = Math.max(...generatedRiskEvents.map((e) => e.tierNum || 0));
         if (maxTier >= 3) severity = "High";
         else if (maxTier === 2) severity = "Medium";
         else severity = "Low";
@@ -270,7 +303,7 @@ export function DataDashboard({ selectedRegion, weatherDataType, dateRange, sele
   }, [data, viewMode, generatedRiskEvents]);
 
     // Format Date Helper
-    const formatDateAxis = (val: any, index: number) => {
+    const formatDateAxis = (val: string | number | Date) => {
         try {
             if (!val) return "";
             const date = new Date(val);
@@ -446,7 +479,7 @@ export function DataDashboard({ selectedRegion, weatherDataType, dateRange, sele
                        <h3 className="font-bold text-gray-900">Rainfall Trends</h3>
                     </div>
                     
-                    <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as any)}>
+                    <Tabs value={viewMode} onValueChange={(v: string) => setViewMode(v as "daily" | "hourly")}>
                       <TabsList className="bg-gray-100 h-9 p-1">
                         <TabsTrigger value="daily" className="px-3 py-1 text-xs">Daily</TabsTrigger>
                         <TabsTrigger value="hourly" className="px-3 py-1 text-xs">Hourly</TabsTrigger>
@@ -589,7 +622,7 @@ export function DataDashboard({ selectedRegion, weatherDataType, dateRange, sele
                                     )}
                                     
                                     <Bar dataKey="rollingSum" radius={[4, 4, 0, 0]} barSize={selectedProduct.id === 'daily' ? 20 : 40}>
-                                      {analysisData.map((entry: any, index: number) => (
+                                      {analysisData.map((entry, index) => (
                                         <Cell key={`cell-${index}`} fill={entry.isTriggered ? '#ef4444' : '#e2e8f0'} />
                                       ))}
                                     </Bar>
