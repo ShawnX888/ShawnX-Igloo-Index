@@ -4,8 +4,9 @@
  */
 
 import { useMemo } from 'react';
-import { Region, DateRange, DataType, WeatherType, RegionWeatherData } from '../types';
+import { Region, DateRange, DataType, WeatherType, RegionWeatherData, WeatherData, WeatherStatistics } from '../types';
 import { weatherDataGenerator } from '../lib/weatherDataGenerator';
+import { calculateWeatherStatistics } from '../lib/weatherStatistics';
 
 /**
  * 使用天气数据的Hook
@@ -64,5 +65,27 @@ export function useDailyWeatherData(
 
     return dailyData;
   }, [hourlyData, dateRange, weatherType]);
+}
+
+/**
+ * 获取天气统计数据的Hook
+ * 
+ * @param hourlyData 小时级数据
+ * @param dailyData 日级数据
+ * @param dateRange 时间范围
+ * @param dataType 数据类型
+ * @param weatherType 天气类型
+ * @returns 天气统计对象
+ */
+export function useWeatherStatistics(
+  hourlyData: WeatherData[],
+  dailyData: WeatherData[],
+  dateRange: DateRange,
+  dataType: DataType,
+  weatherType: WeatherType
+): WeatherStatistics {
+  return useMemo(() => {
+    return calculateWeatherStatistics(hourlyData, dailyData, dateRange, dataType, weatherType);
+  }, [hourlyData, dailyData, dateRange, dataType, weatherType]);
 }
 

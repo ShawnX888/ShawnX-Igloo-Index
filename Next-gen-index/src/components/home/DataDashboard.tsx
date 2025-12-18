@@ -1,6 +1,6 @@
 
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, AreaChart, Area, ComposedChart, Cell } from 'recharts';
-import { Region, DataType, InsuranceProduct, DateRange, WeatherData, RiskEvent, RiskStatistics } from "./types";
+import { Region, DataType, InsuranceProduct, DateRange, WeatherData, RiskEvent, RiskStatistics, WeatherStatistics } from "./types";
 import { useState, useEffect, useMemo } from 'react';
 import { Tabs, TabsList, TabsTrigger } from "../ui/tabs";
 import { cn } from '../../lib/utils';
@@ -22,6 +22,7 @@ interface DataDashboardProps {
   hourlyData: WeatherData[];
   riskEvents: RiskEvent[];
   statistics: RiskStatistics;
+  weatherStatistics: WeatherStatistics;
   onNavigateToProduct: (section?: string) => void;
 }
 
@@ -44,6 +45,7 @@ export function DataDashboard({
   hourlyData,
   riskEvents,
   statistics,
+  weatherStatistics,
   onNavigateToProduct 
 }: DataDashboardProps) {
   const [viewMode, setViewMode] = useState<"daily" | "hourly">("daily");
@@ -155,9 +157,6 @@ export function DataDashboard({
 
   // --- SUMMARY METRICS ---
   const summaryMetrics = useMemo(() => {
-    const totalRain = trendData.reduce((acc, curr) => acc + curr.amount, 0);
-    const avgRain = trendData.length > 0 ? totalRain / trendData.length : 0;
-    
     // Severity Label Mapping
     const severityMap: Record<string, string> = {
       'low': 'Low',
@@ -167,15 +166,20 @@ export function DataDashboard({
       '-': '-'
     };
 
+    const { timeWindow, metrics } = weatherStatistics;
+    const timeWindowStr = `${timeWindow.days} Days ${timeWindow.hours} Hours`;
+    
+    const avgValue = selectedProduct?.id === 'daily' ? metrics.avgHourly : metrics.avgDaily;
+
     return {
-       timeWindow: viewMode === 'daily' ? `${trendData.length} Days` : `${trendData.length} Hours`,
-       totalRain: totalRain.toFixed(1),
-       avgRain: avgRain.toFixed(1),
+       timeWindow: timeWindowStr,
+       totalRain: metrics.total.toFixed(1),
+       avgRain: avgValue.toFixed(1),
        riskCount: statistics.total,
        severity: severityMap[statistics.severity] || statistics.severity,
-       avgLabel: viewMode === 'daily' ? 'Avg. Daily Rainfall' : 'Avg. Hourly Rainfall'
+       avgLabel: selectedProduct?.id === 'daily' ? 'Avg. Hourly Rainfall' : 'Avg. Daily Rainfall'
     };
-  }, [trendData, viewMode, statistics]);
+  }, [weatherStatistics, statistics, selectedProduct]);
 
   // Format Date Helper
   const formatDateAxis = (val: string | number | Date) => {
@@ -276,7 +280,7 @@ export function DataDashboard({
                </div>
                <div className="min-w-0">
                   <div className="text-xs text-gray-500 font-medium truncate w-full" title={summaryMetrics.avgLabel}>
-                      {summaryMetrics.avgLabel}
+                      {selectedProduct?.id === 'daily' ? 'Avg. Hourly Rainfall' : 'Avg. Daily Rainfall'}
                   </div>
                   <div className="text-lg font-bold text-gray-900 truncate">{summaryMetrics.avgRain} <span className="text-xs text-gray-400 font-normal">mm</span></div>
                </div>

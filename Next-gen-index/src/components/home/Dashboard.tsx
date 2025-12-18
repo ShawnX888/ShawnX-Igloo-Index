@@ -8,7 +8,7 @@ import { ContextualAssistant } from "./ContextualAssistant";
 import { ProductSelector } from "./ProductSelector";
 import { Region, DataType, RiskData, InsuranceProduct, DateRange } from "./types";
 import { initialRiskData } from "../../lib/mockData";
-import { useWeatherData, useDailyWeatherData } from "../../hooks/useWeatherData";
+import { useWeatherData, useDailyWeatherData, useWeatherStatistics } from "../../hooks/useWeatherData";
 import { useRiskAnalysis } from "../../hooks/useRiskAnalysis";
 import { convertRegionWeatherDataToRegionData } from "../../lib/dataAdapters";
 import { addDays } from "date-fns";
@@ -68,6 +68,15 @@ export function Dashboard({
   // 生成日级数据（从小时级数据累计）
   const allRegionsDailyWeatherData = useDailyWeatherData(allRegionsHourlyWeatherData, dateRange, 'rainfall');
   
+  // 生成天气统计数据（解耦自风险计算）
+  const weatherStatistics = useWeatherStatistics(
+    allRegionsHourlyWeatherData[selectedRegion.district] || [],
+    allRegionsDailyWeatherData[selectedRegion.district] || [],
+    dateRange,
+    weatherDataType,
+    'rainfall'
+  );
+
   // 为了兼容现有代码（MapWorkspace等可能仍使用RegionData格式），提供转换后的数据
   const allRegionsData = useMemo(() => {
     // 转换为RegionData格式（向后兼容）
@@ -189,6 +198,7 @@ export function Dashboard({
           hourlyData={allRegionsHourlyWeatherData[selectedRegion.district] || []}
           riskEvents={riskEvents}
           statistics={detailedStatistics}
+          weatherStatistics={weatherStatistics}
           onNavigateToProduct={onNavigateToProduct}
         />
       </div>

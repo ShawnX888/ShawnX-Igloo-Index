@@ -22,6 +22,29 @@ export type DataType = 'historical' | 'predicted';
 export type RainfallType = DataType;
 
 /**
+ * 天气统计数据
+ */
+export interface WeatherStatistics {
+  /** 时间窗口 */
+  timeWindow: {
+    days: number;
+    hours: number;
+  };
+  /** 统计指标 */
+  metrics: {
+    total: number;
+    avgDaily: number;
+    avgHourly: number;
+    max: number;
+    min: number;
+  };
+  /** 数据类型 */
+  dataType: DataType;
+  /** 天气类型 */
+  weatherType: WeatherType;
+}
+
+/**
  * 通用天气数据接口
  * 支持不同类型的天气指标
  */
