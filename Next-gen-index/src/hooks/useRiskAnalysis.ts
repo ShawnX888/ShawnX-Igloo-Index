@@ -28,6 +28,26 @@ import { format } from 'date-fns';
 const historicalRiskCache = new Map<string, RiskEvent[]>();
 
 /**
+ * 清除风险事件缓存
+ * @param pattern 可选的匹配模式，如果提供则只清除匹配的缓存项（支持产品ID等）
+ */
+export function clearRiskCache(pattern?: string): void {
+  if (!pattern) {
+    historicalRiskCache.clear();
+    return;
+  }
+
+  // 清除匹配模式的缓存项
+  const keysToDelete: string[] = [];
+  for (const key of historicalRiskCache.keys()) {
+    if (key.includes(pattern)) {
+      keysToDelete.push(key);
+    }
+  }
+  keysToDelete.forEach(key => historicalRiskCache.delete(key));
+}
+
+/**
  * 风险分析 Hook
  */
 export function useRiskAnalysis(

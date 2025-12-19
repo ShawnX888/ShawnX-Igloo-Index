@@ -15,13 +15,15 @@ import { calculateWeatherStatistics } from '../lib/weatherStatistics';
  * @param dateRange 时间范围
  * @param dataType 数据类型（历史/预测）
  * @param weatherType 天气类型（降雨量/温度/风速等）
+ * @param cacheContext 可选的缓存上下文（如产品ID），用于区分不同产品的扩展数据
  * @returns 区域天气数据集合
  */
 export function useWeatherData(
   selectedRegion: Region,
   dateRange: DateRange,
   dataType: DataType,
-  weatherType: WeatherType
+  weatherType: WeatherType,
+  cacheContext?: string
 ): RegionWeatherData {
   return useMemo(() => {
     // 验证输入参数
@@ -30,13 +32,13 @@ export function useWeatherData(
     }
 
     // 检查缓存
-    if (weatherDataGenerator.hasData(selectedRegion, dateRange, dataType, weatherType)) {
-      return weatherDataGenerator.generate(selectedRegion, dateRange, dataType, weatherType);
+    if (weatherDataGenerator.hasData(selectedRegion, dateRange, dataType, weatherType, cacheContext)) {
+      return weatherDataGenerator.generate(selectedRegion, dateRange, dataType, weatherType, cacheContext);
     }
 
     // 生成新数据
-    return weatherDataGenerator.generate(selectedRegion, dateRange, dataType, weatherType);
-  }, [selectedRegion, dateRange, dataType, weatherType]);
+    return weatherDataGenerator.generate(selectedRegion, dateRange, dataType, weatherType, cacheContext);
+  }, [selectedRegion, dateRange, dataType, weatherType, cacheContext]);
 }
 
 /**

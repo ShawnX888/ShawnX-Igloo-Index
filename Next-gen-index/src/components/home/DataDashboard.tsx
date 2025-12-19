@@ -9,8 +9,9 @@ import { Badge } from '../ui/badge';
 import { Card, CardContent } from '../ui/card';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
 import { PRODUCTS } from './ControlPanel';
-import { format } from "date-fns";
+import { format, startOfMonth } from "date-fns";
 import { productLibrary } from "../../lib/productLibrary";
+import { useExtendedWeatherDataForOverlayChart } from "../../hooks/useExtendedWeatherDataForOverlayChart";
 
 interface DataDashboardProps {
   selectedRegion: Region;
@@ -31,6 +32,7 @@ interface AnalysisItem extends WeatherData {
   rollingSum?: number;
   cumulative?: number;
   isTriggered?: boolean;
+  riskLevel?: 'tier1' | 'tier2' | 'tier3' | null;
   threshold?: number;
   totalRain?: number;
 }
@@ -50,16 +52,32 @@ export function DataDashboard({
 }: DataDashboardProps) {
   const [viewMode, setViewMode] = useState<"daily" | "hourly">("daily");
 
-  // Automatically switch view mode based on product selection
+  // Automatically switch view mode based on product riskRules.timeWindow.type
   useEffect(() => {
     if (selectedProduct) {
-      if (selectedProduct.id === 'daily') {
-        setViewMode('hourly');
-      } else if (selectedProduct.id === 'weekly' || selectedProduct.id === 'drought') {
-        setViewMode('daily');
+      const fullProduct = productLibrary.getProduct(selectedProduct.id);
+      if (fullProduct?.riskRules?.timeWindow) {
+        const timeWindowType = fullProduct.riskRules.timeWindow.type;
+        if (timeWindowType === 'hourly') {
+          setViewMode('hourly');
+        } else if (timeWindowType === 'daily' || timeWindowType === 'weekly' || timeWindowType === 'monthly') {
+          setViewMode('daily');
+        }
       }
     }
   }, [selectedProduct]);
+
+  // Get extended weather data for overlay chart (to ensure accurate calculation at start position)
+  const {
+    extendedHourlyData,
+    extendedDailyData,
+  } = useExtendedWeatherDataForOverlayChart(
+    selectedRegion,
+    dateRange,
+    weatherDataType,
+    'rainfall',
+    selectedProduct
+  );
 
   // --- DATA FORMATTING FOR TREND CHART ---
   const trendData = useMemo(() => {
@@ -80,66 +98,219 @@ export function DataDashboard({
     const { riskRules } = fullProduct;
     const { timeWindow, calculation, thresholds } = riskRules;
     const operator = calculation.operator;
+    const aggregation = calculation.aggregation;
+    const windowSize = timeWindow.size;
+
+    // Use extended data for calculation, but filter to display only user-selected time window
+    // For daily/weekly products, we need extended daily data to calculate rolling window correctly
+    // For monthly products, we need extended daily data to calculate cumulative from month start
+    const sourceData = timeWindow.type === 'hourly' 
+      ? (extendedHourlyData.length > 0 ? extendedHourlyData : hourlyData)
+      : (extendedDailyData.length > 0 ? extendedDailyData : dailyData);
     
-    // Get the highest threshold for "Trigger" line on chart
-    const triggerThreshold = thresholds.find(t => t.level === 'tier1')?.value || 0;
-
-    if (fullProduct.type === 'daily') {
-      const windowSize = timeWindow.size;
-      return hourlyData.map((item, index) => {
-        let sum = 0;
-        for (let i = 0; i < windowSize; i++) {
-          const prev = hourlyData[index - i];
-          sum += prev ? prev.value : 0;
-        }
-        
-        const isTriggered = operator === '>' ? sum > triggerThreshold : 
-                          operator === '>=' ? sum >= triggerThreshold :
-                          operator === '<' ? sum < triggerThreshold :
-                          operator === '<=' ? sum <= triggerThreshold : sum === triggerThreshold;
-
-        return {
-          ...item,
-          amount: item.value,
-          rollingSum: sum,
-          isTriggered,
-          threshold: triggerThreshold
-        };
+    const displayData = timeWindow.type === 'hourly' ? hourlyData : dailyData;
+    
+    // Add warnings if extended data is empty and we're falling back to original data
+    if (timeWindow.type === 'hourly' && extendedHourlyData.length === 0) {
+      console.warn('[DataDashboard] Extended hourly data is empty, falling back to original data', {
+        productId: selectedProduct?.id,
+        timeWindowType: timeWindow.type,
+        windowSize,
+        extendedHourlyDataLength: extendedHourlyData.length,
+        hourlyDataLength: hourlyData.length,
+        extendedDateRange: extendedHourlyData.length === 0 ? 'not available' : 'available'
+      });
+    } else if ((timeWindow.type === 'daily' || timeWindow.type === 'weekly') && extendedDailyData.length === 0) {
+      console.warn('[DataDashboard] Extended daily data is empty, falling back to original data', {
+        productId: selectedProduct?.id,
+        timeWindowType: timeWindow.type,
+        windowSize,
+        extendedDailyDataLength: extendedDailyData.length,
+        dailyDataLength: dailyData.length,
+        extendedDateRange: extendedDailyData.length === 0 ? 'not available' : 'available'
       });
     }
-
-    if (fullProduct.type === 'weekly') {
-      const windowSize = timeWindow.size;
-      return dailyData.map((item, index) => {
-        let sum = 0;
-        for (let i = 0; i < windowSize; i++) {
-          const prev = dailyData[index - i];
-          sum += prev ? prev.value : 0;
-        }
-        
-        const isTriggered = operator === '>' ? sum > triggerThreshold : 
-                          operator === '>=' ? sum >= triggerThreshold :
-                          operator === '<' ? sum < triggerThreshold :
-                          operator === '<=' ? sum <= triggerThreshold : sum === triggerThreshold;
-
-        return {
-          ...item,
-          amount: item.value,
-          rollingSum: sum,
-          isTriggered,
-          threshold: triggerThreshold
-        };
-      });
-    }
-
-    if (fullProduct.type === 'monthly') {
-      let runningSum = 0;
-      const totalRain = dailyData.reduce((acc, curr) => acc + curr.value, 0);
+    
+    // Helper function to calculate aggregated value
+    const calculateAggregatedValue = (windowData: WeatherData[]): number => {
+      if (windowData.length === 0) return 0;
       
-      return dailyData.map(item => {
+      if (aggregation === 'sum') {
+        return windowData.reduce((sum, d) => sum + d.value, 0);
+      } else if (aggregation === 'average') {
+        return windowData.reduce((sum, d) => sum + d.value, 0) / windowData.length;
+      } else if (aggregation === 'max') {
+        return Math.max(...windowData.map(d => d.value));
+      } else if (aggregation === 'min') {
+        return Math.min(...windowData.map(d => d.value));
+      }
+      return 0;
+    };
+
+    // Helper function to check if value triggers threshold
+    const checkThreshold = (value: number, thresholdValue: number): boolean => {
+      if (operator === '>') return value > thresholdValue;
+      if (operator === '>=') return value >= thresholdValue;
+      if (operator === '<') return value < thresholdValue;
+      if (operator === '<=') return value <= thresholdValue;
+      if (operator === '==') return value === thresholdValue;
+      return false;
+    };
+
+    // Helper function to find matching risk event
+    const findMatchingRiskEvent = (itemDate: string): RiskEvent | undefined => {
+      const itemTime = new Date(itemDate).getTime();
+      return riskEvents.find(event => {
+        const eventTime = new Date(event.timestamp).getTime();
+        // Match within 1 hour for hourly data, or same day for daily data
+        const tolerance = timeWindow.type === 'hourly' ? 3600000 : 86400000;
+        return Math.abs(eventTime - itemTime) < tolerance;
+      });
+    };
+
+    // Process based on timeWindow.type
+    if (timeWindow.type === 'hourly') {
+      // For hourly data, calculate rolling window
+      return displayData.map((displayItem) => {
+        // Find the index of this item in the extended data
+        const displayItemTime = new Date(displayItem.date).getTime();
+        const displayIndex = sourceData.findIndex((item) => {
+          const itemTime = new Date(item.date).getTime();
+          return Math.abs(itemTime - displayItemTime) < 3600000; // 1 hour tolerance
+        });
+
+        if (displayIndex === -1) {
+          return {
+            ...displayItem,
+            amount: displayItem.value,
+            rollingSum: 0,
+            isTriggered: false,
+            riskLevel: null,
+            threshold: thresholds[0]?.value || 0
+          };
+        }
+
+        // Get window data: [displayIndex - windowSize, ..., displayIndex]
+        const windowData: WeatherData[] = [];
+        for (let i = 0; i <= windowSize; i++) {
+          const idx = displayIndex - i;
+          if (idx >= 0 && idx < sourceData.length) {
+            windowData.unshift(sourceData[idx]); // Add to beginning to maintain chronological order
+          }
+        }
+
+        const calculatedValue = calculateAggregatedValue(windowData);
+        const matchingEvent = findMatchingRiskEvent(displayItem.date);
+        const riskLevel = matchingEvent?.level || null;
+
+        // Check if triggers any threshold
+        const triggeredThreshold = thresholds.find(t => checkThreshold(calculatedValue, t.value));
+        const isTriggered = !!triggeredThreshold;
+
+        return {
+          ...displayItem,
+          amount: displayItem.value,
+          rollingSum: calculatedValue,
+          isTriggered,
+          riskLevel,
+          threshold: thresholds[0]?.value || 0
+        };
+      });
+    } else if (timeWindow.type === 'daily' || timeWindow.type === 'weekly') {
+      // For daily/weekly data, calculate rolling window
+      return displayData.map((displayItem) => {
+        // Find the index in sourceData (extended data) by matching date
+        // Use a more robust date comparison to handle potential timezone issues
+        const displayItemTime = new Date(displayItem.date).getTime();
+        const displayIndex = sourceData.findIndex((item) => {
+          const itemTime = new Date(item.date).getTime();
+          // Match within 12 hours to handle potential timezone differences
+          return Math.abs(itemTime - displayItemTime) < 12 * 60 * 60 * 1000;
+        });
+
+        if (displayIndex === -1) {
+          // If not found in extended data, this should not happen if extended data is correctly generated
+          // Fallback: try to calculate with available data, but this may be inaccurate
+          return {
+            ...displayItem,
+            amount: displayItem.value,
+            rollingSum: 0,
+            isTriggered: false,
+            riskLevel: null,
+            threshold: thresholds[0]?.value || 0
+          };
+        }
+
+        // Get window data: [displayIndex - windowSize, ..., displayIndex]
+        // This should include windowSize + 1 data points (windowSize previous + current)
+        const windowData: WeatherData[] = [];
+        for (let i = 0; i <= windowSize; i++) {
+          const idx = displayIndex - i;
+          if (idx >= 0 && idx < sourceData.length) {
+            windowData.unshift(sourceData[idx]);
+          }
+        }
+
+        const calculatedValue = calculateAggregatedValue(windowData);
+        const matchingEvent = findMatchingRiskEvent(displayItem.date);
+        const riskLevel = matchingEvent?.level || null;
+
+        const triggeredThreshold = thresholds.find(t => checkThreshold(calculatedValue, t.value));
+        const isTriggered = !!triggeredThreshold;
+
+        return {
+          ...displayItem,
+          amount: displayItem.value,
+          rollingSum: calculatedValue,
+          isTriggered,
+          riskLevel,
+          threshold: thresholds[0]?.value || 0
+        };
+      });
+    } else if (timeWindow.type === 'monthly') {
+      // For monthly data, calculate cumulative from month start
+      // Use UTC time to ensure alignment with extended data
+      const monthStartDate = startOfMonth(dateRange.from);
+      const monthStart = new Date(Date.UTC(
+        monthStartDate.getUTCFullYear(),
+        monthStartDate.getUTCMonth(),
+        1, // 当月1号
+        0, 0, 0, 0
+      ));
+
+      // Calculate total for the month from extended data
+      // Extended data should include data from month start to dateRange.to
+      // Note: sourceData (extended daily data) uses local timezone startOfDay
+      // The monthStart is UTC 00:00:00, but we need to match with local timezone dates
+      // Use date comparison (same day, regardless of timezone offset)
+      const monthData = sourceData.filter(item => {
+        const itemDate = new Date(item.date);
+        // Get the date part (year, month, day) in UTC for comparison
+        const itemYear = itemDate.getUTCFullYear();
+        const itemMonth = itemDate.getUTCMonth();
+        const itemDay = itemDate.getUTCDate();
+        const monthStartYear = monthStart.getUTCFullYear();
+        const monthStartMonth = monthStart.getUTCMonth();
+        const monthStartDay = monthStart.getUTCDate();
+        
+        // Compare dates: item should be >= month start date and <= dateRange.to
+        const isAfterMonthStart = itemYear > monthStartYear || 
+          (itemYear === monthStartYear && itemMonth > monthStartMonth) ||
+          (itemYear === monthStartYear && itemMonth === monthStartMonth && itemDay >= monthStartDay);
+        
+        return isAfterMonthStart && itemDate <= dateRange.to;
+      });
+      const totalRain = calculateAggregatedValue(monthData);
+
+      // Calculate cumulative sum from month start for each display data point
+      let runningSum = 0;
+      return displayData.map(item => {
         runningSum += item.value;
-        const isTriggered = operator === '<' ? totalRain < triggerThreshold : 
-                           operator === '<=' ? totalRain <= triggerThreshold : false;
+        const matchingEvent = findMatchingRiskEvent(item.date);
+        const riskLevel = matchingEvent?.level || null;
+
+        const triggeredThreshold = thresholds.find(t => checkThreshold(totalRain, t.value));
+        const isTriggered = !!triggeredThreshold;
 
         return {
           ...item,
@@ -147,13 +318,38 @@ export function DataDashboard({
           cumulative: runningSum,
           totalRain,
           isTriggered,
-          threshold: triggerThreshold
+          riskLevel,
+          threshold: thresholds[0]?.value || 0
         };
       });
     }
 
     return [];
-  }, [selectedProduct, dailyData, hourlyData]);
+  }, [
+    selectedProduct, 
+    // Use fine-grained dependencies to ensure updates when data changes
+    dailyData.length, 
+    dailyData[0]?.date, 
+    dailyData[dailyData.length - 1]?.date,
+    hourlyData.length, 
+    hourlyData[0]?.date, 
+    hourlyData[hourlyData.length - 1]?.date,
+    extendedHourlyData.length, 
+    extendedHourlyData[0]?.date, 
+    extendedHourlyData[extendedHourlyData.length - 1]?.date,
+    extendedDailyData.length, 
+    extendedDailyData[0]?.date, 
+    extendedDailyData[extendedDailyData.length - 1]?.date,
+    dateRange.from?.getTime(), 
+    dateRange.to?.getTime(),
+    riskEvents.length,
+    // Also include the actual data arrays as fallback (in case length/date don't change but values do)
+    dailyData, 
+    hourlyData, 
+    extendedHourlyData, 
+    extendedDailyData, 
+    riskEvents
+  ]);
 
   // --- SUMMARY METRICS ---
   const summaryMetrics = useMemo(() => {
@@ -196,6 +392,34 @@ export function DataDashboard({
       return String(val);
     }
   };
+
+  // Helper function to get threshold color
+  const getThresholdColor = (level: 'tier1' | 'tier2' | 'tier3'): string => {
+    const colorMap = {
+      tier1: '#f59e0b', // amber
+      tier2: '#f97316', // orange
+      tier3: '#ef4444', // red
+    };
+    return colorMap[level] || '#64748b';
+  };
+
+  // Helper function to get risk level color
+  const getRiskLevelColor = (riskLevel: 'tier1' | 'tier2' | 'tier3' | null | undefined): string => {
+    if (!riskLevel) return '#e2e8f0'; // gray for no risk
+    const colorMap = {
+      tier1: '#fbbf24', // amber-400
+      tier2: '#fb923c', // orange-400
+      tier3: '#f87171', // red-400
+    };
+    return colorMap[riskLevel] || '#e2e8f0';
+  };
+
+  // Get product thresholds for display
+  const productThresholds = useMemo(() => {
+    if (!selectedProduct) return [];
+    const fullProduct = productLibrary.getProduct(selectedProduct.id);
+    return fullProduct?.riskRules?.thresholds || [];
+  }, [selectedProduct]);
 
   return (
     <div className="w-full flex flex-col p-8 max-w-[1440px] mx-auto">
@@ -391,7 +615,28 @@ export function DataDashboard({
                         <Tooltip 
                           contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', padding: '12px' }}
                           cursor={{ fill: '#f8fafc' }}
+                          formatter={(value: number) => [`${value.toFixed(1)} mm`, 'Rainfall']}
+                          labelFormatter={(label) => formatDateAxis(label)}
                         />
+                        
+                        {/* Mean reference line (optional) */}
+                        {weatherStatistics && (
+                          <ReferenceLine 
+                            y={viewMode === 'hourly' 
+                              ? weatherStatistics.metrics.avgHourly 
+                              : weatherStatistics.metrics.avgDaily} 
+                            stroke="#94a3b8" 
+                            strokeDasharray="2 2"
+                            label={{ 
+                              position: 'right', 
+                              value: `Avg: ${(viewMode === 'hourly' 
+                                ? weatherStatistics.metrics.avgHourly 
+                                : weatherStatistics.metrics.avgDaily).toFixed(1)}mm`,
+                              fill: '#94a3b8',
+                              fontSize: 10 
+                            }} 
+                          />
+                        )}
                         
                         <Bar 
                           dataKey="amount" 
@@ -414,18 +659,35 @@ export function DataDashboard({
                            <h3 className="font-bold text-gray-900">
                               Analysis: {selectedProduct.name}
                            </h3>
-                           <Badge variant="outline" className="ml-2 bg-green-50 text-green-700 border-green-200">
-                              Threshold: {analysisData[0]?.threshold}mm
-                           </Badge>
+                           <div className="flex items-center gap-2 ml-2">
+                              {productThresholds.map((threshold) => (
+                                <Badge 
+                                  key={threshold.level}
+                                  variant="outline" 
+                                  className="bg-white text-gray-700 border-gray-200 text-xs"
+                                  style={{ borderColor: getThresholdColor(threshold.level) }}
+                                >
+                                  {threshold.label || `${threshold.value}mm`} ({threshold.level})
+                                </Badge>
+                              ))}
+                           </div>
                         </div>
 
                         <div className="h-[280px] w-full relative">
                            <h4 className="absolute top-1/2 -left-6 transform -translate-y-1/2 -rotate-90 text-xs text-gray-400 font-medium origin-center whitespace-nowrap">
-                              {selectedProduct.id === 'drought' ? 'Cumulative (mm)' : 'Rolling (mm)'}
+                              {(() => {
+                                const fullProduct = productLibrary.getProduct(selectedProduct.id);
+                                const timeWindowType = fullProduct?.riskRules?.timeWindow?.type;
+                                return timeWindowType === 'monthly' ? 'Cumulative (mm)' : 'Rolling (mm)';
+                              })()}
                            </h4>
 
                            <ResponsiveContainer width="100%" height="100%">
-                              {selectedProduct.id === 'drought' ? (
+                              {(() => {
+                                const fullProduct = productLibrary.getProduct(selectedProduct.id);
+                                const timeWindowType = fullProduct?.riskRules?.timeWindow?.type;
+                                return timeWindowType === 'monthly';
+                              })() ? (
                                  <AreaChart data={analysisData} margin={{ top: 10, right: 10, left: 20, bottom: 0 }}>
                                     <defs>
                                       <linearGradient id="colorAreaRed" x1="0" y1="0" x2="0" y2="1">
@@ -435,6 +697,14 @@ export function DataDashboard({
                                       <linearGradient id="colorAreaBlue" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
                                         <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1}/>
+                                      </linearGradient>
+                                      <linearGradient id="colorAreaAmber" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.8}/>
+                                        <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.1}/>
+                                      </linearGradient>
+                                      <linearGradient id="colorAreaOrange" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#f97316" stopOpacity={0.8}/>
+                                        <stop offset="95%" stopColor="#f97316" stopOpacity={0.1}/>
                                       </linearGradient>
                                     </defs>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -447,17 +717,40 @@ export function DataDashboard({
                                       dy={10}
                                     />
                                     <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
-                                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', padding: '12px' }} />
+                                    <Tooltip 
+                                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', padding: '12px' }}
+                                      formatter={(value: number, _name: string, props: any) => {
+                                        const item = props.payload;
+                                        return [
+                                          `${value.toFixed(1)} mm`,
+                                          item.riskLevel ? `Risk Level: ${item.riskLevel.toUpperCase()}` : 'Cumulative'
+                                        ];
+                                      }}
+                                      labelFormatter={(label) => formatDateAxis(label)}
+                                    />
                                     
-                                    {analysisData[0] && (
-                                       <ReferenceLine y={analysisData[0].threshold} stroke="#ef4444" strokeDasharray="3 3" label={{ position: 'right', value: 'Trigger', fill: '#ef4444', fontSize: 10 }} />
-                                    )}
+                                    {/* 3-tier threshold reference lines */}
+                                    {productThresholds.map((threshold) => (
+                                      <ReferenceLine 
+                                        key={threshold.level}
+                                        y={threshold.value} 
+                                        stroke={getThresholdColor(threshold.level)}
+                                        strokeDasharray="3 3"
+                                        label={{ 
+                                          position: 'right', 
+                                          value: `${threshold.label || threshold.value}mm (${threshold.level})`,
+                                          fill: getThresholdColor(threshold.level),
+                                          fontSize: 10 
+                                        }} 
+                                      />
+                                    ))}
 
                                     <Area 
                                       type="monotone" 
                                       dataKey="cumulative" 
-                                      stroke={analysisData[0]?.isTriggered ? "#ef4444" : "#3b82f6"} 
-                                      fill={analysisData[0]?.isTriggered ? "url(#colorAreaRed)" : "url(#colorAreaBlue)"} 
+                                      stroke="#3b82f6"
+                                      fill="url(#colorAreaBlue)"
+                                      strokeWidth={2}
                                     />
                                  </AreaChart>
                               ) : (
@@ -479,15 +772,46 @@ export function DataDashboard({
                                       tick={{fill: '#64748b', fontSize: 12}} 
                                       domain={[0, (dataMax: number) => Math.max(dataMax, (analysisData[0]?.threshold || 0) * 1.1)]}
                                     />
-                                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', padding: '12px' }} />
+                                    <Tooltip 
+                                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', padding: '12px' }}
+                                      formatter={(value: number, _name: string, props: any) => {
+                                        const item = props.payload;
+                                        return [
+                                          `${value.toFixed(1)} mm`,
+                                          item.riskLevel ? `Risk Level: ${item.riskLevel.toUpperCase()}` : 'Rolling Sum'
+                                        ];
+                                      }}
+                                      labelFormatter={(label) => formatDateAxis(label)}
+                                    />
                                     
-                                    {analysisData[0] && (
-                                       <ReferenceLine y={analysisData[0].threshold} stroke="#ef4444" strokeDasharray="3 3" label={{ position: 'right', value: 'Trigger', fill: '#ef4444', fontSize: 10 }} />
-                                    )}
+                                    {/* 3-tier threshold reference lines */}
+                                    {productThresholds.map((threshold) => (
+                                      <ReferenceLine 
+                                        key={threshold.level}
+                                        y={threshold.value} 
+                                        stroke={getThresholdColor(threshold.level)}
+                                        strokeDasharray="3 3"
+                                        label={{ 
+                                          position: 'right', 
+                                          value: `${threshold.label || threshold.value}mm (${threshold.level})`,
+                                          fill: getThresholdColor(threshold.level),
+                                          fontSize: 10 
+                                        }} 
+                                      />
+                                    ))}
                                     
-                                    <Bar dataKey="rollingSum" radius={[4, 4, 0, 0]} barSize={selectedProduct.id === 'daily' ? 20 : 40}>
+                                    <Bar dataKey="rollingSum" radius={[4, 4, 0, 0]} barSize={(() => {
+                                      const fullProduct = productLibrary.getProduct(selectedProduct.id);
+                                      const timeWindowType = fullProduct?.riskRules?.timeWindow?.type;
+                                      return timeWindowType === 'hourly' ? 20 : 40;
+                                    })()}>
                                       {analysisData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={entry.isTriggered ? '#ef4444' : '#e2e8f0'} />
+                                        <Cell 
+                                          key={`cell-${index}`} 
+                                          fill={entry.riskLevel 
+                                            ? getRiskLevelColor(entry.riskLevel) 
+                                            : (entry.isTriggered ? '#ef4444' : '#e2e8f0')} 
+                                        />
                                       ))}
                                     </Bar>
                                  </BarChart>

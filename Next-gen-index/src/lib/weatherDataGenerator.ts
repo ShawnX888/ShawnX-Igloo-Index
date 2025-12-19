@@ -206,8 +206,27 @@ function generateHourlyWeatherData(
   }
 
   // 计算时间范围（小时）
+  // 判断是否为扩展数据：如果 from 时间已经对齐到小时边界（分钟、秒、毫秒都为0），
+  // 且本地时区的小时不是 startHour，则可能是扩展数据
+  // 对于扩展数据，我们应该从 from 时间开始生成，而不是重新对齐到 startHour
   let currentTime = new Date(from);
-  currentTime.setHours(startHour, 0, 0, 0);
+  const fromMinutes = currentTime.getMinutes();
+  const fromSeconds = currentTime.getSeconds();
+  const fromMilliseconds = currentTime.getMilliseconds();
+  const fromHourLocal = currentTime.getHours(); // 本地时区的小时
+  
+  // 如果 from 时间已经对齐到小时边界（分钟、秒、毫秒都为0），且本地时区的小时不是 startHour，则可能是扩展数据
+  // 对于扩展数据，保持原样；对于普通数据，对齐到 startHour
+  const isAlignedToHourBoundary = (fromMinutes === 0 && fromSeconds === 0 && fromMilliseconds === 0);
+  const isExtendedData = isAlignedToHourBoundary && fromHourLocal !== startHour;
+  
+  if (!isExtendedData) {
+    // 普通数据：对齐到 startHour
+    currentTime.setHours(startHour, 0, 0, 0);
+  } else {
+    // 扩展数据：保持原样，只确保对齐到小时边界（已经是了）
+    // 不需要修改，直接从 from 时间开始生成
+  }
   const endTime = new Date(to);
   endTime.setHours(endHour, 0, 0, 0);
 
@@ -387,28 +406,33 @@ export class MockWeatherDataGenerator implements WeatherDataGenerator {
 
   /**
    * 生成缓存key
+   * @param cacheContext 可选的缓存上下文（如产品ID），用于区分不同产品的扩展数据
    */
   private getCacheKey(
     region: Region,
     dateRange: DateRange,
     dataType: DataType,
-    weatherType: WeatherType
+    weatherType: WeatherType,
+    cacheContext?: string
   ): string {
     const fromStr = format(dateRange.from, 'yyyy-MM-dd-HH');
     const toStr = format(dateRange.to, 'yyyy-MM-dd-HH');
-    return `${region.country}-${region.province}-${weatherType}-${dataType}-${fromStr}-${toStr}`;
+    const contextPart = cacheContext ? `-ctx-${cacheContext}` : '';
+    return `${region.country}-${region.province}-${weatherType}-${dataType}-${fromStr}-${toStr}${contextPart}`;
   }
 
   /**
    * 生成天气数据
+   * @param cacheContext 可选的缓存上下文（如产品ID），用于区分不同产品的扩展数据
    */
   generate(
     region: Region,
     dateRange: DateRange,
     dataType: DataType,
-    weatherType: WeatherType
+    weatherType: WeatherType,
+    cacheContext?: string
   ): RegionWeatherData {
-    const cacheKey = this.getCacheKey(region, dateRange, dataType, weatherType);
+    const cacheKey = this.getCacheKey(region, dateRange, dataType, weatherType, cacheContext);
     
     // 检查缓存
     if (this.cache.has(cacheKey)) {
@@ -442,14 +466,16 @@ export class MockWeatherDataGenerator implements WeatherDataGenerator {
 
   /**
    * 检查数据是否存在
+   * @param cacheContext 可选的缓存上下文（如产品ID），用于区分不同产品的扩展数据
    */
   hasData(
     region: Region,
     dateRange: DateRange,
     dataType: DataType,
-    weatherType: WeatherType
+    weatherType: WeatherType,
+    cacheContext?: string
   ): boolean {
-    const cacheKey = this.getCacheKey(region, dateRange, dataType, weatherType);
+    const cacheKey = this.getCacheKey(region, dateRange, dataType, weatherType, cacheContext);
     
     if (!this.cache.has(cacheKey)) {
       return false;
@@ -463,13 +489,15 @@ export class MockWeatherDataGenerator implements WeatherDataGenerator {
 
   /**
    * 补充缺失的数据
+   * @param cacheContext 可选的缓存上下文（如产品ID），用于区分不同产品的扩展数据
    */
   supplement(
     region: Region,
     dateRange: DateRange,
     dataType: DataType,
     weatherType: WeatherType,
-    existingData: RegionWeatherData
+    existingData: RegionWeatherData,
+    cacheContext?: string
   ): RegionWeatherData {
     const districts = getDistrictsInProvince(region);
     const supplemented: RegionWeatherData = { ...existingData };
@@ -485,7 +513,7 @@ export class MockWeatherDataGenerator implements WeatherDataGenerator {
     }
 
     // 更新缓存
-    const cacheKey = this.getCacheKey(region, dateRange, dataType, weatherType);
+    const cacheKey = this.getCacheKey(region, dateRange, dataType, weatherType, cacheContext);
     this.cache.set(cacheKey, supplemented);
 
     return supplemented;
@@ -504,9 +532,22 @@ export class MockWeatherDataGenerator implements WeatherDataGenerator {
 
   /**
    * 清除缓存
+   * @param pattern 可选的匹配模式，如果提供则只清除匹配的缓存项（支持产品ID等）
    */
-  clearCache(): void {
-    this.cache.clear();
+  clearCache(pattern?: string): void {
+    if (!pattern) {
+      this.cache.clear();
+      return;
+    }
+
+    // 清除匹配模式的缓存项
+    const keysToDelete: string[] = [];
+    for (const key of this.cache.keys()) {
+      if (key.includes(pattern)) {
+        keysToDelete.push(key);
+      }
+    }
+    keysToDelete.forEach(key => this.cache.delete(key));
   }
 }
 

@@ -4,11 +4,42 @@ import { Header } from "./components/layout/Header";
 import { Dashboard } from "./components/home/Dashboard";
 import { ProductIntro } from "./components/product/ProductIntro";
 import { InsuranceProduct } from "./components/home/types";
+import { weatherDataGenerator } from "./lib/weatherDataGenerator";
+import { clearRiskCache } from "./hooks/useRiskAnalysis";
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState<'home' | 'product'>('home');
   const [dashboardInitialProduct, setDashboardInitialProduct] = useState<InsuranceProduct | null>(null);
   const [scrollToSection, setScrollToSection] = useState<string | null>(null);
+
+  // Clear cache on app startup (development mode)
+  useEffect(() => {
+    // Clear all weather data cache to ensure fresh calculations
+    weatherDataGenerator.clearCache();
+    
+    // Clear all risk event cache
+    clearRiskCache();
+    
+    // Expose clear methods to window for manual clearing in console
+    // Usage: window.clearWeatherCache() or window.clearWeatherCache('ctx-extended-daily')
+    (window as any).clearWeatherCache = (pattern?: string) => {
+      weatherDataGenerator.clearCache(pattern);
+      console.log(`Weather cache cleared${pattern ? ` (pattern: ${pattern})` : ' (all)'}`);
+    };
+    
+    (window as any).clearRiskCache = (pattern?: string) => {
+      clearRiskCache(pattern);
+      console.log(`Risk cache cleared${pattern ? ` (pattern: ${pattern})` : ' (all)'}`);
+    };
+    
+    (window as any).clearAllCaches = () => {
+      weatherDataGenerator.clearCache();
+      clearRiskCache();
+      console.log('All caches cleared');
+    };
+    
+    console.log('All caches cleared on app startup');
+  }, []);
 
   // Scroll to top when page changes, unless specific section requested
   useEffect(() => {
