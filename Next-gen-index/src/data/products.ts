@@ -102,8 +102,7 @@ export const PRODUCT_LIBRARY_CONFIG: ProductLibraryConfig = {
         weatherType: 'rainfall',
         timeWindow: {
           type: 'monthly',
-          size: 1, // 1个月（完整自然月）
-          step: 1
+          size: 1 // 1个月（完整自然月，固定窗口，无需step）
         },
         thresholds: [
           { value: 60, level: 'tier1', label: '60mm' },
