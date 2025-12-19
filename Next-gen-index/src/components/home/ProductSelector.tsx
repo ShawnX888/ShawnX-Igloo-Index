@@ -7,7 +7,7 @@ import { PRODUCTS } from "./ControlPanel";
 interface ProductSelectorProps {
   selectedProduct: InsuranceProduct | null;
   setSelectedProduct: (product: InsuranceProduct | null) => void;
-  onNavigateToProduct: () => void;
+  onNavigateToProduct: (section?: string) => void;
   className?: string;
 }
 
@@ -43,7 +43,7 @@ export function ProductSelector({
         </button>
       ))}
       <button 
-        onClick={onNavigateToProduct}
+        onClick={() => onNavigateToProduct('core-products')}
         className="flex items-center gap-1 px-3 py-2 text-xs font-semibold text-blue-600 bg-white/80 hover:bg-white rounded-full transition-colors whitespace-nowrap backdrop-blur-sm"
       >
         More <ChevronRight className="w-3 h-3" />

@@ -314,17 +314,25 @@ export function MapWorkspace({ selectedRegion, weatherDataType, riskData, select
 
       {/* 风险事件标记图层 - 边界图层下方 */}
       {mapsLoaded && mapInstanceRef.current && (
-        <RiskEventMarkersLayerRenderer
-          map={mapInstanceRef.current}
-          districts={districts}
-          country={selectedRegion.country}
-          province={selectedRegion.province}
-          riskData={riskData}
-          selectedRegion={selectedRegion}
-          dataType={weatherDataType}
-          selectedProduct={selectedProduct}
-          visible={layers.events}
-        />
+        <>
+          {/* #region agent log */}
+          {(() => {
+            fetch('http://127.0.0.1:7242/ingest/9b65e1ca-e15e-461c-9d2b-d9c022103649',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MapWorkspace.tsx:316',message:'RiskEventMarkersLayerRenderer props',data:{selectedProduct:selectedProduct?{id:selectedProduct.id,name:selectedProduct.name}:null,riskDataLength:riskData.length,visible:layers.events,mapsLoaded},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C,D'})}).catch(()=>{});
+            return null;
+          })()}
+          {/* #endregion */}
+          <RiskEventMarkersLayerRenderer
+            map={mapInstanceRef.current}
+            districts={districts}
+            country={selectedRegion.country}
+            province={selectedRegion.province}
+            riskData={riskData}
+            selectedRegion={selectedRegion}
+            dataType={weatherDataType}
+            selectedProduct={selectedProduct}
+            visible={layers.events}
+          />
+        </>
       )}
 
       {/* 区域边界图层 - 最上层（用于点击交互） */}

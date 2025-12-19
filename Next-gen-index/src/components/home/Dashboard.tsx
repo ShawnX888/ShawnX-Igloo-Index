@@ -43,6 +43,19 @@ export function Dashboard({
 
   const [selectedProduct, setSelectedProduct] = useState<InsuranceProduct | null>(initialProduct || null);
   
+  // Update selectedProduct when initialProduct changes (e.g., when navigating from product page)
+  useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/9b65e1ca-e15e-461c-9d2b-d9c022103649',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Dashboard.tsx:47',message:'initialProduct changed',data:{initialProduct:initialProduct?{id:initialProduct.id,name:initialProduct.name}:null,selectedProductBefore:selectedProduct?{id:selectedProduct.id,name:selectedProduct.name}:null},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
+    if (initialProduct !== undefined) {
+      setSelectedProduct(initialProduct);
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/9b65e1ca-e15e-461c-9d2b-d9c022103649',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Dashboard.tsx:50',message:'selectedProduct updated from initialProduct',data:{initialProduct:initialProduct?{id:initialProduct.id,name:initialProduct.name}:null},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+    }
+  }, [initialProduct]);
+  
   // Input Mode: "manual" or "chat". Default "chat" as per prompt.
   const [activeInputMode, setActiveInputMode] = useState<"manual" | "chat">("chat");
 
@@ -64,6 +77,12 @@ export function Dashboard({
     weatherDataType,
     allRegionsHourlyWeatherData
   );
+
+  // #region agent log
+  useEffect(() => {
+    fetch('http://127.0.0.1:7242/ingest/9b65e1ca-e15e-461c-9d2b-d9c022103649',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Dashboard.tsx:73',message:'risk analysis results',data:{selectedProduct:selectedProduct?{id:selectedProduct.id,name:selectedProduct.name}:null,riskEventsCount:riskEvents.length,mapMarkersDataCount:mapMarkersData.length,isCalculated},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+  }, [selectedProduct, riskEvents, mapMarkersData, isCalculated]);
+  // #endregion
 
   // 生成日级数据（从小时级数据累计）
   const allRegionsDailyWeatherData = useDailyWeatherData(allRegionsHourlyWeatherData, dateRange, 'rainfall');
@@ -132,6 +151,12 @@ export function Dashboard({
           dateRange={dateRange}
           allRegionsWeatherData={allRegionsHourlyWeatherData}
         />
+        {/* #region agent log */}
+        {(() => {
+          fetch('http://127.0.0.1:7242/ingest/9b65e1ca-e15e-461c-9d2b-d9c022103649',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Dashboard.tsx:132',message:'MapWorkspace props',data:{selectedProduct:selectedProduct?{id:selectedProduct.id,name:selectedProduct.name}:null,riskDataLength:mapMarkersData.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+          return null;
+        })()}
+        {/* #endregion */}
 
         {/* Overlay: Manual Controls (Top Left) */}
         <div className={`absolute top-4 left-4 z-20 transition-all duration-500 ease-in-out ${activeInputMode === 'manual' ? 'h-[calc(100%-2rem)] opacity-100 translate-x-0' : 'h-auto opacity-100'}`}>

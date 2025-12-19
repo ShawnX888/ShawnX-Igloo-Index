@@ -22,13 +22,29 @@ export function ProductIntro({ onNavigateToHome, scrollToSection }: ProductIntro
 
   useEffect(() => {
     if (scrollToSection) {
-      // Small timeout to ensure render
-      setTimeout(() => {
+      // Use a longer timeout to ensure page is fully rendered
+      // Also try multiple times in case the element isn't ready yet
+      const scrollToElement = () => {
         const element = document.getElementById(scrollToSection);
         if (element) {
-          element.scrollIntoView({ behavior: 'smooth' });
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          return true;
         }
-      }, 100);
+        return false;
+      };
+
+      // Try immediately
+      if (!scrollToElement()) {
+        // If not found, try after a short delay
+        const timeout1 = setTimeout(() => {
+          if (!scrollToElement()) {
+            // If still not found, try after a longer delay
+            setTimeout(scrollToElement, 200);
+          }
+        }, 100);
+        
+        return () => clearTimeout(timeout1);
+      }
     }
   }, [scrollToSection]);
 

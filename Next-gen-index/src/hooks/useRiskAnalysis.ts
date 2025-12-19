@@ -132,7 +132,7 @@ export function useRiskAnalysis(
     }
 
     // 按城市聚合
-    return Object.entries(allRegionsWeatherData).map(([district, data]) => {
+    const result = Object.entries(allRegionsWeatherData).map(([district, data]) => {
       const region: Region = { ...selectedRegion, district };
       const districtEvents = allEvents.filter(e => e.region.district === district);
       const totalEvents = districtEvents.length;
@@ -146,6 +146,12 @@ export function useRiskAnalysis(
         events: totalEvents
       };
     });
+
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/9b65e1ca-e15e-461c-9d2b-d9c022103649',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useRiskAnalysis.ts:149',message:'mapMarkersData calculated',data:{selectedProductId:selectedProduct.id,allEventsCount:allEvents.length,resultCount:result.length,resultEvents:result.map(r=>({district:r.region.district,events:r.events}))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
+
+    return result;
   }, [selectedProduct, allRegionsWeatherData, selectedRegion, dateRange, weatherType, dataType, riskService]);
 
   // --- 3. 详细统计 (Detailed Statistics for DataDashboard) ---

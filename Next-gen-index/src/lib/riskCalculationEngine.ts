@@ -558,12 +558,24 @@ export class RiskCalculationEngineImpl implements IRiskCalculationEngine {
       // 计算累计值
       const aggregatedValue = this.aggregate(monthData, config.calculation.aggregation);
 
+      // #region agent log
+      if (typeof window !== 'undefined') {
+        fetch('http://127.0.0.1:7242/ingest/9b65e1ca-e15e-461c-9d2b-d9c022103649',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'riskCalculationEngine.ts:559',message:'monthly product calculation',data:{monthKey:Array.from(monthlyData.keys())[0],monthDataLength:monthData.length,aggregatedValue,operator:config.calculation.operator,thresholds:config.thresholds.map(t=>({value:t.value,level:t.level}))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      }
+      // #endregion
+
       // 判断是否触发阈值
       const triggeredThreshold = this.checkThreshold(
         aggregatedValue,
         config.thresholds,
         config.calculation.operator
       );
+
+      // #region agent log
+      if (typeof window !== 'undefined') {
+        fetch('http://127.0.0.1:7242/ingest/9b65e1ca-e15e-461c-9d2b-d9c022103649',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'riskCalculationEngine.ts:567',message:'monthly product threshold check',data:{aggregatedValue,operator:config.calculation.operator,hasTriggeredThreshold:!!triggeredThreshold,triggeredThresholdLevel:triggeredThreshold?.level},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      }
+      // #endregion
 
       if (triggeredThreshold) {
         // 使用月份的最后一天作为时间戳
