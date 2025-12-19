@@ -303,19 +303,58 @@ export function DataDashboard({
       const totalRain = calculateAggregatedValue(monthData);
 
       // Calculate cumulative sum from month start for each display data point
-      let runningSum = 0;
-      return displayData.map(item => {
-        runningSum += item.value;
-        const matchingEvent = findMatchingRiskEvent(item.date);
+      // IMPORTANT: Use extended data (sourceData) to calculate cumulative from month start,
+      // not just displayData, so the first data point includes all data from month start
+      return displayData.map(displayItem => {
+        // Find the index of this display item in the extended data (sourceData)
+        const displayItemTime = new Date(displayItem.date).getTime();
+        const displayIndex = sourceData.findIndex((item) => {
+          const itemTime = new Date(item.date).getTime();
+          // Match within 12 hours to handle potential timezone differences
+          return Math.abs(itemTime - displayItemTime) < 12 * 60 * 60 * 1000;
+        });
+
+        // Calculate cumulative from month start to this display item
+        // Filter data from month start up to and including this display item, then sum
+        let cumulative = 0;
+        if (displayIndex >= 0) {
+          // Get all data from month start to displayIndex (inclusive)
+          const cumulativeData = sourceData.slice(0, displayIndex + 1).filter(item => {
+            const itemDate = new Date(item.date);
+            const itemYear = itemDate.getUTCFullYear();
+            const itemMonth = itemDate.getUTCMonth();
+            const itemDay = itemDate.getUTCDate();
+            const monthStartYear = monthStart.getUTCFullYear();
+            const monthStartMonth = monthStart.getUTCMonth();
+            const monthStartDay = monthStart.getUTCDate();
+            
+            // Check if this item is >= month start date
+            return itemYear > monthStartYear || 
+              (itemYear === monthStartYear && itemMonth > monthStartMonth) ||
+              (itemYear === monthStartYear && itemMonth === monthStartMonth && itemDay >= monthStartDay);
+          });
+          cumulative = calculateAggregatedValue(cumulativeData);
+        } else {
+          // Fallback: if not found in extended data, use displayItem value
+          // This should not happen if extended data is correctly generated
+          console.warn('[DataDashboard] Display item not found in extended data for monthly product', {
+            displayItemDate: displayItem.date,
+            sourceDataLength: sourceData.length,
+            productId: selectedProduct?.id
+          });
+          cumulative = displayItem.value;
+        }
+
+        const matchingEvent = findMatchingRiskEvent(displayItem.date);
         const riskLevel = matchingEvent?.level || null;
 
         const triggeredThreshold = thresholds.find(t => checkThreshold(totalRain, t.value));
         const isTriggered = !!triggeredThreshold;
 
         return {
-          ...item,
-          amount: item.value,
-          cumulative: runningSum,
+          ...displayItem,
+          amount: displayItem.value,
+          cumulative,
           totalRain,
           isTriggered,
           riskLevel,
