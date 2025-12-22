@@ -153,11 +153,6 @@ export function useRiskEventMarkersLayer({
   selectedProduct,
   visible,
 }: RiskEventMarkersLayerConfig) {
-  // #region agent log
-  useEffect(() => {
-    fetch('http://127.0.0.1:7242/ingest/9b65e1ca-e15e-461c-9d2b-d9c022103649',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useRiskEventMarkersLayer.ts:145',message:'useRiskEventMarkersLayer entry',data:{selectedProduct:selectedProduct?{id:selectedProduct.id,name:selectedProduct.name}:null,visible,riskDataLength:riskData.length,hasMap:!!map},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C,D'})}).catch(()=>{});
-  }, [selectedProduct, visible, riskData, map]);
-  // #endregion
   const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
   const regionCentersRef = useRef<Map<string, { lat: number; lng: number }>>(new Map());
   const [centersLoaded, setCentersLoaded] = useState(false);
@@ -204,21 +199,12 @@ export function useRiskEventMarkersLayer({
     markersRef.current = [];
 
     // 不可见或无产品时不显示
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/9b65e1ca-e15e-461c-9d2b-d9c022103649',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useRiskEventMarkersLayer.ts:202',message:'marker creation condition check',data:{hasMap:!!map,visible,hasSelectedProduct:!!selectedProduct,regionCentersCount:regionCentersRef.current.size,willCreate:!!(map && visible && selectedProduct && regionCentersRef.current.size > 0)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C,D'})}).catch(()=>{});
-    // #endregion
     if (!map || !visible || !selectedProduct) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/9b65e1ca-e15e-461c-9d2b-d9c022103649',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useRiskEventMarkersLayer.ts:203',message:'marker creation skipped',data:{reason:!map?'no map':!visible?'not visible':'no product'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C,D'})}).catch(()=>{});
-      // #endregion
       return;
     }
 
     // Wait for region centers to load before creating markers
     if (!centersLoaded || regionCentersRef.current.size === 0) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/9b65e1ca-e15e-461c-9d2b-d9c022103649',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useRiskEventMarkersLayer.ts:212',message:'waiting for region centers to load',data:{centersLoaded,regionCentersCount:regionCentersRef.current.size},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-      // #endregion
       return;
     }
 
@@ -231,14 +217,7 @@ export function useRiskEventMarkersLayer({
     // 过滤当前数据类型的风险数据
     const filteredRiskData = riskData.filter(d => d.events > 0);
     
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/9b65e1ca-e15e-461c-9d2b-d9c022103649',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useRiskEventMarkersLayer.ts:219',message:'filtered risk data',data:{riskDataLength:riskData.length,filteredRiskDataLength:filteredRiskData.length,riskDataEvents:riskData.map(d=>({district:d.region.district,events:d.events}))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
-    
     if (filteredRiskData.length === 0) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/9b65e1ca-e15e-461c-9d2b-d9c022103649',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useRiskEventMarkersLayer.ts:222',message:'filteredRiskData empty, returning',data:{riskDataLength:riskData.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-      // #endregion
       return;
     }
 
@@ -249,19 +228,9 @@ export function useRiskEventMarkersLayer({
     // 为每个有风险事件的区域创建标记
     const newMarkers: google.maps.marker.AdvancedMarkerElement[] = [];
 
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/9b65e1ca-e15e-461c-9d2b-d9c022103649',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useRiskEventMarkersLayer.ts:230',message:'starting marker creation',data:{filteredRiskDataLength:filteredRiskData.length,regionCentersCount:regionCentersRef.current.size},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
-
     for (const risk of filteredRiskData) {
       const districtName = risk.region.district;
       const center = regionCentersRef.current.get(districtName);
-      
-      // #region agent log
-      if (!center) {
-        fetch('http://127.0.0.1:7242/ingest/9b65e1ca-e15e-461c-9d2b-d9c022103649',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useRiskEventMarkersLayer.ts:236',message:'no center for district, skipping',data:{districtName,events:risk.events},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-      }
-      // #endregion
       
       if (!center) {
         continue;
@@ -280,10 +249,6 @@ export function useRiskEventMarkersLayer({
 
       newMarkers.push(marker);
     }
-
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/9b65e1ca-e15e-461c-9d2b-d9c022103649',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useRiskEventMarkersLayer.ts:254',message:'markers created',data:{newMarkersCount:newMarkers.length,filteredRiskDataLength:filteredRiskData.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
 
     markersRef.current = newMarkers;
   }, [map, visible, selectedProduct, riskData, selectedRegion, dataType, districts, country, province, centersLoaded]);

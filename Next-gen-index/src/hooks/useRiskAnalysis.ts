@@ -147,10 +147,6 @@ export function useRiskAnalysis(
       };
     });
 
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/9b65e1ca-e15e-461c-9d2b-d9c022103649',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useRiskAnalysis.ts:149',message:'mapMarkersData calculated',data:{selectedProductId:selectedProduct.id,allEventsCount:allEvents.length,resultCount:result.length,resultEvents:result.map(r=>({district:r.region.district,events:r.events}))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
-
     return result;
   }, [selectedProduct, allRegionsWeatherData, selectedRegion, dateRange, weatherType, dataType, riskService]);
 

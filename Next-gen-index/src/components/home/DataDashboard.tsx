@@ -79,13 +79,6 @@ export function DataDashboard({
     selectedProduct
   );
 
-  // #region agent log
-  useEffect(() => {
-    if (selectedProduct?.id === 'drought') {
-      fetch('http://127.0.0.1:7242/ingest/9b65e1ca-e15e-461c-9d2b-d9c022103649',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DataDashboard.tsx:80',message:'monthly product extended data',data:{selectedProductId:selectedProduct.id,extendedDailyDataLength:extendedDailyData.length,dailyDataLength:dailyData.length,extendedHourlyDataLength:extendedHourlyData.length,hourlyDataLength:hourlyData.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E,F'})}).catch(()=>{});
-    }
-  }, [selectedProduct, extendedDailyData, dailyData, extendedHourlyData, hourlyData]);
-  // #endregion
 
   // --- DATA FORMATTING FOR TREND CHART ---
   const trendData = useMemo(() => {
@@ -98,21 +91,12 @@ export function DataDashboard({
 
   // --- ANALYSIS CHART LOGIC (REFACTORED TO USE PRODUCT LIBRARY) ---
   const analysisData = useMemo<AnalysisItem[]>(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/9b65e1ca-e15e-461c-9d2b-d9c022103649',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DataDashboard.tsx:92',message:'analysisData calculation start',data:{selectedProduct:selectedProduct?{id:selectedProduct.id,name:selectedProduct.name}:null},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
-    // #endregion
     if (!selectedProduct) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/9b65e1ca-e15e-461c-9d2b-d9c022103649',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DataDashboard.tsx:94',message:'no selectedProduct, returning empty',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
-      // #endregion
       return [];
     }
 
     const fullProduct = productLibrary.getProduct(selectedProduct.id);
     if (!fullProduct || !fullProduct.riskRules) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/9b65e1ca-e15e-461c-9d2b-d9c022103649',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DataDashboard.tsx:98',message:'no fullProduct or riskRules, returning empty',data:{productId:selectedProduct.id,hasFullProduct:!!fullProduct,hasRiskRules:!!fullProduct?.riskRules},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
-      // #endregion
       return [];
     }
 
@@ -131,10 +115,6 @@ export function DataDashboard({
     
     const displayData = timeWindow.type === 'hourly' ? hourlyData : dailyData;
     
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/9b65e1ca-e15e-461c-9d2b-d9c022103649',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DataDashboard.tsx:112',message:'data lengths before calculation',data:{timeWindowType:timeWindow.type,displayDataLength:displayData.length,sourceDataLength:sourceData.length,dailyDataLength:dailyData.length,extendedDailyDataLength:extendedDailyData.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E,F,G'})}).catch(()=>{});
-    // #endregion
-    
     // Early return if displayData is empty
     if (displayData.length === 0) {
       console.warn('[DataDashboard] Display data is empty', {
@@ -145,9 +125,6 @@ export function DataDashboard({
         extendedHourlyDataLength: extendedHourlyData.length,
         extendedDailyDataLength: extendedDailyData.length
       });
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/9b65e1ca-e15e-461c-9d2b-d9c022103649',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DataDashboard.tsx:115',message:'displayData empty, returning empty',data:{productId:selectedProduct.id,timeWindowType:timeWindow.type},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
-      // #endregion
       return [];
     }
     
@@ -330,9 +307,6 @@ export function DataDashboard({
             to: dateRange.to.toISOString()
           }
         });
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/9b65e1ca-e15e-461c-9d2b-d9c022103649',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DataDashboard.tsx:323',message:'monthly product sourceData empty, returning empty',data:{productId:selectedProduct.id,extendedDailyDataLength:extendedDailyData.length,dailyDataLength:dailyData.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-        // #endregion
         return [];
       }
 
@@ -426,9 +400,6 @@ export function DataDashboard({
       });
     }
 
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/9b65e1ca-e15e-461c-9d2b-d9c022103649',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DataDashboard.tsx:424',message:'analysisData calculation end, returning empty (fallthrough)',data:{productId:selectedProduct?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
-    // #endregion
     return [];
   }, [
     selectedProduct, 
@@ -456,13 +427,6 @@ export function DataDashboard({
     riskEvents
   ]);
 
-  // #region agent log
-  useEffect(() => {
-    if (selectedProduct?.id === 'drought') {
-      fetch('http://127.0.0.1:7242/ingest/9b65e1ca-e15e-461c-9d2b-d9c022103649',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DataDashboard.tsx:454',message:'analysisData result for monthly product',data:{productId:selectedProduct.id,analysisDataLength:analysisData.length,firstItem:analysisData[0]?{date:analysisData[0].date,cumulative:analysisData[0].cumulative}:null},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G,H'})}).catch(()=>{});
-    }
-  }, [selectedProduct, analysisData]);
-  // #endregion
 
   // --- SUMMARY METRICS ---
   const summaryMetrics = useMemo(() => {
@@ -765,14 +729,6 @@ export function DataDashboard({
 
          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
              <div className="lg:col-span-2">
-                {/* #region agent log */}
-                {(() => {
-                  if (selectedProduct?.id === 'drought') {
-                    fetch('http://127.0.0.1:7242/ingest/9b65e1ca-e15e-461c-9d2b-d9c022103649',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DataDashboard.tsx:720',message:'chart render condition check',data:{hasSelectedProduct:!!selectedProduct,analysisDataLength:analysisData.length,willRender:!!(selectedProduct && analysisData.length > 0)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
-                  }
-                  return null;
-                })()}
-                {/* #endregion */}
                 {selectedProduct && analysisData.length > 0 ? (
                     <div className="bg-white rounded-3xl border border-gray-100 p-8 shadow-sm h-[400px] animate-in fade-in slide-in-from-bottom-4 duration-500">
                         <div className="flex items-center gap-2 mb-6">
@@ -807,13 +763,7 @@ export function DataDashboard({
                               {(() => {
                                 const fullProduct = productLibrary.getProduct(selectedProduct.id);
                                 const timeWindowType = fullProduct?.riskRules?.timeWindow?.type;
-                                const isMonthly = timeWindowType === 'monthly';
-                                // #region agent log
-                                if (selectedProduct?.id === 'drought') {
-                                  fetch('http://127.0.0.1:7242/ingest/9b65e1ca-e15e-461c-9d2b-d9c022103649',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'DataDashboard.tsx:805',message:'chart type check for monthly product',data:{isMonthly,analysisDataLength:analysisData.length,firstItem:analysisData[0]?{date:analysisData[0].date,cumulative:analysisData[0].cumulative,hasCumulative:!!analysisData[0]?.cumulative}:null,allHaveCumulative:analysisData.every(item=>item.cumulative!==undefined)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
-                                }
-                                // #endregion
-                                return isMonthly;
+                                return timeWindowType === 'monthly';
                               })() ? (
                                  <AreaChart data={analysisData} margin={{ top: 10, right: 10, left: 20, bottom: 0 }}>
                                     <defs>
