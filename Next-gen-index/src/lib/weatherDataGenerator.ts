@@ -143,9 +143,6 @@ function calculateRiskLevel(weatherType: WeatherType, value: number): 'low' | 'm
   const config = WEATHER_CONFIGS[weatherType];
   if (!config) return undefined;
 
-  const range = config.baseRange.max - config.baseRange.min;
-  const normalizedValue = (value - config.baseRange.min) / range;
-
   switch (weatherType) {
     case 'rainfall':
       if (value >= 100) return 'high';
