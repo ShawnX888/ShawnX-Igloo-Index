@@ -1,6 +1,6 @@
 import { Region, DataType, RiskData, InsuranceProduct, DateRange, RegionWeatherData } from "./types";
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { Layers, CloudRain, AlertTriangle, Locate, Loader2, Check, X } from "lucide-react";
+import { Layers, CloudRain, AlertTriangle, Locate, Loader2, Check, X, Box, Square } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { 
@@ -144,6 +144,9 @@ export function MapWorkspace({ selectedRegion, weatherDataType, riskData, select
   // GPS定位状态
   const [gpsStatus, setGpsStatus] = useState<GPSStatus>('idle');
   const [gpsError, setGpsError] = useState<string>('');
+
+  // 地图模式：2D 或 3D
+  const [mapMode, setMapMode] = useState<'2d' | '3d'>('2d');
 
   // GPS定位处理函数
   const handleGPSClick = useCallback(async () => {
@@ -345,6 +348,31 @@ export function MapWorkspace({ selectedRegion, weatherDataType, riskData, select
          "absolute bottom-6 z-10 bg-white shadow-md rounded-lg p-1 border border-gray-200 flex flex-col gap-1 transition-all duration-500 ease-in-out",
          activeInputMode === 'manual' ? "right-6" : "left-6"
       )}>
+        {/* 2D/3D 切换按钮 */}
+        <button 
+           onClick={() => {
+             // 切换地图模式（3D 功能稍后实现）
+             setMapMode(prev => prev === '2d' ? '3d' : '2d');
+             // TODO: 实现 3D 地图切换逻辑
+           }}
+           className={cn(
+             "p-2 rounded transition-all",
+             mapMode === '2d' 
+               ? "hover:bg-gray-100 text-gray-500 hover:text-blue-600" 
+               : "bg-blue-50 text-blue-600 hover:bg-blue-100"
+           )}
+           title={mapMode === '2d' ? "Switch to 3D View" : "Switch to 2D View"}
+        >
+          {mapMode === '2d' ? (
+            <Box className="w-5 h-5" />
+          ) : (
+            <Square className="w-5 h-5" />
+          )}
+        </button>
+        
+        <div className="h-px bg-gray-100 mx-1" />
+        
+        {/* 定位按钮 */}
         <button 
            onClick={handleGPSClick}
            disabled={gpsStatus === 'loading'}

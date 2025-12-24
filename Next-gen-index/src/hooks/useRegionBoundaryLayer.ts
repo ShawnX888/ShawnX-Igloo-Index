@@ -139,6 +139,9 @@ export function useRegionBoundaryLayer({
   const isInitializedRef = useRef(false);
   const pulseIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const pulseStateRef = useRef(0); // 0-3 脉动状态
+  // 使用 ref 存储最新的 selectedRegion 和 heatmapVisible，供事件处理器访问
+  const selectedRegionRef = useRef<Region>(selectedRegion);
+  const heatmapVisibleRef = useRef<boolean>(heatmapVisible);
 
   // 初始化数据图层
   useEffect(() => {
@@ -222,12 +225,29 @@ export function useRegionBoundaryLayer({
         });
 
         dataLayer.addListener('mouseout', (event: google.maps.Data.MouseEvent) => {
+          // 使用 ref 获取最新的 selectedRegion 和 heatmapVisible，避免闭包问题
+          const currentSelectedRegion = selectedRegionRef.current;
+          const currentHeatmapVisible = heatmapVisibleRef.current;
+          
+          // 清除悬停样式，恢复到由 useEffect 管理的默认样式
           const district = event.feature.getProperty('district');
-          const isSelected = selectedRegion.district === district;
+          const gadmSelectedDistrict = googleToGadmName(currentSelectedRegion.district);
+          const isSelected = district === currentSelectedRegion.district || district === gadmSelectedDistrict;
+          
+          // 填充颜色和透明度
+          let fillColor = 'transparent';
+          let fillOpacity = 0;
+          if (isSelected && !currentHeatmapVisible) {
+            fillColor = '#E3F2FD';
+            fillOpacity = 0.6;
+          }
+
           dataLayer.overrideStyle(event.feature, {
-            strokeColor: isSelected ? '#4285F4' : 'transparent',
-            strokeWeight: isSelected ? 3 : 0,
-            strokeOpacity: isSelected ? 1 : 0,
+            fillColor,
+            fillOpacity,
+            strokeColor: isSelected ? '#4285F4' : '#C0C0C0',
+            strokeWeight: isSelected ? 3 : 1,
+            strokeOpacity: isSelected ? 1 : 0.4,
           });
         });
 
@@ -250,6 +270,15 @@ export function useRegionBoundaryLayer({
       isInitializedRef.current = false;
     };
   }, [map, country, province, districts.join(',')]); // 移除了 selectedRegion.district 和 heatmapVisible，避免不必要的重新加载
+
+  // 更新 ref 中的最新值
+  useEffect(() => {
+    selectedRegionRef.current = selectedRegion;
+  }, [selectedRegion]);
+
+  useEffect(() => {
+    heatmapVisibleRef.current = heatmapVisible;
+  }, [heatmapVisible]);
 
   // 更新选中区域的样式
   useEffect(() => {
