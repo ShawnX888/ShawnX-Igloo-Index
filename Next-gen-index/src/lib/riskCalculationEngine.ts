@@ -313,6 +313,9 @@ export class RiskCalculationEngineImpl implements IRiskCalculationEngine {
 
   /**
    * 过滤和排序天气数据
+   * 
+   * 注意：当使用扩展数据时，dateRange 可能是扩展的时间范围（extendedDateRange）
+   * 这样可以确保扩展数据不会被过滤掉，用于时间窗口起始位置的计算
    */
   private filterAndSortWeatherData(
     weatherData: WeatherData[],
@@ -327,9 +330,29 @@ export class RiskCalculationEngineImpl implements IRiskCalculationEngine {
       }
 
       // 检查时间范围
+      // 注意：当使用扩展数据时，dateRange 可能是扩展的时间范围
+      // 这样可以保留扩展数据，用于时间窗口起始位置的计算
       const dataDate = new Date(data.date);
-      return dataDate >= dateRange.from && dataDate <= dateRange.to;
+      const isInRange = dataDate >= dateRange.from && dataDate <= dateRange.to;
+      
+      return isInRange;
     });
+
+    // 日志：数据过滤结果（仅在开发环境或需要调试时）
+    if (process.env.NODE_ENV === 'development' && filtered.length !== weatherData.length) {
+      console.log('[RiskCalculationEngine] Filtered weather data', {
+        originalLength: weatherData.length,
+        filteredLength: filtered.length,
+        dateRange: {
+          from: dateRange.from.toISOString(),
+          to: dateRange.to.toISOString()
+        },
+        firstDataDate: weatherData[0]?.date,
+        lastDataDate: weatherData[weatherData.length - 1]?.date,
+        firstFilteredDate: filtered[0]?.date,
+        lastFilteredDate: filtered[filtered.length - 1]?.date
+      });
+    }
 
     // 排序：按时间升序
     return filtered.sort((a, b) => {

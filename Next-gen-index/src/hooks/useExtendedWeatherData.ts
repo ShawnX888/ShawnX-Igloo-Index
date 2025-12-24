@@ -1,15 +1,16 @@
 /**
- * 为风险叠加示意图获取扩展的天气数据
+ * 通用扩展数据获取 Hook
+ * 用于风险叠加示意图和风险事件计算
  * 
  * 扩展逻辑：
  * - 扩展起始时间 = dateRange.from - 数据计算窗口大小
  * - 扩展结束时间 = dateRange.to（保持不变）
  * 
  * 根据产品 riskRules.timeWindow.type 判断时间单位：
- * - 'hourly': 扩展 timeWindow.size 小时
- * - 'daily': 扩展 timeWindow.size 天
- * - 'weekly': 扩展 timeWindow.size 周
- * - 'monthly': 扩展到当月1号
+ * - 'hourly': 扩展 timeWindow.size 小时（保持原有时刻）
+ * - 'daily': 扩展 timeWindow.size 天（起始时刻为 00:00:00 UTC）
+ * - 'weekly': 扩展 timeWindow.size 周（起始时刻为 00:00:00 UTC）
+ * - 'monthly': 扩展到当月1号（起始时刻为 00:00:00 UTC）
  */
 
 import { useMemo } from 'react';
@@ -20,7 +21,8 @@ import { InsuranceProduct } from '../components/home/types';
 import { subHours, subDays, subWeeks, startOfMonth } from 'date-fns';
 
 /**
- * 为风险叠加示意图获取扩展的天气数据
+ * 通用扩展数据获取 Hook
+ * 用于风险叠加示意图和风险事件计算
  * 
  * @param selectedRegion 选中的区域
  * @param dateRange 用户选择的时间窗口（Map Settings）
@@ -29,7 +31,7 @@ import { subHours, subDays, subWeeks, startOfMonth } from 'date-fns';
  * @param selectedProduct 选中的产品（用于获取 riskRules）
  * @returns 扩展后的天气数据（小时级和日级）
  */
-export function useExtendedWeatherDataForOverlayChart(
+export function useExtendedWeatherData(
   selectedRegion: Region,
   dateRange: DateRange,
   dataType: DataType,
@@ -73,6 +75,7 @@ export function useExtendedWeatherDataForOverlayChart(
     } else if (timeWindow.type === 'daily') {
       // 天级窗口：扩展 windowSize 天
       // 先减去windowSize天，然后对齐到当天00:00:00 UTC，确保数据生成器能生成完整数据
+      // 扩展起始时刻统一为 00:00:00 UTC
       extendedFrom = subDays(dateRange.from, windowSize);
       // 直接设置UTC时间00:00:00，避免时区转换问题
       extendedFrom = new Date(Date.UTC(
@@ -84,6 +87,7 @@ export function useExtendedWeatherDataForOverlayChart(
     } else if (timeWindow.type === 'weekly') {
       // 周级窗口：扩展 windowSize 周
       // 先减去windowSize周，然后对齐到当天00:00:00 UTC
+      // 扩展起始时刻统一为 00:00:00 UTC
       extendedFrom = subWeeks(dateRange.from, windowSize);
       // 直接设置UTC时间00:00:00
       extendedFrom = new Date(Date.UTC(
@@ -95,6 +99,7 @@ export function useExtendedWeatherDataForOverlayChart(
     } else if (timeWindow.type === 'monthly') {
       // 月级窗口：扩展到当月1号00:00:00 UTC
       // 先获取当月1号，然后设置为UTC 00:00:00
+      // 扩展起始时刻统一为 00:00:00 UTC
       const monthStart = startOfMonth(dateRange.from);
       extendedFrom = new Date(Date.UTC(
         monthStart.getUTCFullYear(),
@@ -107,12 +112,30 @@ export function useExtendedWeatherDataForOverlayChart(
       return null;
     }
 
-    return {
+    const result = {
       from: extendedFrom,
       to: dateRange.to,
       startHour: dateRange.startHour,
       endHour: dateRange.endHour,
     };
+
+    // 日志：扩展时间范围计算
+    console.log('[useExtendedWeatherData] Extended date range calculated', {
+      productId: selectedProduct.id,
+      timeWindowType: timeWindow.type,
+      windowSize,
+      originalRange: {
+        from: dateRange.from.toISOString(),
+        to: dateRange.to.toISOString()
+      },
+      extendedRange: {
+        from: result.from.toISOString(),
+        to: result.to.toISOString()
+      },
+      extensionHours: (result.from.getTime() - dateRange.from.getTime()) / (1000 * 60 * 60)
+    });
+
+    return result;
   }, [selectedProduct, dateRange]);
 
   // 获取扩展后的天气数据
@@ -135,7 +158,7 @@ export function useExtendedWeatherDataForOverlayChart(
   // 提取选中区域的扩展数据
   const extendedHourlyData = useMemo(() => {
     if (!extendedDateRange) {
-      console.warn('[useExtendedWeatherDataForOverlayChart] extendedDateRange is null, returning empty array', {
+      console.warn('[useExtendedWeatherData] extendedDateRange is null, returning empty array', {
         selectedProduct: selectedProduct?.id,
         dateRange: dateRange?.from ? dateRange.from.toISOString() : 'null'
       });
@@ -144,7 +167,7 @@ export function useExtendedWeatherDataForOverlayChart(
     const data = extendedAllRegionsData[selectedRegion.district] || [];
     
     if (data.length === 0) {
-      console.warn('[useExtendedWeatherDataForOverlayChart] Extended hourly data is empty', {
+      console.warn('[useExtendedWeatherData] Extended hourly data is empty', {
         district: selectedRegion.district,
         extendedDateRange: {
           from: extendedDateRange.from.toISOString(),
@@ -155,12 +178,26 @@ export function useExtendedWeatherDataForOverlayChart(
       });
     }
     
+    // 日志：扩展小时级数据
+    if (data.length > 0) {
+      console.log('[useExtendedWeatherData] Extended hourly data loaded', {
+        district: selectedRegion.district,
+        dataLength: data.length,
+        firstDate: data[0]?.date,
+        lastDate: data[data.length - 1]?.date,
+        extendedDateRange: extendedDateRange ? {
+          from: extendedDateRange.from.toISOString(),
+          to: extendedDateRange.to.toISOString()
+        } : null
+      });
+    }
+    
     return data;
   }, [extendedAllRegionsData, selectedRegion.district, extendedDateRange, selectedProduct]);
 
   const extendedDailyData = useMemo(() => {
     if (!extendedDateRange) {
-      console.warn('[useExtendedWeatherDataForOverlayChart] extendedDateRange is null, returning empty array', {
+      console.warn('[useExtendedWeatherData] extendedDateRange is null, returning empty array', {
         selectedProduct: selectedProduct?.id,
         dateRange: dateRange?.from ? dateRange.from.toISOString() : 'null'
       });
@@ -169,7 +206,7 @@ export function useExtendedWeatherDataForOverlayChart(
     const data = extendedAllRegionsDailyData[selectedRegion.district] || [];
     
     if (data.length === 0) {
-      console.warn('[useExtendedWeatherDataForOverlayChart] Extended daily data is empty', {
+      console.warn('[useExtendedWeatherData] Extended daily data is empty', {
         district: selectedRegion.district,
         extendedDateRange: {
           from: extendedDateRange.from.toISOString(),
@@ -177,6 +214,20 @@ export function useExtendedWeatherDataForOverlayChart(
         },
         allRegionsKeys: Object.keys(extendedAllRegionsDailyData),
         selectedProduct: selectedProduct?.id
+      });
+    }
+    
+    // 日志：扩展日级数据
+    if (data.length > 0) {
+      console.log('[useExtendedWeatherData] Extended daily data loaded', {
+        district: selectedRegion.district,
+        dataLength: data.length,
+        firstDate: data[0]?.date,
+        lastDate: data[data.length - 1]?.date,
+        extendedDateRange: extendedDateRange ? {
+          from: extendedDateRange.from.toISOString(),
+          to: extendedDateRange.to.toISOString()
+        } : null
       });
     }
     

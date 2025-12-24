@@ -11,7 +11,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { PRODUCTS } from './ControlPanel';
 import { format, startOfMonth } from "date-fns";
 import { productLibrary } from "../../lib/productLibrary";
-import { useExtendedWeatherDataForOverlayChart } from "../../hooks/useExtendedWeatherDataForOverlayChart";
+import { useExtendedWeatherData } from "../../hooks/useExtendedWeatherData";
 
 interface DataDashboardProps {
   selectedRegion: Region;
@@ -50,7 +50,24 @@ export function DataDashboard({
   weatherStatistics,
   onNavigateToProduct 
 }: DataDashboardProps) {
-  const [viewMode, setViewMode] = useState<"daily" | "hourly">("daily");
+  // Initialize viewMode based on selectedProduct
+  // This avoids incorrect initial display when an hourly product is selected
+  const getInitialViewMode = (): "daily" | "hourly" => {
+    if (selectedProduct) {
+      const fullProduct = productLibrary.getProduct(selectedProduct.id);
+      if (fullProduct?.riskRules?.timeWindow) {
+        const timeWindowType = fullProduct.riskRules.timeWindow.type;
+        if (timeWindowType === 'hourly') {
+          return 'hourly';
+        } else if (timeWindowType === 'daily' || timeWindowType === 'weekly' || timeWindowType === 'monthly') {
+          return 'daily';
+        }
+      }
+    }
+    return 'daily'; // Default to daily
+  };
+
+  const [viewMode, setViewMode] = useState<"daily" | "hourly">(getInitialViewMode());
 
   // Automatically switch view mode based on product riskRules.timeWindow.type
   useEffect(() => {
@@ -64,14 +81,18 @@ export function DataDashboard({
           setViewMode('daily');
         }
       }
+    } else {
+      // Reset to daily when no product is selected
+      setViewMode('daily');
     }
   }, [selectedProduct]);
 
-  // Get extended weather data for overlay chart (to ensure accurate calculation at start position)
+  // Get extended weather data (for overlay chart and risk event calculation)
+  // This ensures accurate calculation at the start position of the time window
   const {
     extendedHourlyData,
     extendedDailyData,
-  } = useExtendedWeatherDataForOverlayChart(
+  } = useExtendedWeatherData(
     selectedRegion,
     dateRange,
     weatherDataType,
@@ -128,24 +149,27 @@ export function DataDashboard({
       return [];
     }
     
-    // Add warnings if extended data is empty and we're falling back to original data
+    // Enhanced error handling: Warn if extended data is empty and we're falling back to original data
+    // This is important because original data may not contain the lookback data needed for accurate calculation
     if (timeWindow.type === 'hourly' && extendedHourlyData.length === 0) {
-      console.warn('[DataDashboard] Extended hourly data is empty, falling back to original data', {
+      console.warn('[DataDashboard] ⚠️ Extended hourly data is empty, falling back to original data. Calculation accuracy may be affected at the start position.', {
         productId: selectedProduct?.id,
         timeWindowType: timeWindow.type,
         windowSize,
         extendedHourlyDataLength: extendedHourlyData.length,
         hourlyDataLength: hourlyData.length,
-        extendedDateRange: extendedHourlyData.length === 0 ? 'not available' : 'available'
+        extendedDateRange: extendedHourlyData.length === 0 ? 'not available' : 'available',
+        impact: 'The first data point may not have accurate lookback data for rolling window calculation'
       });
-    } else if ((timeWindow.type === 'daily' || timeWindow.type === 'weekly') && extendedDailyData.length === 0) {
-      console.warn('[DataDashboard] Extended daily data is empty, falling back to original data', {
+    } else if ((timeWindow.type === 'daily' || timeWindow.type === 'weekly' || timeWindow.type === 'monthly') && extendedDailyData.length === 0) {
+      console.warn('[DataDashboard] ⚠️ Extended daily data is empty, falling back to original data. Calculation accuracy may be affected at the start position.', {
         productId: selectedProduct?.id,
         timeWindowType: timeWindow.type,
         windowSize,
         extendedDailyDataLength: extendedDailyData.length,
         dailyDataLength: dailyData.length,
-        extendedDateRange: extendedDailyData.length === 0 ? 'not available' : 'available'
+        extendedDateRange: extendedDailyData.length === 0 ? 'not available' : 'available',
+        impact: 'The first data point may not have accurate lookback data for rolling window or cumulative calculation'
       });
     }
     
@@ -221,9 +245,10 @@ export function DataDashboard({
         const matchingEvent = findMatchingRiskEvent(displayItem.date);
         const riskLevel = matchingEvent?.level || null;
 
-        // Check if triggers any threshold
-        const triggeredThreshold = thresholds.find(t => checkThreshold(calculatedValue, t.value));
-        const isTriggered = !!triggeredThreshold;
+        // IMPORTANT: isTriggered should be based on matchingEvent, not just threshold check
+        // This ensures that only events within the user-selected time window are marked as triggered
+        // The matchingEvent is already filtered to the user's dateRange in riskEvents
+        const isTriggered = !!matchingEvent;
 
         return {
           ...displayItem,
@@ -273,8 +298,10 @@ export function DataDashboard({
         const matchingEvent = findMatchingRiskEvent(displayItem.date);
         const riskLevel = matchingEvent?.level || null;
 
-        const triggeredThreshold = thresholds.find(t => checkThreshold(calculatedValue, t.value));
-        const isTriggered = !!triggeredThreshold;
+        // IMPORTANT: isTriggered should be based on matchingEvent, not just threshold check
+        // This ensures that only events within the user-selected time window are marked as triggered
+        // The matchingEvent is already filtered to the user's dateRange in riskEvents
+        const isTriggered = !!matchingEvent;
 
         return {
           ...displayItem,
@@ -385,8 +412,10 @@ export function DataDashboard({
         const matchingEvent = findMatchingRiskEvent(displayItem.date);
         const riskLevel = matchingEvent?.level || null;
 
-        const triggeredThreshold = thresholds.find(t => checkThreshold(totalRain, t.value));
-        const isTriggered = !!triggeredThreshold;
+        // IMPORTANT: isTriggered should be based on matchingEvent, not just threshold check
+        // This ensures that only events within the user-selected time window are marked as triggered
+        // The matchingEvent is already filtered to the user's dateRange in riskEvents
+        const isTriggered = !!matchingEvent;
 
         return {
           ...displayItem,
