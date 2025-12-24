@@ -286,6 +286,10 @@ function generateHourlyWeatherData(
 
 /**
  * 生成日级天气数据（从小时级数据累计）
+ * 
+ * 重要：先过滤 hourlyData 到 dateRange 范围，确保日级数据只累计用户选择范围内的数据
+ * 这对于扩展数据特别重要：extendedHourlyData 可能包含扩展范围的数据，
+ * 但生成日级数据时，应该只累计 dateRange 范围内的数据
  */
 function generateDailyWeatherData(
   hourlyData: WeatherData[],
@@ -298,7 +302,16 @@ function generateDailyWeatherData(
     riskCounts: { low: number; medium: number; high: number } 
   }>();
 
-  hourlyData.forEach(item => {
+  // 先过滤 hourlyData，只保留 dateRange 范围内的数据
+  // 这确保了日级数据只累计用户选择范围内的数据，即使 hourlyData 包含更多数据
+  const { from, to } = dateRange;
+  const filteredHourlyData = hourlyData.filter(item => {
+    const itemDate = new Date(item.date);
+    return itemDate >= from && itemDate <= to;
+  });
+
+  // 只累计过滤后的数据
+  filteredHourlyData.forEach(item => {
     const date = new Date(item.date);
     const dayKey = format(startOfDay(date), 'yyyy-MM-dd');
 
@@ -326,11 +339,14 @@ function generateDailyWeatherData(
   });
 
   const dailyData: WeatherData[] = [];
-  const { from, to } = dateRange;
   let currentDate = startOfDay(from);
   const endDate = startOfDay(to);
+  
+  // 确保包含结束日期当天的数据，即使结束时间不是 00:00:00
+  // 使用 addDays(endDate, 1) 作为上限（不包含），这样循环会包含结束日期当天
+  const inclusiveEndDate = addDays(endDate, 1);
 
-  while (currentDate.getTime() <= endDate.getTime()) {
+  while (currentDate.getTime() < inclusiveEndDate.getTime()) {
     const dayKey = format(currentDate, 'yyyy-MM-dd');
     const dayData = dailyMap.get(dayKey);
 
