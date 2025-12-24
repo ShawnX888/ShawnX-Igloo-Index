@@ -8,9 +8,9 @@
  * 
  * 根据产品 riskRules.timeWindow.type 判断时间单位：
  * - 'hourly': 扩展 timeWindow.size 小时（保持原有时刻）
- * - 'daily': 扩展 timeWindow.size 天（起始时刻为 00:00:00 UTC）
- * - 'weekly': 扩展 timeWindow.size 周（起始时刻为 00:00:00 UTC）
- * - 'monthly': 扩展到当月1号（起始时刻为 00:00:00 UTC）
+ * - 'daily': 扩展 timeWindow.size 天（起始时刻为 00:00:00 本地时区）
+ * - 'weekly': 扩展 timeWindow.size 周（起始时刻为 00:00:00 本地时区）
+ * - 'monthly': 扩展到当月1号（起始时刻为 00:00:00 本地时区）
  */
 
 import { useMemo } from 'react';
@@ -18,7 +18,7 @@ import { Region, DateRange, DataType, WeatherType, WeatherData } from '../types'
 import { useWeatherData, useDailyWeatherData } from './useWeatherData';
 import { productLibrary } from '../lib/productLibrary';
 import { InsuranceProduct } from '../components/home/types';
-import { subHours, subDays, subWeeks, startOfMonth } from 'date-fns';
+import { subHours, subDays, subWeeks, startOfMonth, startOfDay } from 'date-fns';
 
 /**
  * 通用扩展数据获取 Hook
@@ -74,39 +74,24 @@ export function useExtendedWeatherData(
       extendedFrom = subHours(baseTime, windowSize);
     } else if (timeWindow.type === 'daily') {
       // 天级窗口：扩展 windowSize 天
-      // 先减去windowSize天，然后对齐到当天00:00:00 UTC，确保数据生成器能生成完整数据
-      // 扩展起始时刻统一为 00:00:00 UTC
+      // 先减去windowSize天，然后对齐到当天00:00:00 本地时区，确保数据生成器能生成完整数据
+      // 扩展起始时刻统一为 00:00:00 本地时区
       extendedFrom = subDays(dateRange.from, windowSize);
-      // 直接设置UTC时间00:00:00，避免时区转换问题
-      extendedFrom = new Date(Date.UTC(
-        extendedFrom.getUTCFullYear(),
-        extendedFrom.getUTCMonth(),
-        extendedFrom.getUTCDate(),
-        0, 0, 0, 0
-      ));
+      // 使用本地时区的 startOfDay，确保与日级数据生成逻辑一致
+      extendedFrom = startOfDay(extendedFrom);
     } else if (timeWindow.type === 'weekly') {
       // 周级窗口：扩展 windowSize 周
-      // 先减去windowSize周，然后对齐到当天00:00:00 UTC
-      // 扩展起始时刻统一为 00:00:00 UTC
+      // 先减去windowSize周，然后对齐到当天00:00:00 本地时区
+      // 扩展起始时刻统一为 00:00:00 本地时区
       extendedFrom = subWeeks(dateRange.from, windowSize);
-      // 直接设置UTC时间00:00:00
-      extendedFrom = new Date(Date.UTC(
-        extendedFrom.getUTCFullYear(),
-        extendedFrom.getUTCMonth(),
-        extendedFrom.getUTCDate(),
-        0, 0, 0, 0
-      ));
+      // 使用本地时区的 startOfDay，确保与日级数据生成逻辑一致
+      extendedFrom = startOfDay(extendedFrom);
     } else if (timeWindow.type === 'monthly') {
-      // 月级窗口：扩展到当月1号00:00:00 UTC
-      // 先获取当月1号，然后设置为UTC 00:00:00
-      // 扩展起始时刻统一为 00:00:00 UTC
+      // 月级窗口：扩展到当月1号00:00:00 本地时区
+      // 先获取当月1号，然后设置为本地时区 00:00:00
+      // 扩展起始时刻统一为 00:00:00 本地时区
       const monthStart = startOfMonth(dateRange.from);
-      extendedFrom = new Date(Date.UTC(
-        monthStart.getUTCFullYear(),
-        monthStart.getUTCMonth(),
-        1, // 当月1号
-        0, 0, 0, 0
-      ));
+      extendedFrom = startOfDay(monthStart);
     } else {
       // 未知类型，不扩展
       return null;

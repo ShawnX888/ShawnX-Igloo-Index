@@ -314,14 +314,8 @@ export function DataDashboard({
       });
     } else if (timeWindow.type === 'monthly') {
       // For monthly data, calculate cumulative from month start
-      // Use UTC time to ensure alignment with extended data
-      const monthStartDate = startOfMonth(dateRange.from);
-      const monthStart = new Date(Date.UTC(
-        monthStartDate.getUTCFullYear(),
-        monthStartDate.getUTCMonth(),
-        1, // 当月1号
-        0, 0, 0, 0
-      ));
+      // Use local timezone to ensure alignment with extended data and user expectations
+      const monthStart = startOfDay(startOfMonth(dateRange.from));
 
       // Early return if sourceData is empty
       if (sourceData.length === 0) {
@@ -339,25 +333,11 @@ export function DataDashboard({
 
       // Calculate total for the month from extended data
       // Extended data should include data from month start to dateRange.to
-      // Note: sourceData (extended daily data) uses local timezone startOfDay
-      // The monthStart is UTC 00:00:00, but we need to match with local timezone dates
-      // Use date comparison (same day, regardless of timezone offset)
+      // All dates use local timezone for consistency with user display and data generation
       const monthData = sourceData.filter(item => {
         const itemDate = new Date(item.date);
-        // Get the date part (year, month, day) in UTC for comparison
-        const itemYear = itemDate.getUTCFullYear();
-        const itemMonth = itemDate.getUTCMonth();
-        const itemDay = itemDate.getUTCDate();
-        const monthStartYear = monthStart.getUTCFullYear();
-        const monthStartMonth = monthStart.getUTCMonth();
-        const monthStartDay = monthStart.getUTCDate();
-        
-        // Compare dates: item should be >= month start date and <= dateRange.to
-        const isAfterMonthStart = itemYear > monthStartYear || 
-          (itemYear === monthStartYear && itemMonth > monthStartMonth) ||
-          (itemYear === monthStartYear && itemMonth === monthStartMonth && itemDay >= monthStartDay);
-        
-        return isAfterMonthStart && itemDate <= dateRange.to;
+        // Compare dates using local timezone
+        return itemDate >= monthStart && itemDate <= dateRange.to;
       });
       const totalRain = calculateAggregatedValue(monthData);
 
