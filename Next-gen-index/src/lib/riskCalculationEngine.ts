@@ -511,12 +511,12 @@ export class RiskCalculationEngineImpl implements IRiskCalculationEngine {
     for (let i = 0; i < dates.length; i += step) {
       const currentDate = dates[i];
 
-      // 计算滑动窗口（包含当天和此前连续6天）
+      // 计算滑动窗口（包含当天和此前连续6天，使用 UTC 日期）
       const windowDates: string[] = [];
-      const currentDateObj = new Date(currentDate);
+      const currentDateObj = new Date(currentDate); // currentDate 是 UTC 日期字符串
       for (let j = 0; j < windowSize; j++) {
         const date = new Date(currentDateObj);
-        date.setDate(date.getDate() - j);
+        date.setUTCDate(date.getUTCDate() - j); // 使用 UTC 日期操作
         windowDates.push(date.toISOString().split('T')[0]);
       }
 
@@ -607,14 +607,14 @@ export class RiskCalculationEngineImpl implements IRiskCalculationEngine {
   }
 
   /**
-   * 按小时分组数据
+   * 按小时分组数据（使用 UTC 小时）
    */
   private groupByHour(weatherData: WeatherData[]): Map<number, WeatherData[]> {
     const grouped = new Map<number, WeatherData[]>();
 
     for (const data of weatherData) {
-      const date = new Date(data.date);
-      const hour = date.getHours();
+      const date = new Date(data.date); // ISO 字符串解析为 UTC
+      const hour = date.getUTCHours(); // 使用 UTC 小时
 
       if (!grouped.has(hour)) {
         grouped.set(hour, []);
@@ -626,14 +626,14 @@ export class RiskCalculationEngineImpl implements IRiskCalculationEngine {
   }
 
   /**
-   * 按天分组数据
+   * 按天分组数据（使用 UTC 日期）
    */
   private groupByDay(weatherData: WeatherData[]): Map<string, WeatherData[]> {
     const grouped = new Map<string, WeatherData[]>();
 
     for (const data of weatherData) {
-      const date = new Date(data.date);
-      const dayKey = date.toISOString().split('T')[0]; // YYYY-MM-DD
+      const date = new Date(data.date); // ISO 字符串解析为 UTC
+      const dayKey = date.toISOString().split('T')[0]; // YYYY-MM-DD (UTC)
 
       if (!grouped.has(dayKey)) {
         grouped.set(dayKey, []);
@@ -645,14 +645,14 @@ export class RiskCalculationEngineImpl implements IRiskCalculationEngine {
   }
 
   /**
-   * 按月份分组数据
+   * 按月份分组数据（使用 UTC 月份）
    */
   private groupByMonth(weatherData: WeatherData[]): Map<string, WeatherData[]> {
     const grouped = new Map<string, WeatherData[]>();
 
     for (const data of weatherData) {
-      const date = new Date(data.date);
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`; // YYYY-MM
+      const date = new Date(data.date); // ISO 字符串解析为 UTC
+      const monthKey = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`; // YYYY-MM (UTC)
 
       if (!grouped.has(monthKey)) {
         grouped.set(monthKey, []);

@@ -6,11 +6,13 @@
  * - 扩展起始时间 = dateRange.from - 数据计算窗口大小
  * - 扩展结束时间 = dateRange.to（保持不变）
  * 
+ * 注意：dateRange.from 和 dateRange.to 已经是 UTC 时间
+ * 
  * 根据产品 riskRules.timeWindow.type 判断时间单位：
- * - 'hourly': 扩展 timeWindow.size 小时（保持原有时刻）
- * - 'daily': 扩展 timeWindow.size 天（起始时刻为 00:00:00 本地时区）
- * - 'weekly': 扩展 timeWindow.size 周（起始时刻为 00:00:00 本地时区）
- * - 'monthly': 扩展到当月1号（起始时刻为 00:00:00 本地时区）
+ * - 'hourly': 扩展 timeWindow.size 小时（保持原有时刻，UTC）
+ * - 'daily': 扩展 timeWindow.size 天（起始时刻为 00:00:00 UTC）
+ * - 'weekly': 扩展 timeWindow.size 周（起始时刻为 00:00:00 UTC）
+ * - 'monthly': 扩展到当月1号（起始时刻为 00:00:00 UTC）
  */
 
 import { useMemo } from 'react';
@@ -18,7 +20,7 @@ import { Region, DateRange, DataType, WeatherType, WeatherData } from '../types'
 import { useWeatherData, useDailyWeatherData } from './useWeatherData';
 import { productLibrary } from '../lib/productLibrary';
 import { InsuranceProduct } from '../components/home/types';
-import { subHours, subDays, subWeeks, startOfMonth, startOfDay } from 'date-fns';
+import { subHours, subDays, subWeeks } from 'date-fns';
 
 /**
  * 通用扩展数据获取 Hook
@@ -58,40 +60,50 @@ export function useExtendedWeatherData(
     let extendedFrom: Date;
 
     // 根据 timeWindow.type 判断时间单位
+    // dateRange.from 和 dateRange.to 已经是 UTC 时间
     if (timeWindow.type === 'hourly') {
-      // 小时级窗口：扩展 windowSize 小时
-      // 问题：数据生成器会使用 setHours(startHour, 0, 0, 0) 重新对齐时间（本地时区）
-      // 解决方案：扩展的from需要确保数据生成器对齐到startHour后，仍然包含回溯所需的数据
-      // 逻辑：
-      // 1. 获取dateRange.from的本地时间，设置为startHour:00:00（这是数据生成器的起始时间）
-      // 2. 从这个时间减去windowSize小时，得到扩展的from（本地时区）
-      // 3. 数据生成器会对这个扩展的from重新对齐到startHour，但因为我们提前了windowSize小时，
-      //    对齐后的第一个数据点（dateRange.from对齐到startHour）在扩展数据中的索引就是windowSize
-      // 4. 这样第一个数据点可以回溯到索引0到windowSize，共windowSize+1个数据点
-      const baseTime = new Date(dateRange.from);
-      baseTime.setHours(dateRange.startHour, 0, 0, 0); // 对齐到startHour（本地时区）
-      // 减去windowSize小时（本地时区），这样数据生成器对齐后，第一个数据点可以回溯windowSize小时
-      extendedFrom = subHours(baseTime, windowSize);
+      // 小时级窗口：扩展 windowSize 小时（UTC）
+      // 直接减去 windowSize 小时，然后对齐到小时边界（UTC）
+      extendedFrom = subHours(dateRange.from, windowSize);
+      // 对齐到小时边界（UTC）
+      extendedFrom = new Date(Date.UTC(
+        extendedFrom.getUTCFullYear(),
+        extendedFrom.getUTCMonth(),
+        extendedFrom.getUTCDate(),
+        extendedFrom.getUTCHours(),
+        0, 0, 0
+      ));
     } else if (timeWindow.type === 'daily') {
-      // 天级窗口：扩展 windowSize 天
-      // 先减去windowSize天，然后对齐到当天00:00:00 本地时区，确保数据生成器能生成完整数据
-      // 扩展起始时刻统一为 00:00:00 本地时区
+      // 天级窗口：扩展 windowSize 天（UTC）
+      // 先减去 windowSize 天，然后对齐到当天 00:00:00 UTC
       extendedFrom = subDays(dateRange.from, windowSize);
-      // 使用本地时区的 startOfDay，确保与日级数据生成逻辑一致
-      extendedFrom = startOfDay(extendedFrom);
+      // 对齐到当天 00:00:00 UTC
+      extendedFrom = new Date(Date.UTC(
+        extendedFrom.getUTCFullYear(),
+        extendedFrom.getUTCMonth(),
+        extendedFrom.getUTCDate(),
+        0, 0, 0, 0
+      ));
     } else if (timeWindow.type === 'weekly') {
-      // 周级窗口：扩展 windowSize 周
-      // 先减去windowSize周，然后对齐到当天00:00:00 本地时区
-      // 扩展起始时刻统一为 00:00:00 本地时区
+      // 周级窗口：扩展 windowSize 周（UTC）
+      // 先减去 windowSize 周，然后对齐到当天 00:00:00 UTC
       extendedFrom = subWeeks(dateRange.from, windowSize);
-      // 使用本地时区的 startOfDay，确保与日级数据生成逻辑一致
-      extendedFrom = startOfDay(extendedFrom);
+      // 对齐到当天 00:00:00 UTC
+      extendedFrom = new Date(Date.UTC(
+        extendedFrom.getUTCFullYear(),
+        extendedFrom.getUTCMonth(),
+        extendedFrom.getUTCDate(),
+        0, 0, 0, 0
+      ));
     } else if (timeWindow.type === 'monthly') {
-      // 月级窗口：扩展到当月1号00:00:00 本地时区
-      // 先获取当月1号，然后设置为本地时区 00:00:00
-      // 扩展起始时刻统一为 00:00:00 本地时区
-      const monthStart = startOfMonth(dateRange.from);
-      extendedFrom = startOfDay(monthStart);
+      // 月级窗口：扩展到当月1号 00:00:00 UTC
+      // 获取当月1号，然后设置为 00:00:00 UTC
+      extendedFrom = new Date(Date.UTC(
+        dateRange.from.getUTCFullYear(),
+        dateRange.from.getUTCMonth(),
+        1, // 1号
+        0, 0, 0, 0
+      ));
     } else {
       // 未知类型，不扩展
       return null;

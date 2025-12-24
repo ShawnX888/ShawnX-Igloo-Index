@@ -12,6 +12,7 @@ import { useWeatherData, useDailyWeatherData, useWeatherStatistics } from "../..
 import { useRiskAnalysis } from "../../hooks/useRiskAnalysis";
 import { convertRegionWeatherDataToRegionData } from "../../lib/dataAdapters";
 import { addDays } from "date-fns";
+import { localToUTC } from "../../lib/timeUtils";
 
 export function Dashboard({ 
   onNavigateToProduct, 
@@ -29,16 +30,21 @@ export function Dashboard({
   const [weatherDataType, setWeatherDataType] = useState<DataType>("historical");
   
   // Default: Historical logic (7 days ago same time to Now - 1 hour)
-  const today = new Date();
-  const oneHourAgo = new Date(today.getTime() - 60 * 60 * 1000);
-  const lastWeek = new Date(oneHourAgo);
-  lastWeek.setDate(oneHourAgo.getDate() - 7);
+  // 计算本地时间，然后转换为 UTC 存储
+  const todayLocal = new Date();
+  const oneHourAgoLocal = new Date(todayLocal.getTime() - 60 * 60 * 1000);
+  const lastWeekLocal = new Date(oneHourAgoLocal);
+  lastWeekLocal.setDate(oneHourAgoLocal.getDate() - 7);
+
+  // 转换为 UTC 存储
+  const oneHourAgoUTC = localToUTC(oneHourAgoLocal);
+  const lastWeekUTC = localToUTC(lastWeekLocal);
 
   const [dateRange, setDateRange] = useState<DateRange>({
-    from: lastWeek,
-    to: oneHourAgo,
-    startHour: oneHourAgo.getHours(),
-    endHour: oneHourAgo.getHours()
+    from: lastWeekUTC,
+    to: oneHourAgoUTC,
+    startHour: oneHourAgoLocal.getHours(), // 保留本地小时用于显示
+    endHour: oneHourAgoLocal.getHours()
   });
 
   const [selectedProduct, setSelectedProduct] = useState<InsuranceProduct | null>(initialProduct || null);
@@ -94,29 +100,34 @@ export function Dashboard({
   // --- HANDLERS ---
   const handleWeatherDataTypeChange = (type: DataType) => {
     setWeatherDataType(type);
-    const now = new Date();
+    const nowLocal = new Date();
     
     if (type === 'predicted') {
       // Predicted: Today to +10 days
-      const future = new Date(now);
-      future.setDate(now.getDate() + 10);
+      const futureLocal = new Date(nowLocal);
+      futureLocal.setDate(nowLocal.getDate() + 10);
+      // 转换为 UTC 存储
+      const fromUTC = localToUTC(nowLocal);
+      const toUTC = localToUTC(futureLocal);
       setDateRange({
-        from: now,
-        to: future,
-        startHour: now.getHours(), // Start from current hour
-        endHour: now.getHours()    // End hour matches start hour (exact 10 day window)
+        from: fromUTC,
+        to: toUTC,
+        startHour: nowLocal.getHours(), // Start from current hour (local)
+        endHour: nowLocal.getHours()    // End hour matches start hour (local)
       });
     } else {
       // Historical: 7 days ago (same time) to Now - 1 hour
-      const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
-      const past = new Date(oneHourAgo);
-      past.setDate(oneHourAgo.getDate() - 7);
-      
+      const oneHourAgoLocal = new Date(nowLocal.getTime() - 60 * 60 * 1000);
+      const pastLocal = new Date(oneHourAgoLocal);
+      pastLocal.setDate(oneHourAgoLocal.getDate() - 7);
+      // 转换为 UTC 存储
+      const fromUTC = localToUTC(pastLocal);
+      const toUTC = localToUTC(oneHourAgoLocal);
       setDateRange({
-        from: past,
-        to: oneHourAgo,
-        startHour: oneHourAgo.getHours(),
-        endHour: oneHourAgo.getHours()
+        from: fromUTC,
+        to: toUTC,
+        startHour: oneHourAgoLocal.getHours(),
+        endHour: oneHourAgoLocal.getHours()
       });
     }
   };

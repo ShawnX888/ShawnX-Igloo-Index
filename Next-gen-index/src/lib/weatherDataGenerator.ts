@@ -6,8 +6,9 @@
 
 import { Region, DateRange, DataType, WeatherType, RegionWeatherData, WeatherData } from '../types';
 import { WeatherDataGenerator } from '../interfaces/dataGenerator';
-import { addDays, addHours, format, startOfDay } from 'date-fns';
+import { addHours, format } from 'date-fns';
 import { getDistrictsInProvince } from './regionData';
+import { getLocalHour } from './timeUtils';
 
 /**
  * 区域种子生成器
@@ -194,7 +195,7 @@ function generateHourlyWeatherData(
   random: SeededRandom
 ): WeatherData[] {
   const data: WeatherData[] = [];
-  const { from, to, startHour, endHour } = dateRange;
+  const { from, to, startHour } = dateRange;
   const config = WEATHER_CONFIGS[weatherType];
 
   if (!config) {
@@ -203,29 +204,32 @@ function generateHourlyWeatherData(
   }
 
   // 计算时间范围（小时）
+  // dateRange.from 和 dateRange.to 已经是 UTC 时间
+  // startHour 和 endHour 是用户选择的本地时区小时（仅用于显示，不影响数据生成）
   // 判断是否为扩展数据：如果 from 时间已经对齐到小时边界（分钟、秒、毫秒都为0），
-  // 且本地时区的小时不是 startHour，则可能是扩展数据
-  // 对于扩展数据，我们应该从 from 时间开始生成，而不是重新对齐到 startHour
+  // 且 UTC 时间对应的本地时区小时不是 startHour，则可能是扩展数据
   let currentTime = new Date(from);
-  const fromMinutes = currentTime.getMinutes();
-  const fromSeconds = currentTime.getSeconds();
-  const fromMilliseconds = currentTime.getMilliseconds();
-  const fromHourLocal = currentTime.getHours(); // 本地时区的小时
+  const fromMinutes = currentTime.getUTCMinutes();
+  const fromSeconds = currentTime.getUTCSeconds();
+  const fromMilliseconds = currentTime.getUTCMilliseconds();
+  const fromHourLocal = getLocalHour(currentTime); // UTC 时间对应的本地时区小时
   
   // 如果 from 时间已经对齐到小时边界（分钟、秒、毫秒都为0），且本地时区的小时不是 startHour，则可能是扩展数据
-  // 对于扩展数据，保持原样；对于普通数据，对齐到 startHour
+  // 对于扩展数据，保持原样；对于普通数据，对齐到小时边界（UTC）
   const isAlignedToHourBoundary = (fromMinutes === 0 && fromSeconds === 0 && fromMilliseconds === 0);
   const isExtendedData = isAlignedToHourBoundary && fromHourLocal !== startHour;
   
   if (!isExtendedData) {
-    // 普通数据：对齐到 startHour
-    currentTime.setHours(startHour, 0, 0, 0);
+    // 普通数据：对齐到小时边界（UTC）
+    currentTime.setUTCHours(currentTime.getUTCHours(), 0, 0, 0);
   } else {
-    // 扩展数据：保持原样，只确保对齐到小时边界（已经是了）
-    // 不需要修改，直接从 from 时间开始生成
+    // 扩展数据：保持原样，只确保对齐到小时边界（UTC）
+    currentTime.setUTCHours(currentTime.getUTCHours(), 0, 0, 0);
   }
+  
   const endTime = new Date(to);
-  endTime.setHours(endHour, 0, 0, 0);
+  // 对齐到小时边界（UTC）
+  endTime.setUTCHours(endTime.getUTCHours(), 0, 0, 0);
 
   // 区域特征：不同区域有不同的天气模式
   const regionSeed = generateRegionSeed(region, weatherType);
@@ -233,8 +237,11 @@ function generateHourlyWeatherData(
 
   // 时间特征：不同时间段有不同的天气模式
   while (currentTime.getTime() <= endTime.getTime()) {
-    const hour = currentTime.getHours();
-    const dayOfYear = Math.floor((currentTime.getTime() - new Date(currentTime.getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24));
+    // 使用 UTC 小时进行时间因子计算
+    const hour = currentTime.getUTCHours();
+    // 计算 UTC 日期的年份中的第几天
+    const yearStart = new Date(Date.UTC(currentTime.getUTCFullYear(), 0, 0));
+    const dayOfYear = Math.floor((currentTime.getTime() - yearStart.getTime()) / (1000 * 60 * 60 * 24));
     
     // 时间因子
     let timeFactor = 1.0;
@@ -304,16 +311,22 @@ function generateDailyWeatherData(
 
   // 先过滤 hourlyData，只保留 dateRange 范围内的数据
   // 这确保了日级数据只累计用户选择范围内的数据，即使 hourlyData 包含更多数据
+  // dateRange.from 和 dateRange.to 已经是 UTC 时间
   const { from, to } = dateRange;
   const filteredHourlyData = hourlyData.filter(item => {
-    const itemDate = new Date(item.date);
+    const itemDate = new Date(item.date); // ISO 字符串解析为 UTC
     return itemDate >= from && itemDate <= to;
   });
 
   // 只累计过滤后的数据
+  // 使用 UTC 日期作为键，确保日期分组正确
   filteredHourlyData.forEach(item => {
-    const date = new Date(item.date);
-    const dayKey = format(startOfDay(date), 'yyyy-MM-dd');
+    const date = new Date(item.date); // UTC 时间
+    // 使用 UTC 日期作为键（YYYY-MM-DD）
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(date.getUTCDate()).padStart(2, '0');
+    const dayKey = `${year}-${month}-${day}`;
 
     if (!dailyMap.has(dayKey)) {
       dailyMap.set(dayKey, { value: 0, count: 0, riskCounts: { low: 0, medium: 0, high: 0 } });
@@ -339,15 +352,31 @@ function generateDailyWeatherData(
   });
 
   const dailyData: WeatherData[] = [];
-  let currentDate = startOfDay(from);
-  const endDate = startOfDay(to);
+  // 使用 UTC 日期对齐（当天 00:00:00 UTC）
+  let currentDate = new Date(Date.UTC(
+    from.getUTCFullYear(),
+    from.getUTCMonth(),
+    from.getUTCDate(),
+    0, 0, 0, 0
+  ));
+  const endDate = new Date(Date.UTC(
+    to.getUTCFullYear(),
+    to.getUTCMonth(),
+    to.getUTCDate(),
+    0, 0, 0, 0
+  ));
   
   // 确保包含结束日期当天的数据，即使结束时间不是 00:00:00
   // 使用 addDays(endDate, 1) 作为上限（不包含），这样循环会包含结束日期当天
-  const inclusiveEndDate = addDays(endDate, 1);
+  const inclusiveEndDate = new Date(endDate);
+  inclusiveEndDate.setUTCDate(inclusiveEndDate.getUTCDate() + 1);
 
   while (currentDate.getTime() < inclusiveEndDate.getTime()) {
-    const dayKey = format(currentDate, 'yyyy-MM-dd');
+    // 使用 UTC 日期作为键
+    const year = currentDate.getUTCFullYear();
+    const month = String(currentDate.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(currentDate.getUTCDate()).padStart(2, '0');
+    const dayKey = `${year}-${month}-${day}`;
     const dayData = dailyMap.get(dayKey);
 
     if (dayData) {
@@ -376,7 +405,9 @@ function generateDailyWeatherData(
       });
     }
 
-    currentDate = addDays(currentDate, 1);
+    // 移动到下一天（UTC）
+    currentDate = new Date(currentDate);
+    currentDate.setUTCDate(currentDate.getUTCDate() + 1);
   }
 
   return dailyData;

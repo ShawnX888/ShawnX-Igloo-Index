@@ -21,7 +21,7 @@ import {
 import { InsuranceProduct } from '../components/home/types';
 import { createRiskCalculationService } from '../lib/riskCalculationService';
 import { productLibrary } from '../lib/productLibrary';
-import { format, startOfDay, isSameDay } from 'date-fns';
+import { format } from 'date-fns';
 import { useExtendedWeatherData } from './useExtendedWeatherData';
 
 // --- #4 缓存与持久化策略 ---
@@ -96,13 +96,30 @@ export function useRiskAnalysis(
           return eventTime >= dateRange.from.getTime() && eventTime <= dateRange.to.getTime();
         });
       } else {
-        // 日期范围比较（不考虑时刻）
+        // 日期范围比较（不考虑时刻，使用 UTC 日期）
         // 对于 daily/weekly/monthly 产品，如果事件日期在 dateRange 的日期范围内，就计入
-        const rangeStartDate = startOfDay(dateRange.from);
-        const rangeEndDate = startOfDay(dateRange.to);
+        // dateRange.from 和 dateRange.to 已经是 UTC 时间
+        const rangeStartDate = new Date(Date.UTC(
+          dateRange.from.getUTCFullYear(),
+          dateRange.from.getUTCMonth(),
+          dateRange.from.getUTCDate(),
+          0, 0, 0, 0
+        ));
+        const rangeEndDate = new Date(Date.UTC(
+          dateRange.to.getUTCFullYear(),
+          dateRange.to.getUTCMonth(),
+          dateRange.to.getUTCDate(),
+          0, 0, 0, 0
+        ));
         
         return events.filter(event => {
-          const eventDate = startOfDay(event.timestamp);
+          // event.timestamp 是 UTC 时间
+          const eventDate = new Date(Date.UTC(
+            event.timestamp.getUTCFullYear(),
+            event.timestamp.getUTCMonth(),
+            event.timestamp.getUTCDate(),
+            0, 0, 0, 0
+          ));
           // 事件日期 >= 范围起始日期 && 事件日期 <= 范围结束日期
           return eventDate >= rangeStartDate && eventDate <= rangeEndDate;
         });

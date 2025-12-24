@@ -14,6 +14,7 @@ import { ScrollArea } from "../ui/scroll-area";
 import { REGION_HIERARCHY } from "../../lib/regionData";
 import { useRegionData } from "../../hooks/useRegionData";
 import { AdministrativeRegion } from "../../types";
+import { localToUTC, utcToLocal, getLocalHour } from "../../lib/timeUtils";
 
 interface ControlPanelProps {
   isMinimized: boolean;
@@ -439,7 +440,11 @@ export function ControlPanel({
                       <div className="flex flex-col gap-0.5">
                         <span className="text-[10px] text-gray-400 uppercase font-medium">Time Range</span>
                         <span className="text-xs font-medium text-gray-900">
-                          {format(dateRange.from, "MMM dd")} {String(dateRange.startHour).padStart(2, '0')}:00 → {format(dateRange.to, "MMM dd")} {String(dateRange.endHour).padStart(2, '0')}:00
+                          {(() => {
+                            const displayFrom = utcToLocal(dateRange.from);
+                            const displayTo = utcToLocal(dateRange.to);
+                            return `${format(displayFrom, "MMM dd")} ${String(displayFrom.getHours()).padStart(2, '0')}:00 → ${format(displayTo, "MMM dd")} ${String(displayTo.getHours()).padStart(2, '0')}:00`;
+                          })()}
                         </span>
                       </div>
                       <CalendarIcon className="h-4 w-4 opacity-50" />
@@ -455,13 +460,24 @@ export function ControlPanel({
                         before: new Date(Date.now() - 39 * 24 * 60 * 60 * 1000),
                         after: new Date()
                       }}
-                      selected={{ from: dateRange.from, to: dateRange.to }}
+                      selected={{ 
+                        from: utcToLocal(dateRange.from), 
+                        to: utcToLocal(dateRange.to) 
+                      }}
                       onSelect={(range) => {
                         if (range?.from) {
+                          // 用户选择的是本地时间，需要转换为 UTC 存储
+                          const fromUTC = localToUTC(range.from);
+                          const toUTC = range.to ? localToUTC(range.to) : fromUTC;
+                          // 获取本地时区的小时（用于显示）
+                          const startHourLocal = range.from.getHours();
+                          const endHourLocal = range.to ? range.to.getHours() : startHourLocal;
                           setDateRange({ 
                             ...dateRange, 
-                            from: range.from, 
-                            to: range.to || range.from 
+                            from: fromUTC, 
+                            to: toUTC,
+                            startHour: startHourLocal,
+                            endHour: endHourLocal
                           });
                         }
                       }}
@@ -473,8 +489,15 @@ export function ControlPanel({
                       <div className="flex-1">
                         <label className="text-[10px] text-gray-500 mb-1 block font-medium">Start Hour</label>
                         <Select 
-                          value={String(dateRange.startHour)} 
-                          onValueChange={(v) => setDateRange({...dateRange, startHour: parseInt(v)})}
+                          value={String(getLocalHour(dateRange.from))} 
+                          onValueChange={(v) => {
+                            const hourLocal = parseInt(v);
+                            // 更新 UTC 时间以匹配选择的本地小时
+                            const localFrom = utcToLocal(dateRange.from);
+                            localFrom.setHours(hourLocal, 0, 0, 0);
+                            const fromUTC = localToUTC(localFrom);
+                            setDateRange({...dateRange, from: fromUTC, startHour: hourLocal});
+                          }}
                         >
                           <SelectTrigger className="h-8 text-xs">
                             <SelectValue />
@@ -492,8 +515,15 @@ export function ControlPanel({
                       <div className="flex-1">
                         <label className="text-[10px] text-gray-500 mb-1 block font-medium">End Hour</label>
                         <Select 
-                          value={String(dateRange.endHour)} 
-                          onValueChange={(v) => setDateRange({...dateRange, endHour: parseInt(v)})}
+                          value={String(getLocalHour(dateRange.to))} 
+                          onValueChange={(v) => {
+                            const hourLocal = parseInt(v);
+                            // 更新 UTC 时间以匹配选择的本地小时
+                            const localTo = utcToLocal(dateRange.to);
+                            localTo.setHours(hourLocal, 0, 0, 0);
+                            const toUTC = localToUTC(localTo);
+                            setDateRange({...dateRange, to: toUTC, endHour: hourLocal});
+                          }}
                         >
                           <SelectTrigger className="h-8 text-xs">
                             <SelectValue />
@@ -502,7 +532,8 @@ export function ControlPanel({
                             <ScrollArea className="h-48">
                               {(() => {
                                 const now = new Date();
-                                const isToday = dateRange.to.toDateString() === now.toDateString();
+                                const displayTo = utcToLocal(dateRange.to);
+                                const isToday = displayTo.toDateString() === now.toDateString();
                                 const maxHour = isToday ? Math.max(0, now.getHours() - 1) : 23;
                                 return Array.from({length: maxHour + 1}, (_, i) => (
                                   <SelectItem key={i} value={String(i)}>{String(i).padStart(2, '0')}:00</SelectItem>
@@ -518,17 +549,23 @@ export function ControlPanel({
                     <div className="flex gap-2 mt-3 pt-3 border-t border-gray-200">
                       <Button size="sm" variant="outline" className="text-xs flex-1"
                         onClick={() => {
-                          const now = new Date();
-                          const endHour = Math.max(0, now.getHours() - 1);
-                          const from = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-                          setDateRange({ from, to: now, startHour: endHour, endHour });
+                          const nowLocal = new Date();
+                          const endHourLocal = Math.max(0, nowLocal.getHours() - 1);
+                          const fromLocal = new Date(nowLocal.getTime() - 7 * 24 * 60 * 60 * 1000);
+                          // 转换为 UTC 存储
+                          const fromUTC = localToUTC(fromLocal);
+                          const toUTC = localToUTC(nowLocal);
+                          setDateRange({ from: fromUTC, to: toUTC, startHour: endHourLocal, endHour: endHourLocal });
                         }}>Last 7 Days</Button>
                       <Button size="sm" variant="outline" className="text-xs flex-1"
                         onClick={() => {
-                          const now = new Date();
-                          const endHour = Math.max(0, now.getHours() - 1);
-                          const from = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-                          setDateRange({ from, to: now, startHour: endHour, endHour });
+                          const nowLocal = new Date();
+                          const endHourLocal = Math.max(0, nowLocal.getHours() - 1);
+                          const fromLocal = new Date(nowLocal.getTime() - 30 * 24 * 60 * 60 * 1000);
+                          // 转换为 UTC 存储
+                          const fromUTC = localToUTC(fromLocal);
+                          const toUTC = localToUTC(nowLocal);
+                          setDateRange({ from: fromUTC, to: toUTC, startHour: endHourLocal, endHour: endHourLocal });
                         }}>Last 30 Days</Button>
                     </div>
                   </PopoverContent>

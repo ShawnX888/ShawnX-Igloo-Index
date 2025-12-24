@@ -12,6 +12,7 @@ import { PRODUCTS } from './ControlPanel';
 import { format, startOfMonth } from "date-fns";
 import { productLibrary } from "../../lib/productLibrary";
 import { useExtendedWeatherData } from "../../hooks/useExtendedWeatherData";
+import { utcToLocal, formatUTCDate } from '../../lib/timeUtils';
 
 interface DataDashboardProps {
   selectedRegion: Region;
@@ -463,17 +464,18 @@ export function DataDashboard({
     };
   }, [weatherStatistics, statistics, selectedProduct]);
 
-  // Format Date Helper
+  // Format Date Helper (UTC to Local)
   const formatDateAxis = (val: string | number | Date) => {
     try {
       if (!val) return "";
-      const date = new Date(val);
-      if (isNaN(date.getTime())) return String(val);
+      const dateUTC = new Date(val); // ISO 字符串解析为 UTC
+      if (isNaN(dateUTC.getTime())) return String(val);
 
+      // 转换为本地时间显示
       if (viewMode === 'daily') {
-        return format(date, "dd MMM"); 
+        return formatUTCDate(dateUTC, "dd MMM"); 
       }
-      return format(date, "dd/MM HH:mm");
+      return formatUTCDate(dateUTC, "dd/MM HH:mm");
     } catch (e) {
       return String(val);
     }
@@ -556,9 +558,11 @@ export function DataDashboard({
              <div className="flex items-center gap-2 mt-3 text-gray-500 font-medium animate-in fade-in slide-in-from-left-2 duration-500 delay-100 pl-1">
                 <Clock className="w-4 h-4 text-gray-400" />
                 <span className="text-sm font-semibold tracking-tight">
-                   {format(dateRange.from, "MMM dd, yyyy")} {String(dateRange.startHour).padStart(2, '0')}:00
-                   {' — '}
-                   {format(dateRange.to, "MMM dd, yyyy")} {String(dateRange.endHour).padStart(2, '0')}:00
+                   {(() => {
+                     const displayFrom = utcToLocal(dateRange.from);
+                     const displayTo = utcToLocal(dateRange.to);
+                     return `${format(displayFrom, "MMM dd, yyyy")} ${String(displayFrom.getHours()).padStart(2, '0')}:00 — ${format(displayTo, "MMM dd, yyyy")} ${String(displayTo.getHours()).padStart(2, '0')}:00`;
+                   })()}
                 </span>
              </div>
          )}
@@ -946,8 +950,8 @@ export function DataDashboard({
                          <div key={idx} className="relative pl-5 border-l-2 border-red-100 pb-2 last:pb-0">
                             <div className="absolute -left-[7px] top-1 w-3 h-3 rounded-full bg-red-500 border-2 border-white shadow-sm" />
                             <div className="flex items-center gap-2 mb-1.5">
-                              <span className="text-xs font-bold text-gray-500 uppercase">{format(new Date(event.timestamp), "yyyy-MM-dd")}</span>
-                              <span className="text-[10px] text-gray-400 font-medium">{format(new Date(event.timestamp), "HH:mm")}</span>
+                              <span className="text-xs font-bold text-gray-500 uppercase">{formatUTCDate(event.timestamp, "yyyy-MM-dd")}</span>
+                              <span className="text-[10px] text-gray-400 font-medium">{formatUTCDate(event.timestamp, "HH:mm")}</span>
                             </div>
                             <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 hover:border-red-200 transition-colors">
                                <div className="flex items-center justify-between mb-1">
