@@ -315,8 +315,14 @@ export function DataDashboard({
       });
     } else if (timeWindow.type === 'monthly') {
       // For monthly data, calculate cumulative from month start
-      // Use local timezone to ensure alignment with extended data and user expectations
-      const monthStart = startOfDay(startOfMonth(dateRange.from));
+      // Use UTC timezone to ensure alignment with extended data and risk calculation
+      // Get month start (1st day, 00:00:00 UTC)
+      const monthStart = new Date(Date.UTC(
+        dateRange.from.getUTCFullYear(),
+        dateRange.from.getUTCMonth(),
+        1, // 1st day
+        0, 0, 0, 0
+      ));
 
       // Early return if sourceData is empty
       if (sourceData.length === 0) {
@@ -334,11 +340,11 @@ export function DataDashboard({
 
       // Calculate total for the month from extended data
       // Extended data should include data from month start to dateRange.to
-      // All dates use local timezone for consistency with user display and data generation
+      // All dates use UTC timezone for consistency with data generation and risk calculation
       const monthData = sourceData.filter(item => {
         const itemDate = new Date(item.date);
-        // Compare dates using local timezone
-        return itemDate >= monthStart && itemDate <= dateRange.to;
+        // Compare dates using UTC timezone
+        return itemDate.getTime() >= monthStart.getTime() && itemDate.getTime() <= dateRange.to.getTime();
       });
       const totalRain = calculateAggregatedValue(monthData);
 
