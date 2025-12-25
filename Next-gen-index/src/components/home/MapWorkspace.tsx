@@ -9,6 +9,7 @@ import {
   createMap, 
   getDefaultMapConfig 
 } from "../../lib/googleMaps";
+import { getMapModeStyles } from "../../config/mapModeStyles";
 import { useRegionBoundaryLayer } from "../../hooks/useRegionBoundaryLayer";
 import { useRainfallHeatmapLayer } from "../../hooks/useRainfallHeatmapLayer";
 import { useRiskEventMarkersLayer } from "../../hooks/useRiskEventMarkersLayer";
@@ -25,6 +26,7 @@ function RegionBoundaryLayerRenderer({
   province,
   onRegionSelect,
   heatmapVisible = false,
+  mapMode = '2d',
 }: {
   map: google.maps.Map;
   selectedRegion: Region;
@@ -33,6 +35,7 @@ function RegionBoundaryLayerRenderer({
   province: string;
   onRegionSelect: (region: Region) => void;
   heatmapVisible?: boolean;
+  mapMode?: '2d' | '3d';
 }) {
   useRegionBoundaryLayer({
     map,
@@ -42,6 +45,7 @@ function RegionBoundaryLayerRenderer({
     province,
     onRegionSelect,
     heatmapVisible,
+    mapMode,
   });
   return null;
 }
@@ -55,6 +59,7 @@ function RainfallHeatmapLayerRenderer({
   rainfallData,
   dataType,
   visible,
+  mapMode = '2d',
 }: {
   map: google.maps.Map;
   districts: string[];
@@ -63,6 +68,7 @@ function RainfallHeatmapLayerRenderer({
   rainfallData: RegionWeatherData;
   dataType: DataType;
   visible: boolean;
+  mapMode?: '2d' | '3d';
 }) {
   useRainfallHeatmapLayer({
     map,
@@ -72,6 +78,7 @@ function RainfallHeatmapLayerRenderer({
     rainfallData,
     dataType,
     visible,
+    mapMode,
   });
   return null;
 }
@@ -87,6 +94,7 @@ function RiskEventMarkersLayerRenderer({
   dataType,
   selectedProduct,
   visible,
+  mapMode = '2d',
 }: {
   map: google.maps.Map;
   districts: string[];
@@ -97,6 +105,7 @@ function RiskEventMarkersLayerRenderer({
   dataType: DataType;
   selectedProduct: InsuranceProduct | null;
   visible: boolean;
+  mapMode?: '2d' | '3d';
 }) {
   useRiskEventMarkersLayer({
     map,
@@ -108,6 +117,7 @@ function RiskEventMarkersLayerRenderer({
     dataType,
     selectedProduct,
     visible,
+    mapMode,
   });
   return null;
 }
@@ -147,6 +157,8 @@ export function MapWorkspace({ selectedRegion, weatherDataType, riskData, select
 
   // 地图模式：2D 或 3D
   const [mapMode, setMapMode] = useState<'2d' | '3d'>('2d');
+  // 切换过渡状态
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   // GPS定位处理函数
   const handleGPSClick = useCallback(async () => {
@@ -270,6 +282,87 @@ export function MapWorkspace({ selectedRegion, weatherDataType, riskData, select
     };
   }, []);
 
+  // 模式切换逻辑：监听 mapMode 变化，实现平滑切换动画
+  useEffect(() => {
+    if (!mapInstanceRef.current || !mapsLoaded) return;
+    
+    const map = mapInstanceRef.current;
+    const targetMode = mapMode;
+    const styles = getMapModeStyles(targetMode);
+    const mapConfig = styles.map;
+
+    // 保存当前地图的中心点和缩放级别，确保切换时位置不变
+    const currentCenter = map.getCenter();
+    const currentZoom = map.getZoom() || 11;
+
+    // 设置过渡状态，禁用交互
+    setIsTransitioning(true);
+    
+    // 在过渡期间禁用地图交互（拖拽、缩放等）
+    map.setOptions({
+      draggable: false,
+      zoomControl: false,
+      scrollwheel: false,
+      disableDoubleClickZoom: true,
+    });
+
+    // 平滑过渡地图参数
+    // Google Maps 的 setTilt、setHeading、setZoom 方法支持平滑过渡
+    if (targetMode === '2d' || targetMode === '3d') {
+      // 确保中心点保持不变（在调整其他参数前先设置中心点）
+      if (currentCenter) {
+        map.setCenter(currentCenter);
+      }
+
+      // 确保 3D 模式下 zoom >= 17，但只在必要时调整
+      const targetZoom = mapConfig.zoom;
+      
+      if (targetMode === '3d') {
+        // 3D 模式：如果当前 zoom < 17，需要调整到至少 17
+        // 但为了保持位置，我们使用平滑过渡，并确保中心点不变
+        if (currentZoom < 17) {
+          // 先确保中心点，然后调整 zoom（Google Maps 会自动保持中心点）
+          // 使用 setZoom 会平滑过渡，并自动保持当前中心点
+          map.setZoom(Math.max(17, targetZoom));
+        }
+        // 如果当前 zoom >= 17，保持当前 zoom，不强制调整到 18
+        // 这样可以避免不必要的缩放，保持用户当前的视角
+      } else {
+        // 2D 模式：不强制调整 zoom，保持用户当前的缩放级别
+        // 这样可以保持用户当前的视角
+      }
+      
+      // 平滑更新 tilt 和 heading（这些操作不会改变地图中心点）
+      map.setTilt(mapConfig.tilt);
+      map.setHeading(mapConfig.heading);
+      
+      // 更新旋转控制
+      map.setOptions({ rotateControl: mapConfig.rotateControl });
+    }
+
+    // 等待过渡完成（Google Maps 自动处理平滑过渡）
+    // 过渡时长建议 500-800ms
+    const transitionTimeout = setTimeout(() => {
+      // 再次确保中心点保持不变（防止在过渡过程中偏移）
+      if (currentCenter) {
+        map.setCenter(currentCenter);
+      }
+      
+      // 恢复地图交互
+      map.setOptions({
+        draggable: true,
+        zoomControl: true,
+        scrollwheel: true,
+        disableDoubleClickZoom: false,
+      });
+      setIsTransitioning(false);
+    }, 800);
+
+    return () => {
+      clearTimeout(transitionTimeout);
+    };
+  }, [mapMode, mapsLoaded]);
+
 
   return (
     <div className="w-full h-full relative overflow-hidden bg-[#eef2f6]">
@@ -313,6 +406,7 @@ export function MapWorkspace({ selectedRegion, weatherDataType, riskData, select
           rainfallData={allRegionsWeatherData}
           dataType={weatherDataType}
           visible={layers.heatmap}
+          mapMode={mapMode}
         />
       )}
 
@@ -328,6 +422,7 @@ export function MapWorkspace({ selectedRegion, weatherDataType, riskData, select
           dataType={weatherDataType}
           selectedProduct={selectedProduct}
           visible={layers.events}
+          mapMode={mapMode}
         />
       )}
 
@@ -341,6 +436,7 @@ export function MapWorkspace({ selectedRegion, weatherDataType, riskData, select
           province={selectedRegion.province}
           onRegionSelect={setSelectedRegion}
           heatmapVisible={layers.heatmap && !!allRegionsWeatherData}
+          mapMode={mapMode}
         />
       )}
 
@@ -352,19 +448,26 @@ export function MapWorkspace({ selectedRegion, weatherDataType, riskData, select
         {/* 2D/3D 切换按钮 */}
         <button 
            onClick={() => {
-             // 切换地图模式（3D 功能稍后实现）
+             if (isTransitioning) return; // 过渡期间禁用切换
              setMapMode(prev => prev === '2d' ? '3d' : '2d');
-             // TODO: 实现 3D 地图切换逻辑
            }}
+           disabled={isTransitioning}
            className={cn(
-             "p-2 rounded transition-all",
+             "p-2 rounded transition-all relative",
              mapMode === '2d' 
                ? "hover:bg-gray-100 text-gray-500 hover:text-blue-600" 
-               : "bg-blue-50 text-blue-600 hover:bg-blue-100"
+               : "bg-blue-50 text-blue-600 hover:bg-blue-100",
+             isTransitioning && "opacity-50 cursor-wait"
            )}
-           title={mapMode === '2d' ? "Switch to 3D View" : "Switch to 2D View"}
+           title={isTransitioning 
+             ? "Switching..." 
+             : mapMode === '2d' 
+               ? "Switch to 3D View" 
+               : "Switch to 2D View"}
         >
-          {mapMode === '2d' ? (
+          {isTransitioning ? (
+            <Loader2 className="w-5 h-5 animate-spin" />
+          ) : mapMode === '2d' ? (
             <Box className="w-5 h-5" />
           ) : (
             <Square className="w-5 h-5" />

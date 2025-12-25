@@ -6,6 +6,7 @@
 import { useEffect, useRef } from 'react';
 import { Region, LatLngLiteral } from '../types';
 import { getAdministrativeRegion, googleToGadmName } from '../lib/regionData';
+import { getMapModeStyles } from '../config/mapModeStyles';
 
 /**
  * GeoJSON Feature格式
@@ -49,6 +50,8 @@ interface RegionBoundaryLayerConfig {
   onRegionSelect?: (region: Region) => void;
   /** 热力图图层是否可见（影响填充样式） */
   heatmapVisible?: boolean;
+  /** 地图模式：'2d' 或 '3d' */
+  mapMode?: '2d' | '3d';
 }
 
 /**
@@ -134,14 +137,16 @@ export function useRegionBoundaryLayer({
   province,
   onRegionSelect,
   heatmapVisible = false,
+  mapMode = '2d',
 }: RegionBoundaryLayerConfig) {
   const dataLayerRef = useRef<google.maps.Data | null>(null);
   const isInitializedRef = useRef(false);
   const pulseIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const pulseStateRef = useRef(0); // 0-3 脉动状态
-  // 使用 ref 存储最新的 selectedRegion 和 heatmapVisible，供事件处理器访问
+  // 使用 ref 存储最新的 selectedRegion、heatmapVisible 和 mapMode，供事件处理器访问
   const selectedRegionRef = useRef<Region>(selectedRegion);
   const heatmapVisibleRef = useRef<boolean>(heatmapVisible);
+  const mapModeRef = useRef<'2d' | '3d'>(mapMode);
 
   // 初始化数据图层
   useEffect(() => {
@@ -181,14 +186,18 @@ export function useRegionBoundaryLayer({
           idPropertyName: 'district',
         });
 
-        // 设置默认样式（基础样式）
+        // 从样式配置读取边界图层样式
+        const styles = getMapModeStyles(mapMode);
+        const boundaryStyles = styles.boundary;
+
+        // 设置默认样式（从配置读取）
         dataLayer.setStyle((feature) => {
           return {
             fillColor: 'transparent',
             fillOpacity: 0,
-            strokeColor: '#C0C0C0',
-            strokeWeight: 1,
-            strokeOpacity: 0.4,
+            strokeColor: boundaryStyles.strokeColor,
+            strokeWeight: boundaryStyles.strokeWeight,
+            strokeOpacity: boundaryStyles.strokeOpacity,
           };
         });
 
@@ -215,19 +224,25 @@ export function useRegionBoundaryLayer({
           }
         });
 
-        // 设置鼠标悬停样式
+        // 设置鼠标悬停样式（从配置读取）
         dataLayer.addListener('mouseover', (event: google.maps.Data.MouseEvent) => {
+          const currentStyles = getMapModeStyles(mapModeRef.current);
           dataLayer.overrideStyle(event.feature, {
             strokeColor: '#4285F4',
-            strokeWeight: 2,
-            strokeOpacity: 0.8,
+            strokeWeight: currentStyles.boundary.selectedStrokeWeight,
+            strokeOpacity: currentStyles.boundary.selectedStrokeOpacity,
           });
         });
 
         dataLayer.addListener('mouseout', (event: google.maps.Data.MouseEvent) => {
-          // 使用 ref 获取最新的 selectedRegion 和 heatmapVisible，避免闭包问题
+          // 使用 ref 获取最新的 selectedRegion、heatmapVisible 和 mapMode，避免闭包问题
           const currentSelectedRegion = selectedRegionRef.current;
           const currentHeatmapVisible = heatmapVisibleRef.current;
+          const currentMapMode = mapModeRef.current;
+          
+          // 从样式配置读取样式
+          const currentStyles = getMapModeStyles(currentMapMode);
+          const boundaryStyles = currentStyles.boundary;
           
           // 清除悬停样式，恢复到由 useEffect 管理的默认样式
           const district = event.feature.getProperty('district');
@@ -238,16 +253,16 @@ export function useRegionBoundaryLayer({
           let fillColor = 'transparent';
           let fillOpacity = 0;
           if (isSelected && !currentHeatmapVisible) {
-            fillColor = '#E3F2FD';
-            fillOpacity = 0.6;
+            fillColor = boundaryStyles.selectedFillColor;
+            fillOpacity = boundaryStyles.selectedFillOpacity;
           }
 
           dataLayer.overrideStyle(event.feature, {
             fillColor,
             fillOpacity,
-            strokeColor: isSelected ? '#4285F4' : '#C0C0C0',
-            strokeWeight: isSelected ? 3 : 1,
-            strokeOpacity: isSelected ? 1 : 0.4,
+            strokeColor: isSelected ? '#4285F4' : boundaryStyles.strokeColor,
+            strokeWeight: isSelected ? boundaryStyles.selectedStrokeWeight : boundaryStyles.strokeWeight,
+            strokeOpacity: isSelected ? boundaryStyles.selectedStrokeOpacity : boundaryStyles.strokeOpacity,
           });
         });
 
@@ -269,7 +284,7 @@ export function useRegionBoundaryLayer({
       }
       isInitializedRef.current = false;
     };
-  }, [map, country, province, districts.join(',')]); // 移除了 selectedRegion.district 和 heatmapVisible，避免不必要的重新加载
+  }, [map, country, province, districts.join(','), mapMode]); // 添加 mapMode 依赖，当模式切换时重新加载样式
 
   // 更新 ref 中的最新值
   useEffect(() => {
@@ -280,11 +295,19 @@ export function useRegionBoundaryLayer({
     heatmapVisibleRef.current = heatmapVisible;
   }, [heatmapVisible]);
 
-  // 更新选中区域的样式
+  useEffect(() => {
+    mapModeRef.current = mapMode;
+  }, [mapMode]);
+
+  // 更新选中区域的样式（监听 mapMode 变化）
   useEffect(() => {
     if (!dataLayerRef.current || !isInitializedRef.current) {
       return;
     }
+
+    // 从样式配置读取边界图层样式
+    const styles = getMapModeStyles(mapMode);
+    const boundaryStyles = styles.boundary;
 
     // 更新所有区域的样式
     dataLayerRef.current.forEach((feature) => {
@@ -296,19 +319,19 @@ export function useRegionBoundaryLayer({
       let fillColor = 'transparent';
       let fillOpacity = 0;
       if (isSelected && !heatmapVisible) {
-        fillColor = '#E3F2FD';
-        fillOpacity = 0.6;
+        fillColor = boundaryStyles.selectedFillColor;
+        fillOpacity = boundaryStyles.selectedFillOpacity;
       }
 
       dataLayerRef.current!.overrideStyle(feature, {
         fillColor,
         fillOpacity,
-        strokeColor: isSelected ? '#4285F4' : '#C0C0C0',
-        strokeWeight: isSelected ? 3 : 1,
-        strokeOpacity: isSelected ? 1 : 0.4,
+        strokeColor: isSelected ? '#4285F4' : boundaryStyles.strokeColor,
+        strokeWeight: isSelected ? boundaryStyles.selectedStrokeWeight : boundaryStyles.strokeWeight,
+        strokeOpacity: isSelected ? boundaryStyles.selectedStrokeOpacity : boundaryStyles.strokeOpacity,
       });
     });
-  }, [selectedRegion, heatmapVisible]);
+  }, [selectedRegion, heatmapVisible, mapMode]);
 
   // 选中区域边框脉动动画（仅在热力图可见时激活）
   useEffect(() => {

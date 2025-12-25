@@ -202,6 +202,8 @@ export function createMap(
   return new Map(container, options);
 }
 
+import { getMapModeStyles } from '../config/mapModeStyles';
+
 /**
  * 获取默认地图配置（印尼雅加达）
  * 
@@ -216,40 +218,33 @@ export function getDefaultMapConfig(mapMode: '2d' | '3d' = '2d'): google.maps.Ma
   fetch('http://127.0.0.1:7242/ingest/9b65e1ca-e15e-461c-9d2b-d9c022103649',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'googleMaps.ts:213',message:'Map ID read from env',data:{mapId,mapMode,envValue:(import.meta.env as any).VITE_GOOGLE_MAPS_MAP_ID},timestamp:Date.now(),sessionId:'debug-session',runId:'initial',hypothesisId:'A'})}).catch(()=>{});
   // #endregion
 
+  // 从样式配置读取地图配置参数
+  const styles = getMapModeStyles(mapMode);
+  const mapConfig = styles.map;
+
   const baseConfig: google.maps.MapOptions = {
     center: {
       lat: -6.2088, // 雅加达纬度
       lng: 106.8456, // 雅加达经度
     },
-    zoom: mapMode === '3d' ? 15 : 11, // 3D 模式需要更高缩放级别
+    zoom: mapConfig.zoom,
     mapTypeId: 'roadmap',
     // Map ID 用于启用 Advanced Markers 和 3D Buildings
     // 通过环境变量 VITE_GOOGLE_MAPS_MAP_ID 配置
     // 如果未配置，使用 DEMO_MAP_ID（不支持 3D 功能）
+    // 注意：Vector Map + 3D Buildings 需要 Map ID 类型为 Vector
     mapId,
     disableDefaultUI: false,
     zoomControl: true,
     mapTypeControl: false,
     scaleControl: true,
     streetViewControl: false,
-    rotateControl: mapMode === '3d', // 3D 模式下启用旋转控制
+    rotateControl: mapConfig.rotateControl,
     fullscreenControl: true,
+    tilt: mapConfig.tilt,
+    heading: mapConfig.heading,
   };
 
-  // 3D 模式特定配置
-  if (mapMode === '3d') {
-    return {
-      ...baseConfig,
-      tilt: 45,        // 倾斜角度（0-45度，45度是最大倾斜）
-      heading: 0,     // 初始旋转角度（0-360度）
-    };
-  }
-
-  // 2D 模式配置
-  return {
-    ...baseConfig,
-    tilt: 0,          // 2D 模式：无倾斜
-    heading: 0,       // 2D 模式：无旋转
-  };
+  return baseConfig;
 }
 

@@ -6,6 +6,7 @@
 import { useEffect, useRef } from 'react';
 import { Region, DataType, LatLngLiteral, RegionWeatherData } from '../types';
 import { getAdministrativeRegion, googleToGadmName } from '../lib/regionData';
+import { getMapModeStyles } from '../config/mapModeStyles';
 
 /**
  * GeoJSON Feature格式
@@ -50,6 +51,8 @@ interface RainfallHeatmapLayerConfig {
   dataType: DataType;
   /** 图层是否可见 */
   visible: boolean;
+  /** 地图模式：'2d' 或 '3d' */
+  mapMode?: '2d' | '3d';
 }
 
 /**
@@ -70,14 +73,19 @@ function calculateTotalRainfall(data: { value: number }[]): number {
 }
 
 /**
- * 根据降雨量计算透明度（0.2 ~ 0.8）
+ * 根据降雨量计算透明度
  * 降雨量越大，透明度越高
+ * @param rainfall 当前降雨量
+ * @param maxRainfall 最大降雨量
+ * @param opacityRange 透明度范围 { min, max }
  */
-function calculateOpacity(rainfall: number, maxRainfall: number): number {
-  const minOpacity = 0.15;
-  const maxOpacity = 0.7;
+function calculateOpacity(
+  rainfall: number, 
+  maxRainfall: number, 
+  opacityRange: { min: number; max: number }
+): number {
   const intensity = Math.min(rainfall / maxRainfall, 1);
-  return minOpacity + (maxOpacity - minOpacity) * intensity;
+  return opacityRange.min + (opacityRange.max - opacityRange.min) * intensity;
 }
 
 /**
@@ -154,6 +162,7 @@ export function useRainfallHeatmapLayer({
   rainfallData,
   dataType,
   visible,
+  mapMode = '2d',
 }: RainfallHeatmapLayerConfig) {
   const dataLayerRef = useRef<google.maps.Data | null>(null);
   const isInitializedRef = useRef(false);
@@ -215,19 +224,21 @@ export function useRainfallHeatmapLayer({
           idPropertyName: 'district',
         });
 
-        // 设置样式（根据降雨量设置透明度）
+        // 从样式配置读取热力图图层样式
+        const styles = getMapModeStyles(mapMode);
+        const heatmapStyles = styles.heatmap;
         const fillColor = HEATMAP_COLORS[dataType];
         
         dataLayer.setStyle((feature) => {
           const rainfall = feature.getProperty('rainfall') as number;
-          const opacity = calculateOpacity(rainfall, maxRainfall);
+          const opacity = calculateOpacity(rainfall, maxRainfall, heatmapStyles.fillOpacity);
 
           return {
             fillColor,
             fillOpacity: opacity,
             strokeColor: fillColor,
-            strokeWeight: 0.5,
-            strokeOpacity: 0.3,
+            strokeWeight: heatmapStyles.strokeWeight,
+            strokeOpacity: heatmapStyles.strokeOpacity,
             clickable: false, // 关键：禁用点击，防止拦截底层图层的点击事件
           };
         });
@@ -250,7 +261,7 @@ export function useRainfallHeatmapLayer({
       }
       isInitializedRef.current = false;
     };
-  }, [map, country, province, districts.join(','), rainfallData, dataType, visible]);
+  }, [map, country, province, districts.join(','), rainfallData, dataType, visible, mapMode]);
 
   return {
     dataLayer: dataLayerRef.current,

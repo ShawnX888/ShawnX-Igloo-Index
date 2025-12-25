@@ -6,6 +6,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Region, DataType, RiskData, InsuranceProduct, AdministrativeRegion } from '../types';
 import { getAdministrativeRegion, googleToGadmName } from '../lib/regionData';
+import { getMapModeStyles } from '../config/mapModeStyles';
 
 /**
  * 风险事件标记图层配置
@@ -29,6 +30,8 @@ interface RiskEventMarkersLayerConfig {
   selectedProduct: InsuranceProduct | null;
   /** 图层是否可见 */
   visible: boolean;
+  /** 地图模式：'2d' 或 '3d' */
+  mapMode?: '2d' | '3d';
 }
 
 /**
@@ -40,23 +43,37 @@ const MARKER_COLORS = {
 };
 
 /**
- * 根据事件数量计算标记大小（15-40px）
+ * 根据事件数量计算标记大小
+ * @param eventCount 事件数量
+ * @param maxCount 最大事件数量
+ * @param sizeMultiplier 大小倍数（从样式配置读取）
  */
-function calculateMarkerSize(eventCount: number, maxCount: number): number {
-  const minSize = 20;
-  const maxSize = 50;
+function calculateMarkerSize(
+  eventCount: number, 
+  maxCount: number, 
+  sizeMultiplier: number
+): number {
+  const baseMinSize = 20;
+  const baseMaxSize = 50;
+  const minSize = baseMinSize * sizeMultiplier;
+  const maxSize = baseMaxSize * sizeMultiplier;
   const normalizedCount = Math.min(eventCount / Math.max(maxCount, 1), 1);
   return minSize + normalizedCount * (maxSize - minSize);
 }
 
 /**
- * 根据事件数量计算透明度（0.3-0.8）
+ * 根据事件数量计算透明度
+ * @param eventCount 事件数量
+ * @param maxCount 最大事件数量
+ * @param opacityRange 透明度范围 { min, max }（从样式配置读取）
  */
-function calculateOpacity(eventCount: number, maxCount: number): number {
-  const minOpacity = 0.4;
-  const maxOpacity = 0.9;
+function calculateOpacity(
+  eventCount: number, 
+  maxCount: number, 
+  opacityRange: { min: number; max: number }
+): number {
   const normalizedCount = Math.min(eventCount / Math.max(maxCount, 1), 1);
-  return minOpacity + normalizedCount * (maxOpacity - minOpacity);
+  return opacityRange.min + normalizedCount * (opacityRange.max - opacityRange.min);
 }
 
 /**
@@ -66,13 +83,15 @@ function createMarkerContent(
   eventCount: number,
   maxCount: number,
   isSelected: boolean,
-  baseColor: string
+  baseColor: string,
+  sizeMultiplier: number,
+  opacityRange: { min: number; max: number }
 ): HTMLElement {
   const container = document.createElement('div');
   container.className = 'risk-marker-container';
   
-  const size = calculateMarkerSize(eventCount, maxCount);
-  const opacity = calculateOpacity(eventCount, maxCount);
+  const size = calculateMarkerSize(eventCount, maxCount, sizeMultiplier);
+  const opacity = calculateOpacity(eventCount, maxCount, opacityRange);
   
   // 主圆形标记
   const marker = document.createElement('div');
@@ -152,6 +171,7 @@ export function useRiskEventMarkersLayer({
   dataType,
   selectedProduct,
   visible,
+  mapMode = '2d',
 }: RiskEventMarkersLayerConfig) {
   const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
   const regionCentersRef = useRef<Map<string, { lat: number; lng: number }>>(new Map());
@@ -225,6 +245,10 @@ export function useRiskEventMarkersLayer({
     const maxEvents = Math.max(...filteredRiskData.map(d => d.events), 1);
     const baseColor = MARKER_COLORS[dataType];
 
+    // 从样式配置读取标记图层样式
+    const styles = getMapModeStyles(mapMode);
+    const markerStyles = styles.markers;
+
     // 为每个有风险事件的区域创建标记
     const newMarkers: google.maps.marker.AdvancedMarkerElement[] = [];
 
@@ -237,7 +261,14 @@ export function useRiskEventMarkersLayer({
       }
 
       const isSelected = selectedRegion.district === districtName;
-      const content = createMarkerContent(risk.events, maxEvents, isSelected, baseColor);
+      const content = createMarkerContent(
+        risk.events, 
+        maxEvents, 
+        isSelected, 
+        baseColor,
+        markerStyles.sizeMultiplier,
+        markerStyles.opacity
+      );
 
       const marker = new google.maps.marker.AdvancedMarkerElement({
         map,
@@ -251,7 +282,7 @@ export function useRiskEventMarkersLayer({
     }
 
     markersRef.current = newMarkers;
-  }, [map, visible, selectedProduct, riskData, selectedRegion, dataType, districts, country, province, centersLoaded]);
+  }, [map, visible, selectedProduct, riskData, selectedRegion, dataType, districts, country, province, centersLoaded, mapMode]);
 
   // 清理函数
   useEffect(() => {
