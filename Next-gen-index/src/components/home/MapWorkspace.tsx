@@ -228,14 +228,15 @@ export function MapWorkspace({ selectedRegion, weatherDataType, riskData, select
         }
 
         // 创建地图配置（使用步骤02中定义的类型）
-        const defaultConfig = getDefaultMapConfig();
+        // 注意：初始化时使用当前 mapMode，后续切换通过 useEffect 处理
+        const defaultConfig = getDefaultMapConfig(mapMode);
         const mapConfig: google.maps.MapOptions = {
           ...defaultConfig,
           center: {
             lat: -6.2088, // 雅加达纬度
             lng: 106.8456, // 雅加达经度
           },
-          zoom: 11,
+          // zoom 已在 getDefaultMapConfig 中根据 mapMode 设置
         };
 
         // 创建地图实例

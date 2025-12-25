@@ -204,25 +204,52 @@ export function createMap(
 
 /**
  * 获取默认地图配置（印尼雅加达）
+ * 
+ * @param mapMode 地图模式：'2d' 或 '3d'，默认为 '2d'
+ * @returns 地图配置选项
  */
-export function getDefaultMapConfig(): google.maps.MapOptions {
-  return {
+export function getDefaultMapConfig(mapMode: '2d' | '3d' = '2d'): google.maps.MapOptions {
+  // 从环境变量读取 Map ID，如果未配置则使用 DEMO_MAP_ID（仅用于开发测试）
+  const mapId = (import.meta.env as any).VITE_GOOGLE_MAPS_MAP_ID || 'DEMO_MAP_ID';
+
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/9b65e1ca-e15e-461c-9d2b-d9c022103649',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'googleMaps.ts:213',message:'Map ID read from env',data:{mapId,mapMode,envValue:(import.meta.env as any).VITE_GOOGLE_MAPS_MAP_ID},timestamp:Date.now(),sessionId:'debug-session',runId:'initial',hypothesisId:'A'})}).catch(()=>{});
+  // #endregion
+
+  const baseConfig: google.maps.MapOptions = {
     center: {
       lat: -6.2088, // 雅加达纬度
       lng: 106.8456, // 雅加达经度
     },
-    zoom: 11,
+    zoom: mapMode === '3d' ? 15 : 11, // 3D 模式需要更高缩放级别
     mapTypeId: 'roadmap',
-    // Map ID 用于启用 Advanced Markers
-    // 使用 Google 提供的演示 Map ID，生产环境应替换为自己的 Map ID
-    mapId: 'DEMO_MAP_ID',
+    // Map ID 用于启用 Advanced Markers 和 3D Buildings
+    // 通过环境变量 VITE_GOOGLE_MAPS_MAP_ID 配置
+    // 如果未配置，使用 DEMO_MAP_ID（不支持 3D 功能）
+    mapId,
     disableDefaultUI: false,
     zoomControl: true,
     mapTypeControl: false,
     scaleControl: true,
     streetViewControl: false,
-    rotateControl: false,
+    rotateControl: mapMode === '3d', // 3D 模式下启用旋转控制
     fullscreenControl: true,
+  };
+
+  // 3D 模式特定配置
+  if (mapMode === '3d') {
+    return {
+      ...baseConfig,
+      tilt: 45,        // 倾斜角度（0-45度，45度是最大倾斜）
+      heading: 0,     // 初始旋转角度（0-360度）
+    };
+  }
+
+  // 2D 模式配置
+  return {
+    ...baseConfig,
+    tilt: 0,          // 2D 模式：无倾斜
+    heading: 0,       // 2D 模式：无旋转
   };
 }
 
