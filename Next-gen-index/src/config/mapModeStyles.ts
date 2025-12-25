@@ -112,7 +112,7 @@ export const mapModeStyles: Record<'2d' | '3d', MapModeStyles> = {
       strokeColor: '#C0C0C0',
       selectedStrokeWeight: 4,
       selectedStrokeOpacity: 1,
-      selectedFillOpacity: 0.7,
+      selectedFillOpacity: 0.2,
       selectedFillColor: '#E3F2FD',
     },
     heatmap: {
