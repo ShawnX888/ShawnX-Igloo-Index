@@ -6,6 +6,7 @@
 
 import { useRef, useCallback, useEffect, useState } from 'react';
 import { MapAnimationEngine } from '../lib/mapAnimationEngine';
+import { InitializeStrategy } from '../lib/mapAnimationStrategies';
 import type {
   UseMapAnimationOptions,
   FlyToOptions,
@@ -37,21 +38,27 @@ export function useMapAnimation(options: UseMapAnimationOptions) {
 
   // 动画引擎实例
   const engineRef = useRef<MapAnimationEngine | null>(null);
+  // 动画策略实例
+  const initializeStrategyRef = useRef<InitializeStrategy | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
 
-  // 初始化动画引擎
+  // 初始化动画引擎和策略
   useEffect(() => {
     if (!map) {
       engineRef.current = null;
+      initializeStrategyRef.current = null;
       return;
     }
 
-    engineRef.current = new MapAnimationEngine();
+    const engine = new MapAnimationEngine();
+    engineRef.current = engine;
+    initializeStrategyRef.current = new InitializeStrategy(engine);
 
     return () => {
       // 清理资源
-      engineRef.current?.dispose();
+      engine.dispose();
       engineRef.current = null;
+      initializeStrategyRef.current = null;
     };
   }, [map]);
 
@@ -83,8 +90,8 @@ export function useMapAnimation(options: UseMapAnimationOptions) {
    */
   const initialize = useCallback(
     async (options: InitializeOptions): Promise<void> => {
-      if (!map || !engineRef.current) {
-        console.warn('Map or animation engine is not available');
+      if (!map || !initializeStrategyRef.current) {
+        console.warn('Map or initialize strategy is not available');
         return;
       }
 
@@ -92,23 +99,14 @@ export function useMapAnimation(options: UseMapAnimationOptions) {
         setIsAnimating(true);
         onAnimationStart?.();
 
-        // TODO: 阶段2实现 - 初始化策略的具体逻辑
-        // 这里先提供一个占位实现
-        const currentConfig = getCurrentCameraConfig();
-        const targetConfig: CameraConfig = {
-          center: options.target.center,
-          zoom: 8, // 临时值，阶段2会根据省份边界计算
-          tilt: 45, // 3D视角
-          heading: 0,
-        };
-
-        await engineRef.current.animateCamera(
+        // 使用初始化策略执行动画
+        await initializeStrategyRef.current.animate(
           map,
-          currentConfig,
-          targetConfig,
+          options.target,
           {
             duration: options.duration ?? defaultDuration,
             easing: options.easing ?? defaultEasing,
+            onStart: options.onStart,
             onComplete: () => {
               setIsAnimating(false);
               options.onComplete?.();
@@ -131,7 +129,6 @@ export function useMapAnimation(options: UseMapAnimationOptions) {
       map,
       defaultDuration,
       defaultEasing,
-      getCurrentCameraConfig,
       onAnimationStart,
       onAnimationComplete,
       onAnimationCancel,

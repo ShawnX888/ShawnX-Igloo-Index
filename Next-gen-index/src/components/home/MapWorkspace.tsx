@@ -13,9 +13,10 @@ import { getMapModeStyles } from "../../config/mapModeStyles";
 import { useRegionBoundaryLayer } from "../../hooks/useRegionBoundaryLayer";
 import { useRainfallHeatmapLayer } from "../../hooks/useRainfallHeatmapLayer";
 import { useRiskEventMarkersLayer } from "../../hooks/useRiskEventMarkersLayer";
-import { getDistrictsInProvince } from "../../lib/regionData";
+import { getDistrictsInProvince, getRegionCenter } from "../../lib/regionData";
 import { useWeatherData } from "../../hooks/useWeatherData";
 import { getGPSLocation, GPSStatus, GPSLocationError } from "../../lib/gpsLocation";
+import { useMapAnimation } from "../../hooks/useMapAnimation";
 
 // 区域边界图层渲染组件（用于条件渲染）
 function RegionBoundaryLayerRenderer({
@@ -139,11 +140,21 @@ export function MapWorkspace({ selectedRegion, weatherDataType, riskData, select
   const mapInstanceRef = useRef<google.maps.Map | null>(null);
   const [mapsLoaded, setMapsLoaded] = useState(false);
   const [mapsError, setMapsError] = useState<string | null>(null);
+  // 控制是否应该显示图层（动画完成后才显示）
+  const [shouldShowLayers, setShouldShowLayers] = useState(false);
+  // 标记是否已经执行过初始化动画
+  const hasInitializedRef = useRef(false);
 
   // Layer visibility state
   const [layers, setLayers] = useState({
     heatmap: true, // Layer 1 & 2
     events: true,  // Layer 3 & 4
+  });
+
+  // 地图动画 Hook
+  const { initialize, isAnimating } = useMapAnimation({
+    map: mapInstanceRef.current,
+    defaultDuration: 2500,
   });
 
   // 获取当前区域所属省/州下的所有市/区列表
@@ -281,6 +292,56 @@ export function MapWorkspace({ selectedRegion, weatherDataType, riskData, select
       mapInstanceRef.current = null;
     };
   }, []);
+
+  // 执行初始化动画（在地图加载完成后）
+  useEffect(() => {
+    if (!mapsLoaded || !mapInstanceRef.current || hasInitializedRef.current) {
+      return;
+    }
+
+    // 如果没有 selectedRegion，直接显示图层
+    if (!selectedRegion) {
+      setShouldShowLayers(true);
+      return;
+    }
+
+    // 执行初始化动画
+    const runInitializeAnimation = async () => {
+      hasInitializedRef.current = true;
+
+      try {
+        // 获取区域中心点
+        const regionCenter = await getRegionCenter(selectedRegion);
+
+        if (regionCenter && mapInstanceRef.current) {
+          // 执行初始化动画
+          await initialize({
+            target: {
+              center: regionCenter,
+              province: {
+                country: selectedRegion.country,
+                province: selectedRegion.province,
+              },
+            },
+            duration: 2500,
+            onComplete: () => {
+              // 动画完成后，允许显示图层
+              setShouldShowLayers(true);
+            },
+          });
+        } else {
+          // 如果无法获取中心点，直接显示图层
+          setShouldShowLayers(true);
+        }
+      } catch (error) {
+        console.error('Initialize animation failed:', error);
+        // 即使动画失败，也允许显示图层
+        setShouldShowLayers(true);
+      }
+    };
+
+    runInitializeAnimation();
+  }, [mapsLoaded, selectedRegion, initialize]);
 
   // 触摸板手势识别：区分滑动和缩放
   useEffect(() => {
@@ -522,7 +583,7 @@ export function MapWorkspace({ selectedRegion, weatherDataType, riskData, select
       )}
 
       {/* 降雨量热力图图层 - 底层 */}
-      {mapsLoaded && mapInstanceRef.current && allRegionsWeatherData && (
+      {mapsLoaded && mapInstanceRef.current && shouldShowLayers && allRegionsWeatherData && (
         <RainfallHeatmapLayerRenderer
           map={mapInstanceRef.current}
           districts={districts}
@@ -536,7 +597,7 @@ export function MapWorkspace({ selectedRegion, weatherDataType, riskData, select
       )}
 
       {/* 风险事件标记图层 - 边界图层下方 */}
-      {mapsLoaded && mapInstanceRef.current && (
+      {mapsLoaded && mapInstanceRef.current && shouldShowLayers && (
         <RiskEventMarkersLayerRenderer
           map={mapInstanceRef.current}
           districts={districts}
@@ -552,7 +613,7 @@ export function MapWorkspace({ selectedRegion, weatherDataType, riskData, select
       )}
 
       {/* 区域边界图层 - 最上层（用于点击交互） */}
-      {mapsLoaded && mapInstanceRef.current && (
+      {mapsLoaded && mapInstanceRef.current && shouldShowLayers && (
         <RegionBoundaryLayerRenderer
           map={mapInstanceRef.current}
           selectedRegion={selectedRegion}
