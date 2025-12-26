@@ -75,10 +75,11 @@ export class MapAnimationEngine {
 
     const animate = (time: number) => {
       // 更新所有活动的 Tween
+      const activeTweens = this.tweenGroup.getAll();
       this.tweenGroup.update(time);
 
       // 如果还有活动的 Tween，继续循环
-      if (this.tweenGroup.getAll().length > 0) {
+      if (activeTweens.length > 0) {
         this.animationFrameId = requestAnimationFrame(animate);
       } else {
         this.isRunning = false;
@@ -145,7 +146,14 @@ export class MapAnimationEngine {
       heading: endConfig.heading ?? 0,
     };
 
+    // 创建 Promise 用于等待动画完成
+    let resolvePromise: () => void;
+    const animationPromise = new Promise<void>((resolve) => {
+      resolvePromise = resolve;
+    });
+
     // 创建 Tween
+    // 注意：Tween.js 的 onComplete 只能注册一次，所以我们需要在同一个回调中处理所有逻辑
     const tween = new Tween(params, this.tweenGroup)
       .to(targetParams, duration)
       .easing(easing)
@@ -162,7 +170,11 @@ export class MapAnimationEngine {
         });
       })
       .onComplete(() => {
+        // 调用传入的 onComplete 回调
         onComplete?.();
+        
+        // Resolve Promise
+        resolvePromise();
       })
       .onStop(() => {
         onCancel?.();
@@ -174,12 +186,8 @@ export class MapAnimationEngine {
     // 启动动画循环（如果尚未运行）
     this.startAnimationLoop();
 
-    // 等待动画完成
-    return new Promise((resolve) => {
-      tween.onComplete(() => {
-        resolve();
-      });
-    });
+    // 返回 Promise，等待动画完成
+    return animationPromise;
   }
 
   /**
