@@ -13,7 +13,7 @@
 - 可以成功获取用户GPS位置
 - 反向地理编码可以正确转换为行政区域
 - 定位成功后自动设置选中区域
-- 地图自动定位到用户所在区域
+- 地图通过动画系统自动定位到用户所在区域（参考 [25-矢量地图动画切换.md](./25-矢量地图动画切换.md)）
 - 定位状态有清晰的视觉反馈
 
 ---
@@ -152,11 +152,13 @@ function GPSLocationButton({
       // 3. 设置选中区域（不限制特定地区）
       setSelectedRegion(region);
       
-      // 4. 更新地图视图
-      if (map) {
-        map.setCenter({ lat: latitude, lng: longitude });
-        map.setZoom(13);
-      }
+      // 4. 更新地图视图（使用动画系统）
+      // 注意：地图视图更新已集成到动画系统中，参考 [25-矢量地图动画切换.md](./25-矢量地图动画切换.md)
+      // GPS定位会触发特殊的两阶段动画序列：
+      // - 第一阶段：滑动到GPS实际坐标并zoom in到街道级别（1秒）
+      // - 停顿：停留800ms，让用户看清GPS定位位置
+      // - 第二阶段：移动到所选区域的GADM中心位置并zoom out到区域全景（1.2秒）
+      // 动画系统会自动处理地图视图更新，无需手动调用 map.setCenter 和 map.setZoom
 
       setStatus('success');
       onLocationUpdate?.(region);
@@ -228,7 +230,9 @@ export function GPSLocationButton({ ... }: GPSButtonProps) { ... }
 
 ### 输出
 - **选中区域**：`Region`类型（自动设置）
-- **地图视图更新**：地图中心点和缩放级别更新
+- **地图视图更新**：通过动画系统自动更新地图中心点和缩放级别（参考 [25-矢量地图动画切换.md](./25-矢量地图动画切换.md)）
+  - GPS定位触发特殊的两阶段动画序列
+  - 最终视图以所选区域的GADM中心位置为核心，显示区域全景
 - **定位状态**：'idle' | 'loading' | 'success' | 'error'
 
 ---
