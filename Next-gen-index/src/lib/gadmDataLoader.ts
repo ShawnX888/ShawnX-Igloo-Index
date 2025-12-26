@@ -82,7 +82,7 @@ async function loadGADMData(): Promise<void> {
 /**
  * 确保数据已加载
  */
-async function ensureDataLoaded(): Promise<void> {
+export async function ensureDataLoaded(): Promise<void> {
   if (!cachedIndex || !cachedHierarchy || !cachedCenters) {
     await loadGADMData();
   }

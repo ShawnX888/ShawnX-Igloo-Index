@@ -17,6 +17,12 @@ import { getDistrictsInProvince, getRegionCenter } from "../../lib/regionData";
 import { useWeatherData } from "../../hooks/useWeatherData";
 import { getGPSLocation, GPSStatus, GPSLocationError } from "../../lib/gpsLocation";
 import { useMapAnimation } from "../../hooks/useMapAnimation";
+import {
+  prepareInitialData,
+  waitForDataReady,
+  validateDataCompleteness,
+  type PreparedData,
+} from "../../lib/animationDataFlow";
 
 // 区域边界图层渲染组件（用于条件渲染）
 function RegionBoundaryLayerRenderer({
@@ -294,6 +300,7 @@ export function MapWorkspace({ selectedRegion, weatherDataType, riskData, select
   }, []);
 
   // 执行初始化动画（在地图加载完成后）
+  // 遵循执行流程规范：步骤1-6
   useEffect(() => {
     if (!mapsLoaded || !mapInstanceRef.current || hasInitializedRef.current) {
       return;
@@ -310,38 +317,88 @@ export function MapWorkspace({ selectedRegion, weatherDataType, riskData, select
       hasInitializedRef.current = true;
 
       try {
-        // 获取区域中心点
+        // 步骤1：获取初始化区域信息
         const regionCenter = await getRegionCenter(selectedRegion);
 
-        if (regionCenter && mapInstanceRef.current) {
-          // 执行初始化动画
-          await initialize({
-            target: {
-              center: regionCenter,
-              province: {
-                country: selectedRegion.country,
-                province: selectedRegion.province,
-              },
-            },
-            duration: 2500,
-            onComplete: () => {
-              // 动画完成后，允许显示图层
-              setShouldShowLayers(true);
-            },
-          });
-        } else {
-          // 如果无法获取中心点，直接显示图层
+        if (!regionCenter || !mapInstanceRef.current) {
+          // 如果无法获取中心点，直接显示图层（降级处理）
+          console.warn('Failed to get region center, skipping animation');
           setShouldShowLayers(true);
+          return;
         }
+
+        // 步骤4：并行数据准备（在动画期间并行执行）
+        const dataPreparationPromise = prepareInitialData(
+          selectedRegion,
+          dateRange,
+          weatherDataType,
+          'rainfall', // 默认使用降雨量数据
+          selectedProduct?.id // 使用产品ID作为缓存上下文
+        ).catch((error) => {
+          console.error('Data preparation error:', error);
+          return null; // 返回null表示准备失败
+        });
+
+        // 步骤3：执行动画效果
+        const animationPromise = initialize({
+          target: {
+            center: regionCenter,
+            province: {
+              country: selectedRegion.country,
+              province: selectedRegion.province,
+            },
+          },
+          duration: 2500,
+          onComplete: async () => {
+            try {
+              // 步骤5：验证数据完备性
+              const preparedData = await waitForDataReady(
+                dataPreparationPromise,
+                { timeout: 5000 } // 5秒超时
+              );
+
+              if (!preparedData) {
+                console.error('Data preparation timeout or failed');
+                // 显示错误提示（可选，根据UI需求）
+                // showErrorToast('数据加载超时，请刷新页面重试');
+                // 即使数据准备失败，也显示图层（降级处理）
+                setShouldShowLayers(true);
+                return;
+              }
+
+              // 验证数据完备性
+              if (!validateDataCompleteness(preparedData)) {
+                console.error('Data preparation incomplete');
+                // 显示错误提示（可选，根据UI需求）
+                // showErrorToast('数据加载不完整，请刷新页面重试');
+                // 即使数据验证失败，也显示图层（降级处理）
+                setShouldShowLayers(true);
+                return;
+              }
+
+              // 步骤6：加载地图图层
+              // 通过设置 shouldShowLayers = true 触发现有 Hook 的响应式更新
+              // 数据已经准备好，Hook 会从缓存中读取数据
+              setShouldShowLayers(true);
+            } catch (error) {
+              console.error('Error in animation onComplete:', error);
+              // 即使出错，也显示图层（降级处理）
+              setShouldShowLayers(true);
+            }
+          },
+        });
+
+        // 等待动画完成（数据准备可能已经完成）
+        await animationPromise;
       } catch (error) {
         console.error('Initialize animation failed:', error);
-        // 即使动画失败，也允许显示图层
+        // 即使动画失败，也允许显示图层（降级处理）
         setShouldShowLayers(true);
       }
     };
 
     runInitializeAnimation();
-  }, [mapsLoaded, selectedRegion, initialize]);
+  }, [mapsLoaded, selectedRegion, initialize, dateRange, weatherDataType, selectedProduct]);
 
   // 触摸板手势识别：区分滑动和缩放
   useEffect(() => {
