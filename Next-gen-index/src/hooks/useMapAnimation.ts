@@ -6,7 +6,7 @@
 
 import { useRef, useCallback, useEffect, useState } from 'react';
 import { MapAnimationEngine } from '../lib/mapAnimationEngine';
-import { InitializeStrategy } from '../lib/mapAnimationStrategies';
+import { InitializeStrategy, FlyToStrategy } from '../lib/mapAnimationStrategies';
 import type {
   UseMapAnimationOptions,
   FlyToOptions,
@@ -40,6 +40,7 @@ export function useMapAnimation(options: UseMapAnimationOptions) {
   const engineRef = useRef<MapAnimationEngine | null>(null);
   // 动画策略实例
   const initializeStrategyRef = useRef<InitializeStrategy | null>(null);
+  const flyToStrategyRef = useRef<FlyToStrategy | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
 
   // 初始化动画引擎和策略
@@ -53,12 +54,14 @@ export function useMapAnimation(options: UseMapAnimationOptions) {
     const engine = new MapAnimationEngine();
     engineRef.current = engine;
     initializeStrategyRef.current = new InitializeStrategy(engine);
+    flyToStrategyRef.current = new FlyToStrategy(engine);
 
     return () => {
       // 清理资源
       engine.dispose();
       engineRef.current = null;
       initializeStrategyRef.current = null;
+      flyToStrategyRef.current = null;
     };
   }, [map]);
 
@@ -140,8 +143,8 @@ export function useMapAnimation(options: UseMapAnimationOptions) {
    */
   const flyTo = useCallback(
     async (options: FlyToOptions): Promise<void> => {
-      if (!map || !engineRef.current) {
-        console.warn('Map or animation engine is not available');
+      if (!map || !flyToStrategyRef.current) {
+        console.warn('Map or fly-to strategy is not available');
         return;
       }
 
@@ -149,23 +152,16 @@ export function useMapAnimation(options: UseMapAnimationOptions) {
         setIsAnimating(true);
         onAnimationStart?.();
 
-        // TODO: 阶段3实现 - Fly-To 策略的具体逻辑
-        // 这里先提供一个占位实现
-        const currentConfig = getCurrentCameraConfig();
-        const targetConfig: CameraConfig = {
-          center: options.target.center,
-          zoom: options.target.zoom ?? currentConfig.zoom,
-          tilt: currentConfig.tilt,
-          heading: currentConfig.heading,
-        };
-
-        await engineRef.current.animateCamera(
+        // 使用 Fly-To 策略执行动画
+        await flyToStrategyRef.current.animate(
           map,
-          currentConfig,
-          targetConfig,
+          options.target,
           {
             duration: options.duration ?? defaultDuration,
             easing: options.easing ?? defaultEasing,
+            strategy: options.strategy,
+            source: options.source,
+            onStart: options.onStart,
             onComplete: () => {
               setIsAnimating(false);
               options.onComplete?.();
@@ -188,7 +184,6 @@ export function useMapAnimation(options: UseMapAnimationOptions) {
       map,
       defaultDuration,
       defaultEasing,
-      getCurrentCameraConfig,
       onAnimationStart,
       onAnimationComplete,
       onAnimationCancel,

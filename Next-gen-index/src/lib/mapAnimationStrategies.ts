@@ -12,8 +12,13 @@ import type {
   AnimationOptions,
   CameraConfig,
   InitializeTarget,
+  FlyToTarget,
 } from '../types/animation';
-import { MapAnimationEngine, SphericalInterpolation } from './mapAnimationEngine';
+import {
+  MapAnimationEngine,
+  SphericalInterpolation,
+  adaptiveDuration,
+} from './mapAnimationEngine';
 import { getAdministrativeRegion } from './regionData';
 import type { Region } from '../types';
 
@@ -170,6 +175,482 @@ export class InitializeStrategy implements AnimationStrategy {
 
       // 经验公式：根据边界框大小计算 zoom
       // 这个公式需要根据实际测试调整
+      if (maxDiff > 10) return 5; // 非常大的省份（如俄罗斯的州）
+      if (maxDiff > 5) return 6; // 大省份
+      if (maxDiff > 2) return 7; // 中等省份
+      if (maxDiff > 1) return 8; // 小省份
+      if (maxDiff > 0.5) return 9; // 更小的省份
+      return 10; // 默认
+    } catch (error) {
+      console.error('Failed to calculate province zoom:', error);
+      return this.getDefaultProvinceZoom(country);
+    }
+  }
+
+  /**
+   * 根据国家获取默认省份 zoom（降级方案）
+   */
+  private getDefaultProvinceZoom(country: string): number {
+    // 根据国家大小提供合理的默认值
+    const countryDefaults: Record<string, number> = {
+      CHN: 7, // 中国：省份较大
+      USA: 6, // 美国：州较大
+      IDN: 8, // 印尼：省份中等
+      MYS: 8, // 马来西亚：州中等
+      THA: 8, // 泰国：府中等
+      VNM: 8, // 越南：省中等
+      SGP: 10, // 新加坡：国家很小
+      PHL: 8, // 菲律宾：省份中等
+    };
+    return countryDefaults[country] || 8; // 默认 8
+  }
+}
+
+/**
+ * Fly-To 动画策略
+ * 
+ * 实现远距离地址切换的抛物线动画：
+ * - 标准场景：抛物线动画（先拉高视角，移动位置，再拉近视角）
+ * - GPS场景：两阶段动画（先滑动到GPS位置并zoom in，再zoom out到省份全景）
+ * - 支持省份全景自动计算
+ */
+export class FlyToStrategy implements AnimationStrategy {
+  private engine: MapAnimationEngine;
+
+  constructor(engine: MapAnimationEngine) {
+    this.engine = engine;
+  }
+
+  /**
+   * 执行 Fly-To 动画
+   */
+  async animate(
+    map: google.maps.Map,
+    target: FlyToTarget,
+    options: AnimationOptions & { source?: 'region-search' | 'gps-location'; strategy?: 'parabolic' | 'linear' } = {}
+  ): Promise<void> {
+    const startCenter = map.getCenter();
+    if (!startCenter) {
+      throw new Error('Map center is not available');
+    }
+
+    const startZoom = map.getZoom() ?? 10;
+
+    // 计算目标 zoom
+    let targetZoom: number;
+    if (target.province) {
+      // 根据省份边界计算合适的 zoom 以显示省份全景
+      targetZoom = await this.calculateProvinceZoom(
+        target.province.country,
+        target.province.province
+      );
+    } else {
+      targetZoom = target.zoom ?? startZoom;
+    }
+
+    // GPS 定位特殊处理：两阶段动画
+    if (options.source === 'gps-location') {
+      return this.animateGPSSequence(map, target, targetZoom, options);
+    }
+
+    // 标准抛物线 Fly-To
+    const distance = SphericalInterpolation.calculateDistance(
+      startCenter,
+      target.center
+    );
+    const duration = options.duration ?? adaptiveDuration(distance);
+
+    // 计算抛物线最高点（Zoom 最小值）
+    const maxZoomOut = Math.min(startZoom, targetZoom) - 2;
+
+    // 使用策略决定动画方式
+    if (options.strategy === 'linear') {
+      // 线性动画：直接插值
+      return this.animateLinear(map, startCenter, target.center, startZoom, targetZoom, duration, options);
+    } else {
+      // 抛物线动画（默认）
+      return this.animateParabolic(map, startCenter, target.center, startZoom, targetZoom, maxZoomOut, duration, options);
+    }
+  }
+
+  /**
+   * 标准抛物线 Fly-To 动画
+   */
+  private async animateParabolic(
+    map: google.maps.Map,
+    startCenter: google.maps.LatLng,
+    targetCenter: google.maps.LatLng | google.maps.LatLngLiteral,
+    startZoom: number,
+    targetZoom: number,
+    maxZoomOut: number,
+    duration: number,
+    options: AnimationOptions
+  ): Promise<void> {
+    const startConfig: CameraConfig = {
+      center: startCenter,
+      zoom: startZoom,
+      tilt: map.getTilt() ?? 0,
+      heading: map.getHeading() ?? 0,
+    };
+
+    // 使用 Tween.js 实现抛物线动画
+    // 注意：我们需要自定义 zoom 曲线，所以不能直接使用 animateCamera
+    // 而是手动创建 Tween 来控制 zoom 的抛物线变化
+
+    const startLat = startCenter.lat();
+    const startLng = startCenter.lng();
+    const targetLat = 'lat' in targetCenter ? targetCenter.lat : targetCenter.lat();
+    const targetLng = 'lng' in targetCenter ? targetCenter.lng : targetCenter.lng();
+
+    // 创建 Promise 用于等待动画完成
+    let resolvePromise: () => void;
+    const animationPromise = new Promise<void>((resolve) => {
+      resolvePromise = resolve;
+    });
+
+    // 准备插值参数对象
+    const params: Record<string, number> = {
+      lat: startLat,
+      lng: startLng,
+      zoom: startZoom,
+      progress: 0,
+    };
+
+    // 目标参数
+    const targetParams: Record<string, number> = {
+      lat: targetLat,
+      lng: targetLng,
+      zoom: targetZoom,
+      progress: 1,
+    };
+
+    const { Tween, Group } = await import('@tweenjs/tween.js');
+    const tweenGroup = new Group();
+
+    // 创建 Tween
+    const tween = new Tween(params, tweenGroup)
+      .to(targetParams, duration)
+      .easing(options.easing || ((t) => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2))
+      .onStart(() => {
+        options.onStart?.();
+      })
+      .onUpdate(() => {
+        // 经纬度插值（球面几何）
+        const currentCenter = SphericalInterpolation.interpolate(
+          { lat: startLat, lng: startLng },
+          { lat: targetLat, lng: targetLng },
+          params.progress
+        );
+
+        // 抛物线 Zoom 曲线
+        // 在进度 50% 时达到最大 Zoom Out
+        const zoomArc = Math.sin(params.progress * Math.PI) * 2;
+        const currentZoom = Math.max(
+          maxZoomOut,
+          startZoom + (targetZoom - startZoom) * params.progress - zoomArc
+        );
+
+        // 原子化更新所有参数
+        map.moveCamera({
+          center: currentCenter,
+          zoom: currentZoom,
+        });
+      })
+      .onComplete(() => {
+        options.onComplete?.();
+        resolvePromise();
+      })
+      .onStop(() => {
+        options.onCancel?.();
+      });
+
+    // 启动 Tween
+    tween.start();
+
+    // 启动动画循环
+    const animate = (time: number) => {
+      tweenGroup.update(time);
+      if (tweenGroup.getAll().length > 0) {
+        requestAnimationFrame(animate);
+      }
+    };
+    requestAnimationFrame(animate);
+
+    return animationPromise;
+  }
+
+  /**
+   * 线性 Fly-To 动画
+   */
+  private async animateLinear(
+    map: google.maps.Map,
+    startCenter: google.maps.LatLng,
+    targetCenter: google.maps.LatLng | google.maps.LatLngLiteral,
+    startZoom: number,
+    targetZoom: number,
+    duration: number,
+    options: AnimationOptions
+  ): Promise<void> {
+    const startConfig: CameraConfig = {
+      center: startCenter,
+      zoom: startZoom,
+      tilt: map.getTilt() ?? 0,
+      heading: map.getHeading() ?? 0,
+    };
+
+    const endConfig: CameraConfig = {
+      center: targetCenter,
+      zoom: targetZoom,
+      tilt: map.getTilt() ?? 0,
+      heading: map.getHeading() ?? 0,
+    };
+
+    return this.engine.animateCamera(map, startConfig, endConfig, {
+      duration,
+      easing: options.easing,
+      onStart: options.onStart,
+      onComplete: options.onComplete,
+      onCancel: options.onCancel,
+    });
+  }
+
+  /**
+   * GPS 定位特殊动画序列
+   * 
+   * 两阶段动画：
+   * 1. 先滑动到GPS定位位置并zoom in到街道级别（15）
+   * 2. 再zoom out到省份全景（位置保持不变）
+   */
+  private async animateGPSSequence(
+    map: google.maps.Map,
+    target: FlyToTarget,
+    provinceZoom: number,
+    options: AnimationOptions
+  ): Promise<void> {
+    const startCenter = map.getCenter();
+    if (!startCenter) {
+      throw new Error('Map center is not available');
+    }
+
+    const startZoom = map.getZoom() ?? 10;
+    const streetZoom = 15; // 街道级别 zoom
+
+    // 第一阶段：同时滑动到GPS定位位置并zoom in到街道级别
+    await this.animateFlyToWithZoom(
+      map,
+      startCenter,
+      target.center,
+      startZoom,
+      streetZoom,
+      1000, // 1秒
+      {
+        onStart: options.onStart,
+        onComplete: undefined, // 第一阶段不触发完成回调
+        onCancel: options.onCancel,
+      }
+    );
+
+    // 短暂停留（可选，增强用户体验）
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    // 第二阶段：zoom out到省份全景（位置保持不变）
+    await this.animateZoom(
+      map,
+      target.center,
+      streetZoom,
+      provinceZoom,
+      1200, // 1.2秒
+      {
+        onStart: undefined,
+        onComplete: options.onComplete,
+        onCancel: options.onCancel,
+      }
+    );
+  }
+
+  /**
+   * 辅助方法：同时进行位置移动和zoom变化
+   */
+  private async animateFlyToWithZoom(
+    map: google.maps.Map,
+    startCenter: google.maps.LatLng,
+    endCenter: google.maps.LatLng | google.maps.LatLngLiteral,
+    startZoom: number,
+    endZoom: number,
+    duration: number,
+    options: AnimationOptions
+  ): Promise<void> {
+    const startLat = startCenter.lat();
+    const startLng = startCenter.lng();
+    const endLat = 'lat' in endCenter ? endCenter.lat : endCenter.lat();
+    const endLng = 'lng' in endCenter ? endCenter.lng : endCenter.lng();
+
+    // 创建 Promise
+    let resolvePromise: () => void;
+    const animationPromise = new Promise<void>((resolve) => {
+      resolvePromise = resolve;
+    });
+
+    // 使用 progress 参数来控制插值
+    const params: Record<string, number> = {
+      progress: 0,
+      zoom: startZoom,
+    };
+
+    const targetParams: Record<string, number> = {
+      progress: 1,
+      zoom: endZoom,
+    };
+
+    const { Tween, Group } = await import('@tweenjs/tween.js');
+    const tweenGroup = new Group();
+
+    const tween = new Tween(params, tweenGroup)
+      .to(targetParams, duration)
+      .easing(options.easing || ((t) => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2))
+      .onStart(() => {
+        options.onStart?.();
+      })
+      .onUpdate(() => {
+        // 经纬度插值（球面几何）
+        const currentCenter = SphericalInterpolation.interpolate(
+          { lat: startLat, lng: startLng },
+          { lat: endLat, lng: endLng },
+          params.progress
+        );
+
+        // 原子化更新位置和zoom
+        map.moveCamera({
+          center: currentCenter,
+          zoom: params.zoom,
+        });
+      })
+      .onComplete(() => {
+        options.onComplete?.();
+        resolvePromise();
+      })
+      .onStop(() => {
+        options.onCancel?.();
+      });
+
+    tween.start();
+
+    const animate = (time: number) => {
+      tweenGroup.update(time);
+      if (tweenGroup.getAll().length > 0) {
+        requestAnimationFrame(animate);
+      }
+    };
+    requestAnimationFrame(animate);
+
+    return animationPromise;
+  }
+
+  /**
+   * 辅助方法：执行 zoom 动画（位置保持不变）
+   */
+  private async animateZoom(
+    map: google.maps.Map,
+    center: google.maps.LatLng | google.maps.LatLngLiteral,
+    startZoom: number,
+    endZoom: number,
+    duration: number,
+    options: AnimationOptions
+  ): Promise<void> {
+    const params: Record<string, number> = {
+      zoom: startZoom,
+    };
+
+    const targetParams: Record<string, number> = {
+      zoom: endZoom,
+    };
+
+    // 创建 Promise
+    let resolvePromise: () => void;
+    const animationPromise = new Promise<void>((resolve) => {
+      resolvePromise = resolve;
+    });
+
+    const { Tween, Group } = await import('@tweenjs/tween.js');
+    const tweenGroup = new Group();
+
+    const tween = new Tween(params, tweenGroup)
+      .to(targetParams, duration)
+      .easing(options.easing || ((t) => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2))
+      .onStart(() => {
+        options.onStart?.();
+      })
+      .onUpdate(() => {
+        map.moveCamera({
+          center,
+          zoom: params.zoom,
+        });
+      })
+      .onComplete(() => {
+        options.onComplete?.();
+        resolvePromise();
+      })
+      .onStop(() => {
+        options.onCancel?.();
+      });
+
+    tween.start();
+
+    const animate = (time: number) => {
+      tweenGroup.update(time);
+      if (tweenGroup.getAll().length > 0) {
+        requestAnimationFrame(animate);
+      }
+    };
+    requestAnimationFrame(animate);
+
+    return animationPromise;
+  }
+
+  /**
+   * 根据省份边界计算合适的 zoom 级别以显示省份全景
+   * 
+   * 复用 InitializeStrategy 中的逻辑
+   */
+  private async calculateProvinceZoom(
+    country: string,
+    province: string
+  ): Promise<number> {
+    try {
+      // 获取省份边界数据
+      const region: Region = { country, province, district: '' };
+      const provinceRegion = await getAdministrativeRegion(region);
+
+      if (
+        !provinceRegion ||
+        !provinceRegion.boundary ||
+        provinceRegion.boundary.length === 0
+      ) {
+        // 如果无法获取边界，使用默认 zoom（根据国家大小调整）
+        return this.getDefaultProvinceZoom(country);
+      }
+
+      // 计算边界框：遍历所有边界点，找到最小/最大经纬度
+      let minLat = Infinity,
+        maxLat = -Infinity;
+      let minLng = Infinity,
+        maxLng = -Infinity;
+
+      for (const point of provinceRegion.boundary) {
+        minLat = Math.min(minLat, point.lat);
+        maxLat = Math.max(maxLat, point.lat);
+        minLng = Math.min(minLng, point.lng);
+        maxLng = Math.max(maxLng, point.lng);
+      }
+
+      // 计算边界框的宽度和高度（度）
+      const latDiff = maxLat - minLat;
+      const lngDiff = maxLng - minLng;
+
+      // 使用经验公式：根据边界框大小计算 zoom
+      const maxDiff = Math.max(latDiff, lngDiff);
+
+      // 经验公式：根据边界框大小计算 zoom
       if (maxDiff > 10) return 5; // 非常大的省份（如俄罗斯的州）
       if (maxDiff > 5) return 6; // 大省份
       if (maxDiff > 2) return 7; // 中等省份

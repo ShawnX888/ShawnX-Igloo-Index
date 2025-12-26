@@ -158,10 +158,13 @@ export function MapWorkspace({ selectedRegion, weatherDataType, riskData, select
   });
 
   // 地图动画 Hook
-  const { initialize, isAnimating } = useMapAnimation({
+  const { initialize, flyTo, isAnimating } = useMapAnimation({
     map: mapInstanceRef.current,
     defaultDuration: 2500,
   });
+
+  // 记录上一次的区域，用于检测区域变化
+  const previousRegionRef = useRef<Region | null>(null);
 
   // 获取当前区域所属省/州下的所有市/区列表
   const districts = useMemo(() => {
@@ -177,9 +180,9 @@ export function MapWorkspace({ selectedRegion, weatherDataType, riskData, select
   // 切换过渡状态
   const [isTransitioning, setIsTransitioning] = useState(false);
 
-  // GPS定位处理函数
+  // GPS定位处理函数（使用 Fly-To 动画）
   const handleGPSClick = useCallback(async () => {
-    if (gpsStatus === 'loading') return;
+    if (gpsStatus === 'loading' || !mapInstanceRef.current || !flyTo) return;
 
     setGpsStatus('loading');
     setGpsError('');
@@ -188,20 +191,31 @@ export function MapWorkspace({ selectedRegion, weatherDataType, riskData, select
       const result = await getGPSLocation();
       
       if (result.region && mapInstanceRef.current) {
-        const map = mapInstanceRef.current;
         const targetRegion = result.region;
 
-        // A. 设置选中区域，触发数据加载
-        setSelectedRegion(targetRegion);
-        
-        // B. 定位到用户精确坐标 (District 级别)
-        map.setCenter({ lat: result.latitude, lng: result.longitude });
-        map.setZoom(13);
-        
-        setGpsStatus('success');
-        
-        // 3秒后重置状态
-        setTimeout(() => setGpsStatus('idle'), 3000);
+        // 执行 GPS 定位特殊动画序列
+        await flyTo({
+          target: {
+            center: {
+              lat: result.latitude,
+              lng: result.longitude,
+            },
+            province: {
+              country: targetRegion.country,
+              province: targetRegion.province,
+            },
+          },
+          strategy: 'parabolic',
+          source: 'gps-location', // 触发GPS特殊动画序列
+          onComplete: async () => {
+            // 动画完成后，设置选中区域（触发数据加载）
+            setSelectedRegion(targetRegion);
+            setGpsStatus('success');
+            
+            // 3秒后重置状态
+            setTimeout(() => setGpsStatus('idle'), 3000);
+          },
+        });
       } else {
         throw { type: 'REGION_NOT_FOUND', message: 'Could not determine your location region' };
       }
@@ -216,7 +230,7 @@ export function MapWorkspace({ selectedRegion, weatherDataType, riskData, select
         setGpsError('');
       }, 5000);
     }
-  }, [gpsStatus, setSelectedRegion]);
+  }, [gpsStatus, flyTo, setSelectedRegion]);
 
   // 初始化 Google Maps
   useEffect(() => {
@@ -399,6 +413,100 @@ export function MapWorkspace({ selectedRegion, weatherDataType, riskData, select
 
     runInitializeAnimation();
   }, [mapsLoaded, selectedRegion, initialize, dateRange, weatherDataType, selectedProduct]);
+
+  // 监听区域变化，执行 Fly-To 动画（排除初始化）
+  useEffect(() => {
+    // 如果地图未加载、没有地图实例、正在动画中、或还未初始化，则跳过
+    if (!mapsLoaded || !mapInstanceRef.current || isAnimating || !hasInitializedRef.current) {
+      return;
+    }
+
+    // 如果没有 selectedRegion，跳过
+    if (!selectedRegion) {
+      return;
+    }
+
+    // 如果区域没有变化，跳过
+    const prevRegion = previousRegionRef.current;
+    if (
+      prevRegion &&
+      prevRegion.country === selectedRegion.country &&
+      prevRegion.province === selectedRegion.province &&
+      prevRegion.district === selectedRegion.district
+    ) {
+      return;
+    }
+
+    // 更新上一次的区域
+    previousRegionRef.current = selectedRegion;
+
+    // 执行 Fly-To 动画
+    const runFlyToAnimation = async () => {
+      try {
+        // 步骤1：获取目标区域中心点
+        const regionCenter = await getRegionCenter(selectedRegion);
+
+        if (!regionCenter || !mapInstanceRef.current || !flyTo) {
+          console.warn('Failed to get region center or flyTo not available, skipping animation');
+          return;
+        }
+
+        // 步骤4：并行数据准备（在动画期间并行执行）
+        const dataPreparationPromise = prepareInitialData(
+          selectedRegion,
+          dateRange,
+          weatherDataType,
+          'rainfall',
+          selectedProduct?.id
+        ).catch((error) => {
+          console.error('Data preparation error:', error);
+          return null;
+        });
+
+        // 步骤3：执行动画效果
+        await flyTo({
+          target: {
+            center: regionCenter,
+            province: {
+              country: selectedRegion.country,
+              province: selectedRegion.province,
+            },
+          },
+          strategy: 'parabolic',
+          source: 'region-search',
+          onComplete: async () => {
+            try {
+              // 步骤5：验证数据完备性
+              const preparedData = await waitForDataReady(
+                dataPreparationPromise,
+                { timeout: 5000 }
+              );
+
+              if (!preparedData) {
+                console.error('Data preparation timeout or failed');
+                return;
+              }
+
+              // 验证数据完备性
+              if (!validateDataCompleteness(preparedData)) {
+                console.error('Data preparation incomplete');
+                return;
+              }
+
+              // 步骤6：数据已经准备好，图层会通过响应式更新自动加载
+              // 不需要额外操作，因为数据已经在缓存中
+            } catch (error) {
+              console.error('Error in flyTo onComplete:', error);
+            }
+          },
+        });
+      } catch (error) {
+        console.error('Fly-to animation failed:', error);
+      }
+    };
+
+    runFlyToAnimation();
+  }, [selectedRegion, mapsLoaded, isAnimating, flyTo, dateRange, weatherDataType, selectedProduct]);
 
   // 触摸板手势识别：区分滑动和缩放
   useEffect(() => {
