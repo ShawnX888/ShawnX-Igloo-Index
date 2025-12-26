@@ -394,10 +394,15 @@ export function MapWorkspace({ selectedRegion, weatherDataType, riskData, select
               // 通过设置 shouldShowLayers = true 触发现有 Hook 的响应式更新
               // 数据已经准备好，Hook 会从缓存中读取数据
               setShouldShowLayers(true);
+              
+              // 初始化完成后，设置 previousRegionRef，避免触发区域切换动画
+              previousRegionRef.current = selectedRegion;
             } catch (error) {
               console.error('Error in animation onComplete:', error);
               // 即使出错，也显示图层（降级处理）
               setShouldShowLayers(true);
+              // 即使出错，也设置 previousRegionRef
+              previousRegionRef.current = selectedRegion;
             }
           },
         });
@@ -408,16 +413,24 @@ export function MapWorkspace({ selectedRegion, weatherDataType, riskData, select
         console.error('Initialize animation failed:', error);
         // 即使动画失败，也允许显示图层（降级处理）
         setShouldShowLayers(true);
+        // 即使动画失败，也设置 previousRegionRef
+        previousRegionRef.current = selectedRegion;
       }
     };
 
     runInitializeAnimation();
   }, [mapsLoaded, selectedRegion, initialize, dateRange, weatherDataType, selectedProduct]);
 
-  // 监听区域变化，执行 Fly-To 动画（排除初始化）
+  // 监听区域变化，执行 Fly-To 动画（仅适用于用户手动切换区域）
+  // 明确排除初始化场景：只有在初始化完成后，且区域确实发生变化时才执行
   useEffect(() => {
-    // 如果地图未加载、没有地图实例、正在动画中、或还未初始化，则跳过
-    if (!mapsLoaded || !mapInstanceRef.current || isAnimating || !hasInitializedRef.current) {
+    // 如果地图未加载、没有地图实例、正在动画中，则跳过
+    if (!mapsLoaded || !mapInstanceRef.current || isAnimating) {
+      return;
+    }
+
+    // 如果还未初始化完成，跳过（初始化场景由初始化动画处理）
+    if (!hasInitializedRef.current) {
       return;
     }
 
@@ -426,10 +439,16 @@ export function MapWorkspace({ selectedRegion, weatherDataType, riskData, select
       return;
     }
 
-    // 如果区域没有变化，跳过
+    // 如果 previousRegionRef 为 null，说明是初始化场景，跳过
+    // 初始化场景应该在初始化动画中处理，这里只处理用户手动切换
     const prevRegion = previousRegionRef.current;
+    if (!prevRegion) {
+      // 初始化场景，不应该执行 Fly-To 动画
+      return;
+    }
+
+    // 如果区域没有变化，跳过
     if (
-      prevRegion &&
       prevRegion.country === selectedRegion.country &&
       prevRegion.province === selectedRegion.province &&
       prevRegion.district === selectedRegion.district
@@ -437,7 +456,7 @@ export function MapWorkspace({ selectedRegion, weatherDataType, riskData, select
       return;
     }
 
-    // 更新上一次的区域
+    // 更新上一次的区域（在动画开始前更新，避免重复触发）
     previousRegionRef.current = selectedRegion;
 
     // 执行 Fly-To 动画
@@ -495,13 +514,20 @@ export function MapWorkspace({ selectedRegion, weatherDataType, riskData, select
 
               // 步骤6：数据已经准备好，图层会通过响应式更新自动加载
               // 不需要额外操作，因为数据已经在缓存中
+              
+              // 确保 previousRegionRef 已更新（防止重复触发）
+              previousRegionRef.current = selectedRegion;
             } catch (error) {
               console.error('Error in flyTo onComplete:', error);
+              // 即使出错，也更新 previousRegionRef，避免重复触发
+              previousRegionRef.current = selectedRegion;
             }
           },
         });
       } catch (error) {
         console.error('Fly-to animation failed:', error);
+        // 即使出错，也更新 previousRegionRef，避免重复触发
+        previousRegionRef.current = selectedRegion;
       }
     };
 
