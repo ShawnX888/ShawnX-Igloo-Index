@@ -158,7 +158,7 @@ export function MapWorkspace({ selectedRegion, weatherDataType, riskData, select
   });
 
   // 地图动画 Hook
-  const { initialize, flyTo, isAnimating } = useMapAnimation({
+  const { initialize, flyTo, switchMode, isAnimating } = useMapAnimation({
     map: mapInstanceRef.current,
     defaultDuration: 2500,
   });
@@ -660,18 +660,14 @@ export function MapWorkspace({ selectedRegion, weatherDataType, riskData, select
     };
   }, [mapsLoaded, isTransitioning]);
 
-  // 模式切换逻辑：监听 mapMode 变化，实现平滑切换动画
+  // 模式切换逻辑：使用动画系统实现平滑切换
   useEffect(() => {
-    if (!mapInstanceRef.current || !mapsLoaded) return;
+    if (!mapInstanceRef.current || !mapsLoaded || !switchMode) return;
     
     const map = mapInstanceRef.current;
     const targetMode = mapMode;
     const styles = getMapModeStyles(targetMode);
     const mapConfig = styles.map;
-
-    // 保存当前地图的中心点和缩放级别，确保切换时位置不变
-    const currentCenter = map.getCenter();
-    const currentZoom = map.getZoom() || 11;
 
     // 设置过渡状态，禁用交互
     setIsTransitioning(true);
@@ -684,63 +680,38 @@ export function MapWorkspace({ selectedRegion, weatherDataType, riskData, select
       disableDoubleClickZoom: true,
     });
 
-    // 平滑过渡地图参数
-    // Google Maps 的 setTilt、setHeading、setZoom 方法支持平滑过渡
-    if (targetMode === '2d' || targetMode === '3d') {
-      // 确保中心点保持不变（在调整其他参数前先设置中心点）
-      if (currentCenter) {
-        map.setCenter(currentCenter);
-      }
-
-      // 确保 3D 模式下 zoom >= 17，但只在必要时调整
-      const targetZoom = mapConfig.zoom;
-      
-      if (targetMode === '3d') {
-        // 3D 模式：如果当前 zoom < 17，需要调整到至少 17
-        // 但为了保持位置，我们使用平滑过渡，并确保中心点不变
-        if (currentZoom < 17) {
-          // 先确保中心点，然后调整 zoom（Google Maps 会自动保持中心点）
-          // 使用 setZoom 会平滑过渡，并自动保持当前中心点
-          map.setZoom(Math.max(17, targetZoom));
-        }
-        // 如果当前 zoom >= 17，保持当前 zoom，不强制调整到 18
-        // 这样可以避免不必要的缩放，保持用户当前的视角
-      } else {
-        // 2D 模式：不强制调整 zoom，保持用户当前的缩放级别
-        // 这样可以保持用户当前的视角
-      }
-      
-      // 平滑更新 tilt 和 heading（这些操作不会改变地图中心点）
-      map.setTilt(mapConfig.tilt);
-      map.setHeading(mapConfig.heading);
-      
-      // 更新旋转控制
-      map.setOptions({ rotateControl: mapConfig.rotateControl });
-    }
-
-    // 等待过渡完成（Google Maps 自动处理平滑过渡）
-    // 过渡时长建议 500-800ms
-    const transitionTimeout = setTimeout(() => {
-      // 再次确保中心点保持不变（防止在过渡过程中偏移）
-      if (currentCenter) {
-        map.setCenter(currentCenter);
-      }
-      
-      // 恢复地图交互
-      // 注意：scrollwheel 由手势识别代码控制，这里不恢复
-      map.setOptions({
-        draggable: true,
-        zoomControl: true,
-        scrollwheel: false, // 由手势识别代码控制
-        disableDoubleClickZoom: false,
-      });
-      setIsTransitioning(false);
-    }, 800);
-
-    return () => {
-      clearTimeout(transitionTimeout);
-    };
-  }, [mapMode, mapsLoaded]);
+    // 使用动画系统执行模式切换
+    switchMode({
+      targetMode,
+      preserveCenter: true,
+      duration: 1500, // 1.5秒，与文档一致
+      onComplete: () => {
+        // 更新旋转控制（根据目标模式）
+        map.setOptions({ rotateControl: mapConfig.rotateControl });
+        
+        // 恢复地图交互
+        // 注意：scrollwheel 由手势识别代码控制，这里不恢复
+        map.setOptions({
+          draggable: true,
+          zoomControl: true,
+          scrollwheel: false, // 由手势识别代码控制
+          disableDoubleClickZoom: false,
+        });
+        
+        setIsTransitioning(false);
+      },
+      onCancel: () => {
+        // 如果动画被取消，也要恢复交互
+        map.setOptions({
+          draggable: true,
+          zoomControl: true,
+          scrollwheel: false,
+          disableDoubleClickZoom: false,
+        });
+        setIsTransitioning(false);
+      },
+    });
+  }, [mapMode, mapsLoaded, switchMode]);
 
 
   return (

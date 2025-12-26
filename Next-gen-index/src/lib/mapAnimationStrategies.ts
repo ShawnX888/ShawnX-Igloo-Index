@@ -13,6 +13,7 @@ import type {
   CameraConfig,
   InitializeTarget,
   FlyToTarget,
+  ModeSwitchTarget,
 } from '../types/animation';
 import {
   MapAnimationEngine,
@@ -20,6 +21,7 @@ import {
   adaptiveDuration,
 } from './mapAnimationEngine';
 import { getAdministrativeRegion } from './regionData';
+import { getMapModeStyles } from '../config/mapModeStyles';
 import type { Region } from '../types';
 
 /**
@@ -769,3 +771,130 @@ export class FlyToStrategy implements AnimationStrategy {
   }
 }
 
+/**
+ * 模式切换动画策略
+ * 
+ * 实现 2D/3D 模式之间的平滑过渡：
+ * - 同时动画化 tilt、heading、zoom 三个参数
+ * - 使用相同的缓动函数确保同步
+ * - 进入 3D 时稍微放大（+1），增强沉浸感
+ * - 回到 2D 时缩小（-1），补偿之前的放大
+ */
+export class ModeSwitchStrategy implements AnimationStrategy {
+  private engine: MapAnimationEngine;
+
+  constructor(engine: MapAnimationEngine) {
+    this.engine = engine;
+  }
+
+  /**
+   * 执行模式切换动画
+   */
+  async animate(
+    map: google.maps.Map,
+    target: ModeSwitchTarget,
+    options: AnimationOptions = {}
+  ): Promise<void> {
+    // 获取当前相机配置
+    const currentConfig = this.getCurrentCameraConfig(map);
+    
+    // 获取目标配置
+    const targetConfig = this.getTargetConfig(target.targetMode, currentConfig, target.preserveCenter);
+
+    // 执行动画
+    await this.engine.animateCamera(map, currentConfig, targetConfig, {
+      duration: options.duration || 1500, // 默认1.5秒
+      easing: options.easing,
+      onStart: options.onStart,
+      onComplete: options.onComplete,
+      onCancel: options.onCancel,
+    });
+  }
+
+  /**
+   * 获取当前相机配置
+   */
+  private getCurrentCameraConfig(map: google.maps.Map): CameraConfig {
+    const center = map.getCenter();
+    if (!center) {
+      throw new Error('Map center is not available');
+    }
+
+    // 将 LatLng 对象转换为 LatLngLiteral，确保坐标是有效数字
+    const centerLat = center.lat();
+    const centerLng = center.lng();
+    
+    if (typeof centerLat !== 'number' || !isFinite(centerLat) || 
+        typeof centerLng !== 'number' || !isFinite(centerLng)) {
+      throw new Error(`Invalid map center coordinates: lat=${centerLat}, lng=${centerLng}`);
+    }
+
+    return {
+      center: { lat: centerLat, lng: centerLng },
+      zoom: map.getZoom() ?? 11,
+      tilt: map.getTilt() ?? 0,
+      heading: map.getHeading() ?? 0,
+    };
+  }
+
+  /**
+   * 获取目标配置
+   * 
+   * 根据目标模式和当前配置，计算目标相机参数
+   */
+  private getTargetConfig(
+    mode: '2d' | '3d',
+    current: CameraConfig,
+    preserveCenter: boolean = true
+  ): CameraConfig {
+    // 从样式配置获取目标参数
+    const styles = getMapModeStyles(mode);
+    const mapConfig = styles.map;
+
+    // 确保 center 是 LatLngLiteral 格式
+    let targetCenter: google.maps.LatLngLiteral;
+    if ('lat' in current.center && 'lng' in current.center) {
+      // 已经是 LatLngLiteral
+      targetCenter = current.center;
+    } else {
+      // 是 LatLng 对象，需要转换
+      const center = current.center as google.maps.LatLng;
+      const lat = center.lat();
+      const lng = center.lng();
+      
+      if (typeof lat !== 'number' || !isFinite(lat) || 
+          typeof lng !== 'number' || !isFinite(lng)) {
+        throw new Error(`Invalid center coordinates: lat=${lat}, lng=${lng}`);
+      }
+      
+      targetCenter = { lat, lng };
+    }
+
+    if (mode === '3d') {
+      // 进入 3D 模式
+      // 保持当前 zoom，不自动调整
+      const currentZoom = current.zoom;
+      const targetZoom = currentZoom + 1; // 稍微放大，增强沉浸感
+
+      return {
+        center: preserveCenter ? targetCenter : targetCenter,
+        tilt: mapConfig.tilt, // 45度
+        heading: mapConfig.heading, // 0度（正北向上）
+        zoom: targetZoom,
+      };
+    } else {
+      // 回到 2D 模式
+      // 如果当前 zoom 是从 3D 模式切换过来的（>= 17），需要缩小
+      // 否则保持当前 zoom
+      const currentZoom = current.zoom;
+      const targetZoom = currentZoom >= 17 ? currentZoom - 1 : currentZoom;
+
+      return {
+        center: preserveCenter ? targetCenter : targetCenter,
+        tilt: mapConfig.tilt, // 0度（俯视）
+        heading: mapConfig.heading, // 0度（正北向上）
+        zoom: targetZoom,
+      };
+    }
+  }
+}

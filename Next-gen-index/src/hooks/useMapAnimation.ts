@@ -6,7 +6,7 @@
 
 import { useRef, useCallback, useEffect, useState } from 'react';
 import { MapAnimationEngine } from '../lib/mapAnimationEngine';
-import { InitializeStrategy, FlyToStrategy } from '../lib/mapAnimationStrategies';
+import { InitializeStrategy, FlyToStrategy, ModeSwitchStrategy } from '../lib/mapAnimationStrategies';
 import type {
   UseMapAnimationOptions,
   FlyToOptions,
@@ -41,6 +41,7 @@ export function useMapAnimation(options: UseMapAnimationOptions) {
   // 动画策略实例
   const initializeStrategyRef = useRef<InitializeStrategy | null>(null);
   const flyToStrategyRef = useRef<FlyToStrategy | null>(null);
+  const modeSwitchStrategyRef = useRef<ModeSwitchStrategy | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
 
   // 初始化动画引擎和策略
@@ -55,6 +56,7 @@ export function useMapAnimation(options: UseMapAnimationOptions) {
     engineRef.current = engine;
     initializeStrategyRef.current = new InitializeStrategy(engine);
     flyToStrategyRef.current = new FlyToStrategy(engine);
+    modeSwitchStrategyRef.current = new ModeSwitchStrategy(engine);
 
     return () => {
       // 清理资源
@@ -62,6 +64,7 @@ export function useMapAnimation(options: UseMapAnimationOptions) {
       engineRef.current = null;
       initializeStrategyRef.current = null;
       flyToStrategyRef.current = null;
+      modeSwitchStrategyRef.current = null;
     };
   }, [map]);
 
@@ -195,8 +198,8 @@ export function useMapAnimation(options: UseMapAnimationOptions) {
    */
   const switchMode = useCallback(
     async (options: ModeSwitchOptions): Promise<void> => {
-      if (!map || !engineRef.current) {
-        console.warn('Map or animation engine is not available');
+      if (!map || !modeSwitchStrategyRef.current) {
+        console.warn('Map or mode switch strategy is not available');
         return;
       }
 
@@ -204,28 +207,17 @@ export function useMapAnimation(options: UseMapAnimationOptions) {
         setIsAnimating(true);
         onAnimationStart?.();
 
-        // TODO: 阶段4实现 - 模式切换策略的具体逻辑
-        // 这里先提供一个占位实现
-        const currentConfig = getCurrentCameraConfig();
-        const targetConfig: CameraConfig = {
-          center: options.preserveCenter
-            ? currentConfig.center
-            : currentConfig.center,
-          zoom:
-            options.targetMode === '3d'
-              ? currentConfig.zoom + 1
-              : currentConfig.zoom - 1,
-          tilt: options.targetMode === '3d' ? 45 : 0,
-          heading: 0,
-        };
-
-        await engineRef.current.animateCamera(
+        // 使用模式切换策略执行动画
+        await modeSwitchStrategyRef.current.animate(
           map,
-          currentConfig,
-          targetConfig,
+          {
+            targetMode: options.targetMode,
+            preserveCenter: options.preserveCenter ?? true,
+          },
           {
             duration: options.duration ?? defaultDuration,
             easing: options.easing ?? defaultEasing,
+            onStart: options.onStart,
             onComplete: () => {
               setIsAnimating(false);
               options.onComplete?.();
@@ -248,7 +240,6 @@ export function useMapAnimation(options: UseMapAnimationOptions) {
       map,
       defaultDuration,
       defaultEasing,
-      getCurrentCameraConfig,
       onAnimationStart,
       onAnimationComplete,
       onAnimationCancel,
