@@ -42,11 +42,26 @@ declare global {
         mapId?: string;
       }
 
+      interface LatLng {
+        lat(): number;
+        lng(): number;
+      }
+
+      interface CameraOptions {
+        center?: LatLng | LatLngLiteral;
+        zoom?: number;
+        tilt?: number;
+        heading?: number;
+      }
+
       interface Map {
         setCenter(center: LatLngLiteral): void;
         setZoom(zoom: number): void;
-        getCenter(): LatLngLiteral | null;
+        getCenter(): LatLng | null;
         getZoom(): number | null;
+        getTilt(): number | null;
+        getHeading(): number | null;
+        moveCamera(options: CameraOptions): void;
       }
 
       interface MapsLibrary {
