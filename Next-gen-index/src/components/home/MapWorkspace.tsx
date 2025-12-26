@@ -282,6 +282,130 @@ export function MapWorkspace({ selectedRegion, weatherDataType, riskData, select
     };
   }, []);
 
+  // 触摸板手势识别：区分滑动和缩放
+  useEffect(() => {
+    if (!mapContainerRef.current || !mapInstanceRef.current || !mapsLoaded || isTransitioning) return;
+
+    const mapContainer = mapContainerRef.current;
+    const map = mapInstanceRef.current;
+
+    // 禁用 Google Maps 的默认 scrollwheel 行为，以便我们手动处理
+    map.setOptions({ scrollwheel: false });
+
+    // 手势状态跟踪
+    let lastWheelTime = 0;
+    let wheelEventCount = 0;
+    let accumulatedDeltaY = 0;
+    const WHEEL_THRESHOLD_MS = 100; // 100ms 内的连续 wheel 事件视为同一手势
+
+    /**
+     * 检测是否为缩放手势
+     * 在 macOS 上，两指缩放通常伴随 metaKey (cmd键)
+     * 在 Windows/Linux 上，两指缩放通常伴随 ctrlKey
+     */
+    const isZoomGesture = (e: WheelEvent): boolean => {
+      // 检查修饰键（最可靠的方法）
+      // macOS: metaKey (cmd键)
+      // Windows/Linux: ctrlKey
+      if (e.ctrlKey || e.metaKey) {
+        return true;
+      }
+
+      // 如果没有修饰键，通过 deltaY 的特征判断
+      // 缩放操作：deltaY 通常较小（绝对值 < 5）且连续
+      // 滑动操作：deltaY 通常较大（绝对值 >= 10）
+      const absDeltaY = Math.abs(e.deltaY);
+      
+      // 如果 deltaY 很小，可能是缩放
+      if (absDeltaY < 5) {
+        const timeSinceLastWheel = Date.now() - lastWheelTime;
+        // 如果是连续的小 deltaY 事件，可能是缩放
+        if (timeSinceLastWheel < WHEEL_THRESHOLD_MS && wheelEventCount > 2) {
+          return true;
+        }
+      }
+
+      return false;
+    };
+
+    /**
+     * 处理 wheel 事件
+     */
+    const handleWheel = (e: WheelEvent) => {
+      // 检查鼠标是否在地图容器内
+      const rect = mapContainer.getBoundingClientRect();
+      const isInsideMap = (
+        e.clientX >= rect.left &&
+        e.clientX <= rect.right &&
+        e.clientY >= rect.top &&
+        e.clientY <= rect.bottom
+      );
+
+      if (!isInsideMap) {
+        return; // 不在地图区域内，不处理
+      }
+
+      const currentTime = Date.now();
+      const timeSinceLastWheel = currentTime - lastWheelTime;
+
+      // 判断是否为同一手势的连续事件
+      if (timeSinceLastWheel < WHEEL_THRESHOLD_MS) {
+        wheelEventCount++;
+        accumulatedDeltaY += e.deltaY;
+      } else {
+        // 新的手势开始
+        wheelEventCount = 1;
+        accumulatedDeltaY = e.deltaY;
+      }
+
+      lastWheelTime = currentTime;
+
+      // 检测是否为缩放手势
+      const isZoom = isZoomGesture(e);
+
+      if (isZoom) {
+        // 缩放操作：阻止默认行为，手动处理地图缩放
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // 计算缩放增量
+        // deltaY < 0 表示放大，deltaY > 0 表示缩小
+        const zoomDelta = -e.deltaY * 0.01; // 调整缩放灵敏度
+        const currentZoom = map.getZoom() || 11;
+        const newZoom = Math.max(1, Math.min(20, currentZoom + zoomDelta));
+        
+        // 使用 setZoom 方法，它会自动保持地图中心点
+        map.setZoom(newZoom);
+      } else {
+        // 滑动操作：阻止地图的默认行为，改为页面滚动
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // 手动触发页面滚动
+        // 使用累积的 deltaY 以获得更平滑的滚动体验
+        const scrollAmount = accumulatedDeltaY;
+        window.scrollBy({
+          top: scrollAmount,
+          behavior: 'auto'
+        });
+        
+        // 重置累积值，准备下一次滚动
+        accumulatedDeltaY = 0;
+      }
+    };
+
+    // 添加事件监听器（使用 passive: false 以便可以阻止默认行为）
+    mapContainer.addEventListener('wheel', handleWheel, { passive: false });
+
+    return () => {
+      mapContainer.removeEventListener('wheel', handleWheel);
+      // 恢复 Google Maps 的默认 scrollwheel 行为
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.setOptions({ scrollwheel: true });
+      }
+    };
+  }, [mapsLoaded, isTransitioning]);
+
   // 模式切换逻辑：监听 mapMode 变化，实现平滑切换动画
   useEffect(() => {
     if (!mapInstanceRef.current || !mapsLoaded) return;
@@ -349,10 +473,11 @@ export function MapWorkspace({ selectedRegion, weatherDataType, riskData, select
       }
       
       // 恢复地图交互
+      // 注意：scrollwheel 由手势识别代码控制，这里不恢复
       map.setOptions({
         draggable: true,
         zoomControl: true,
-        scrollwheel: true,
+        scrollwheel: false, // 由手势识别代码控制
         disableDoubleClickZoom: false,
       });
       setIsTransitioning(false);
