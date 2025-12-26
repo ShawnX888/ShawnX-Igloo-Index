@@ -238,8 +238,15 @@ export class FlyToStrategy implements AnimationStrategy {
 
     // 计算目标 zoom
     let targetZoom: number;
-    if (target.province) {
-      // 根据省份边界计算合适的 zoom 以显示省份全景
+    if (target.region) {
+      // 根据所选区域（district）边界计算合适的 zoom 以显示区域全景
+      targetZoom = await this.calculateRegionZoom(
+        target.region.country,
+        target.region.province,
+        target.region.district
+      );
+    } else if (target.province) {
+      // 降级方案：如果没有区域信息，使用省份边界计算
       targetZoom = await this.calculateProvinceZoom(
         target.province.country,
         target.province.province
@@ -419,12 +426,12 @@ export class FlyToStrategy implements AnimationStrategy {
    * 
    * 两阶段动画：
    * 1. 先滑动到GPS定位位置并zoom in到街道级别（15）
-   * 2. 再zoom out到省份全景（位置保持不变）
+   * 2. 再zoom out并移动到所选区域中心，最终显示所选区域全景
    */
   private async animateGPSSequence(
     map: google.maps.Map,
     target: FlyToTarget,
-    provinceZoom: number,
+    regionZoom: number,
     options: AnimationOptions
   ): Promise<void> {
     const startCenter = map.getCenter();
@@ -434,6 +441,16 @@ export class FlyToStrategy implements AnimationStrategy {
 
     const startZoom = map.getZoom() ?? 10;
     const streetZoom = 15; // 街道级别 zoom
+
+    // 获取所选区域中心点（如果提供了区域信息）
+    let regionCenter: google.maps.LatLng | google.maps.LatLngLiteral;
+    if (target.region) {
+      const { getRegionCenter } = await import('./regionData');
+      const center = await getRegionCenter(target.region);
+      regionCenter = center || target.center;
+    } else {
+      regionCenter = target.center;
+    }
 
     // 第一阶段：同时滑动到GPS定位位置并zoom in到街道级别
     await this.animateFlyToWithZoom(
@@ -450,15 +467,16 @@ export class FlyToStrategy implements AnimationStrategy {
       }
     );
 
-    // 短暂停留（可选，增强用户体验）
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    // 短暂停留（增强用户体验，让用户看清GPS定位位置）
+    await new Promise((resolve) => setTimeout(resolve, 800));
 
-    // 第二阶段：zoom out到省份全景（位置保持不变）
-    await this.animateZoom(
+    // 第二阶段：zoom out并移动到所选区域中心，最终显示所选区域全景
+    await this.animateFlyToWithZoom(
       map,
       target.center,
+      regionCenter,
       streetZoom,
-      provinceZoom,
+      regionZoom,
       1200, // 1.2秒
       {
         onStart: undefined,
@@ -473,17 +491,31 @@ export class FlyToStrategy implements AnimationStrategy {
    */
   private async animateFlyToWithZoom(
     map: google.maps.Map,
-    startCenter: google.maps.LatLng,
+    startCenter: google.maps.LatLng | google.maps.LatLngLiteral,
     endCenter: google.maps.LatLng | google.maps.LatLngLiteral,
     startZoom: number,
     endZoom: number,
     duration: number,
     options: AnimationOptions
   ): Promise<void> {
-    const startLat = startCenter.lat();
-    const startLng = startCenter.lng();
-    const endLat = 'lat' in endCenter ? endCenter.lat : endCenter.lat();
-    const endLng = 'lng' in endCenter ? endCenter.lng : endCenter.lng();
+    // 处理 startCenter：支持 LatLng 实例和 LatLngLiteral 对象
+    const startLat =
+      typeof (startCenter as any).lat === 'function'
+        ? (startCenter as google.maps.LatLng).lat()
+        : (startCenter as google.maps.LatLngLiteral).lat;
+    const startLng =
+      typeof (startCenter as any).lng === 'function'
+        ? (startCenter as google.maps.LatLng).lng()
+        : (startCenter as google.maps.LatLngLiteral).lng;
+    // 处理 endCenter：支持 LatLng 实例和 LatLngLiteral 对象
+    const endLat =
+      typeof (endCenter as any).lat === 'function'
+        ? (endCenter as google.maps.LatLng).lat()
+        : (endCenter as google.maps.LatLngLiteral).lat;
+    const endLng =
+      typeof (endCenter as any).lng === 'function'
+        ? (endCenter as google.maps.LatLng).lng()
+        : (endCenter as google.maps.LatLngLiteral).lng;
 
     // 创建 Promise
     let resolvePromise: () => void;
@@ -608,7 +640,62 @@ export class FlyToStrategy implements AnimationStrategy {
   }
 
   /**
-   * 根据省份边界计算合适的 zoom 级别以显示省份全景
+   * 根据所选区域（district）边界计算合适的 zoom 级别以显示区域全景
+   */
+  private async calculateRegionZoom(
+    country: string,
+    province: string,
+    district: string
+  ): Promise<number> {
+    try {
+      // 获取区域边界数据
+      const region: Region = { country, province, district };
+      const regionData = await getAdministrativeRegion(region);
+
+      if (
+        !regionData ||
+        !regionData.boundary ||
+        regionData.boundary.length === 0
+      ) {
+        // 如果无法获取边界，降级到省份级别计算
+        return this.calculateProvinceZoom(country, province);
+      }
+
+      // 计算边界框：遍历所有边界点，找到最小/最大经纬度
+      let minLat = Infinity,
+        maxLat = -Infinity;
+      let minLng = Infinity,
+        maxLng = -Infinity;
+
+      for (const point of regionData.boundary) {
+        minLat = Math.min(minLat, point.lat);
+        maxLat = Math.max(maxLat, point.lat);
+        minLng = Math.min(minLng, point.lng);
+        maxLng = Math.max(maxLng, point.lng);
+      }
+
+      // 计算边界框的宽度和高度（度）
+      const latDiff = maxLat - minLat;
+      const lngDiff = maxLng - minLng;
+
+      // 使用经验公式：根据边界框大小计算 zoom
+      const maxDiff = Math.max(latDiff, lngDiff);
+
+      // 经验公式：根据边界框大小计算 zoom（区域级别通常比省份级别更小，zoom 更大）
+      if (maxDiff > 2) return 8; // 大区域
+      if (maxDiff > 1) return 9; // 中等区域
+      if (maxDiff > 0.5) return 10; // 小区域
+      if (maxDiff > 0.25) return 11; // 更小的区域
+      return 12; // 默认（很小的区域）
+    } catch (error) {
+      console.error('Failed to calculate region zoom:', error);
+      // 降级到省份级别计算
+      return this.calculateProvinceZoom(country, province);
+    }
+  }
+
+  /**
+   * 根据省份边界计算合适的 zoom 级别以显示省份全景（降级方案）
    * 
    * 复用 InitializeStrategy 中的逻辑
    */

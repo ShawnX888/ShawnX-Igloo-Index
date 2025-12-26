@@ -60,9 +60,15 @@ export interface CameraConfig {
 export interface FlyToTarget {
   /** 目标中心点 */
   center: google.maps.LatLng | google.maps.LatLngLiteral;
-  /** 目标缩放级别（可选，如果提供省份信息将自动计算） */
+  /** 目标缩放级别（可选，如果提供区域信息将自动计算） */
   zoom?: number;
-  /** 省份信息（用于自动计算合适的 zoom 以显示省份全景） */
+  /** 所选区域信息（用于自动计算合适的 zoom 以显示区域全景，优先使用） */
+  region?: {
+    country: string;
+    province: string;
+    district: string;
+  };
+  /** 省份信息（用于自动计算合适的 zoom 以显示省份全景，降级方案） */
   province?: {
     country: string;
     province: string;

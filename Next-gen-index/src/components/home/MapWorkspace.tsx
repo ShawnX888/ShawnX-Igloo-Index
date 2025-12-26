@@ -200,9 +200,10 @@ export function MapWorkspace({ selectedRegion, weatherDataType, riskData, select
               lat: result.latitude,
               lng: result.longitude,
             },
-            province: {
+            region: {
               country: targetRegion.country,
               province: targetRegion.province,
+              district: targetRegion.district,
             },
           },
           strategy: 'parabolic',
@@ -486,9 +487,10 @@ export function MapWorkspace({ selectedRegion, weatherDataType, riskData, select
         await flyTo({
           target: {
             center: regionCenter,
-            province: {
+            region: {
               country: selectedRegion.country,
               province: selectedRegion.province,
+              district: selectedRegion.district,
             },
           },
           strategy: 'parabolic',
