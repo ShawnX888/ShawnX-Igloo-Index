@@ -57,6 +57,12 @@ Usage notes:
 <location>skills/igloo-testing</location>
 </skill>
 
+<skill>
+<name>ui-ux-pro-max</name>
+<description>Design intelligence database for building professional UI/UX across multiple platforms. Use when designing interfaces, selecting color palettes, choosing typography, implementing UI styles (Glassmorphism, Neumorphism, etc.), or following UX best practices. Provides 57 UI styles, 95 color palettes, 56 font pairings, 24 chart types, and 98 UX guidelines for React, Next.js, Vue, Nuxt, SwiftUI, React Native, Flutter, and HTML+Tailwind.</description>
+<location>skills/ui-ux-pro-max</location>
+</skill>
+
 </available_skills>
 <!-- SKILLS_TABLE_END -->
 
