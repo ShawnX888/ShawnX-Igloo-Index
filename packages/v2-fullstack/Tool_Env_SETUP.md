@@ -96,6 +96,7 @@ packages/v2-fullstack/
 ├── env.example                 # 后端环境变量模板
 ├── verify-docker.sh            # Docker 验证脚本
 ├── DOCKER_INSTALLATION.md     # Docker 安装指南
+├── DEV_TOOLS_SETUP.md         # 开发工具配置指南
 ├── Tool_Env_SETUP.md          # 本文件（工具和环境配置进度跟踪文档）
 ├── frontend/
 │   ├── package.json           # 前端依赖配置
@@ -131,10 +132,16 @@ packages/v2-fullstack/
 - ✅ 已验证环境变量加载（python-dotenv 可以正常读取）
 - ✅ 已验证所有 `.env` 文件已被 `.gitignore` 正确忽略
 
-### 2. 开发工具安装（可选但推荐）
-- ⏳ 数据库管理工具（DBeaver/pgAdmin/TablePlus）
-- ⏳ API 测试工具（Postman/Insomnia）
-- ⏳ Redis 客户端（RedisInsight）
+### 2. 开发工具安装 ✅
+- ✅ 数据库管理工具：DBeaver Community Edition 25.3.2
+  - 已安装到 `/Applications/DBeaver.app`
+  - 命令行工具 `dbeaver` 已添加到 PATH
+- ✅ API 测试工具：Postman 11.80.0（桌面应用）+ Postman CLI 1.28.0
+  - 已安装到 `/Applications/Postman.app`
+  - 命令行工具 `postman` 已添加到 PATH
+- ✅ Redis 客户端：RedisInsight 2.70.1
+  - 已安装到 `/Applications/Redis Insight.app`
+- 📖 详细配置指南请参考：`DEV_TOOLS_SETUP.md`
 
 ## 🚀 下一步配置操作
 
@@ -206,14 +213,14 @@ cp backend/.env.example backend/.env
 
 ## 🎉 准备工作完成度总结
 
-**完成度**：100%（核心准备工作全部完成）
+**完成度**：100%（所有准备工作全部完成，包括开发工具）
 
 - ✅ 基础设施：100%（Docker, 数据库, Redis）
 - ✅ 开发环境：100%（Node.js, Python, 工具链）
 - ✅ 前端环境：100%（依赖安装完成）
 - ✅ 后端环境：100%（项目结构、依赖安装）
 - ✅ 环境变量配置：100%（所有 API Keys 已配置完成）
-- ⏳ 开发工具：0%（可选，数据库管理工具、API 测试工具等）
+- ✅ 开发工具：100%（DBeaver, Postman, RedisInsight 已安装）
 
 ## 🚀 准备工作已完成！
 
@@ -225,11 +232,14 @@ cp backend/.env.example backend/.env
 - ✅ 所有环境变量已配置
 - ✅ 所有服务运行正常
 
-### ⏳ 可选工作（不影响开发）
-1. **安装开发工具**（可选，便于调试和测试）
-   - 数据库管理工具（DBeaver/pgAdmin/TablePlus）
-   - API 测试工具（Postman/Insomnia）
-   - Redis 客户端（RedisInsight）
+### ✅ 所有准备工作已完成
+
+**开发工具已安装**：
+- ✅ DBeaver - 数据库管理工具
+- ✅ Postman - API 测试工具（含 CLI）
+- ✅ RedisInsight - Redis 客户端
+
+详细配置和使用指南请参考：`DEV_TOOLS_SETUP.md`
 
 **🎉 准备工作 100% 完成！可以开始实际开发工作了！**
 
