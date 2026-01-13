@@ -1,0 +1,53 @@
+[tool.poetry]
+name = "igloo-backend"
+version = "2.0.0"
+description = "Igloo Index Insurance Backend API"
+authors = ["Igloo Team"]
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.10"
+fastapi = "^0.115.0"
+uvicorn = {extras = ["standard"], version = "^0.32.0"}
+websockets = "^14.1"
+sqlalchemy = {extras = ["asyncio"], version = "^2.0.36"}
+asyncpg = "^0.30.0"
+geoalchemy2 = "^0.15.0"
+alembic = "^1.14.0"
+pydantic = "^2.9.2"
+pydantic-settings = "^2.6.1"
+redis = "^5.2.0"
+celery = "^5.4.0"
+flower = "^2.0.1"
+google-generativeai = "^0.8.3"
+python-dotenv = "^1.0.1"
+python-dateutil = "^2.9.0"
+pytz = "^2024.2"
+pydantic-extra-types = "^2.7.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.4"
+pytest-asyncio = "^0.24.0"
+pytest-cov = "^6.0.0"
+hypothesis = "^6.112.1"
+black = "^24.10.0"
+ruff = "^0.7.0"
+mypy = "^1.13.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 100
+target-version = ['py310']
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true

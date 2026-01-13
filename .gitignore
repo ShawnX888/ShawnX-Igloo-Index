@@ -1,4 +1,8 @@
+# Cursor rules (may contain sensitive info like API keys)
 .cursor/
+!.cursor/rules/coding-standards.mdc
+!.cursor/rules/*.example.mdc
+
 .DS_Store
 *.pyc
 __pycache__/
@@ -9,11 +13,37 @@ dist/
 dist-ssr/
 *.local
 
-# Environment variables
+# Environment variables - CRITICAL: Never commit .env files with API keys
 .env
 .env.local
 .env.*.local
 .env.production
+*.env
+# Allow .env.example files as templates (no real API keys)
+!*.env.example
+!env.example
+!**/env.example
+!**/.env.example
+
+# Python
+venv/
+.venv/
+*.pyc
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+*.egg-info/
+dist/
+build/
+.poetry/
+poetry.lock
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
 
 # Build outputs
 .next/
@@ -22,3 +52,12 @@ out/
 
 # Sync scripts
 sync-to-github.sh
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
