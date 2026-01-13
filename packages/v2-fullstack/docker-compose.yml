@@ -1,0 +1,46 @@
+services:
+  postgres:
+    image: postgis/postgis:15-3.3
+    container_name: igloo-postgres
+    environment:
+      POSTGRES_USER: igloo
+      POSTGRES_PASSWORD: igloo_dev
+      POSTGRES_DB: igloo_index
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U igloo -d igloo_index"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - igloo-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: igloo-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - igloo-network
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  igloo-network:
+    driver: bridge
