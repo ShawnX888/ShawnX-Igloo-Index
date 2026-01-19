@@ -57,6 +57,9 @@ sync-to-github.sh
 *.log
 logs/
 
+# Runtime process files
+*.pid
+
 # Temporary files
 tmp/
 temp/
