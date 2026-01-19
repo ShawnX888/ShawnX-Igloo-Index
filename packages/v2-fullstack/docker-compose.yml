@@ -1,23 +1,25 @@
 services:
-  postgres:
-    image: postgis/postgis:15-3.3
-    container_name: igloo-postgres
-    environment:
-      POSTGRES_USER: igloo
-      POSTGRES_PASSWORD: igloo_dev
-      POSTGRES_DB: igloo_index
-      PGDATA: /var/lib/postgresql/data/pgdata
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U igloo -d igloo_index"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - igloo-network
+  # PostgreSQL 服务已迁移到云数据库（AWS RDS）
+  # 如需使用本地数据库，取消下面的注释并启动: docker compose up -d postgres
+  # postgres:
+  #   image: postgis/postgis:15-3.3
+  #   container_name: igloo-postgres
+  #   environment:
+  #     POSTGRES_USER: igloo
+  #     POSTGRES_PASSWORD: igloo_dev
+  #     POSTGRES_DB: igloo_index
+  #     PGDATA: /var/lib/postgresql/data/pgdata
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U igloo -d igloo_index"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #   networks:
+  #     - igloo-network
 
   redis:
     image: redis:7-alpine
@@ -36,8 +38,8 @@ services:
       - igloo-network
 
 volumes:
-  postgres_data:
-    driver: local
+  # postgres_data:  # 本地 PostgreSQL 数据卷（已迁移到云数据库）
+  #   driver: local
   redis_data:
     driver: local
 
