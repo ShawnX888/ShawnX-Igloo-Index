@@ -33,18 +33,19 @@
 
 ### 4. Docker Compose 配置 ✅
 - ✅ 创建了 `docker-compose.yml`
+- ✅ 配置了 PostgreSQL 14.7-alpine（本地，不包含 PostGIS）
 - ✅ 配置了 Redis 7-alpine（本地）
-- ⚠️ PostgreSQL 已迁移到云数据库（AWS RDS），本地 Docker PostgreSQL 服务已注释
+- ✅ 配置了数据持久化卷
+- ✅ 配置了健康检查
 
 ### 5. 数据库服务配置 ✅
-- ✅ **云数据库**（AWS RDS PostgreSQL 14）：
-  - Host: `analysis-dev-postgresql.cz29fkykottg.ap-southeast-1.rds.amazonaws.com`
+- ✅ **PostgreSQL**（本地 Docker，PostgreSQL 14.7）：
+  - Host: `localhost`
   - Port: `5432`
-  - Database: `next_gen_index_dev`
-  - User: `next_gen_index_dev`
-  - 凭证文件: `~/Downloads/pg_credentials_next_gen_index_dev_20260119.json`
-  - ⚠️ 注意：需要 VPN 或配置 AWS 安全组才能连接
-  - ⚠️ **PostGIS 限制**：当前云数据库不支持安装自定义扩展，PostGIS 不可用，项目将不使用 PostGIS 功能
+  - Database: `igloo_index`
+  - User: `igloo`
+  - Password: `igloo_dev`
+  - ⚠️ **注意**：使用 PostgreSQL 14，不安装 PostGIS 扩展
 - ✅ **Redis**（本地 Docker）：
   - Host: `localhost:6379`
   - 服务状态：healthy
@@ -151,9 +152,8 @@ docker compose ps
 
 ### 2. 测试数据库连接
 ```bash
-# 测试云数据库连接（需要 VPN 或配置安全组）
-cd packages/v2-fullstack
-./check-cloud-db.sh
+# 测试 PostgreSQL（本地）
+docker compose exec postgres psql -U igloo -d igloo_index -c "SELECT version();"
 
 # 测试 Redis（本地）
 docker compose exec redis redis-cli ping
@@ -189,16 +189,15 @@ cp backend/.env.example backend/.env
    - Poetry 已安装：`poetry --version` 应显示 Poetry 2.2.1
 
 2. **Docker 服务**：
-   - 启动 Redis：`docker compose up -d redis`
+   - 启动服务：`docker compose up -d`
    - 停止服务：`docker compose down`
-   - 查看日志：`docker compose logs -f redis`
-   - 当前状态：Redis 服务运行正常（healthy）
-   - ⚠️ **注意**：PostgreSQL 已迁移到云数据库，不再使用本地 Docker
+   - 查看日志：`docker compose logs -f`
+   - 当前状态：所有服务运行正常（healthy）
 
 3. **数据持久化**：
-   - PostgreSQL 数据存储在云数据库（AWS RDS）
+   - PostgreSQL 数据存储在 Docker volume: `postgres_data`
    - Redis 数据存储在 Docker volume: `redis_data`
-   - 删除 Redis 数据：`docker compose down -v`（谨慎使用）
+   - 删除数据：`docker compose down -v`（谨慎使用）
 
 4. **Git 安全**：
    - ✅ 所有 `.env` 文件已添加到 `.gitignore`

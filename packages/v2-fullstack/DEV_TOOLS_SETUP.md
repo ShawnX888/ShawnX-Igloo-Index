@@ -20,8 +20,8 @@ cd packages/v2-fullstack
 - ✅ **RedisInsight**：自动生成配置文件（需重启应用生效）
 - ✅ **Postman**：自动生成环境变量配置文件（需手动导入）
 
-**配置信息**（从云数据库凭证和 `docker-compose.yml` 自动读取）：
-- PostgreSQL: 云数据库（AWS RDS）- 从凭证文件读取
+**配置信息**（从 `docker-compose.yml` 自动读取）：
+- PostgreSQL: `igloo_index@localhost:5432` (用户: `igloo`, 密码: `igloo_dev`)
 - Redis: `localhost:6379`
 - API Base URL: `http://localhost:8000`
 
@@ -97,7 +97,7 @@ cd packages/v2-fullstack
 **位置**：`/Applications/DBeaver.app`  
 **命令行工具**：`dbeaver`（已添加到 PATH）
 
-#### 连接云数据库（AWS RDS PostgreSQL）
+#### 连接 PostgreSQL 数据库
 
 1. **启动 DBeaver**：
    ```bash
@@ -109,19 +109,17 @@ cd packages/v2-fullstack
 2. **创建新连接**：
    - 点击 "New Database Connection" 或按 `Cmd+Shift+N`
    - 选择 "PostgreSQL"
-   - 填写连接信息（从凭证文件 `~/Downloads/pg_credentials_next_gen_index_dev_20260119.json` 读取）：
-     - **Host**: `analysis-dev-postgresql.cz29fkykottg.ap-southeast-1.rds.amazonaws.com`
+   - 填写连接信息：
+     - **Host**: `localhost`
      - **Port**: `5432`
-     - **Database**: `next_gen_index_dev`
-     - **Username**: `next_gen_index_dev`
-     - **Password**: `gsZlRG@=%$YN|5f5`（从凭证文件获取）
-   - ⚠️ **注意**：确保已配置 VPN 或 AWS 安全组允许连接
+     - **Database**: `igloo_index`
+     - **Username**: `igloo`
+     - **Password**: `igloo_dev`
    - 点击 "Test Connection" 验证连接
    - 点击 "Finish" 保存连接
 
 3. **关于 PostGIS 扩展**：
-   - ⚠️ **重要**：当前云数据库（AWS RDS PostgreSQL 14）不支持安装自定义扩展
-   - PostGIS 扩展不可用
+   - ⚠️ **注意**：当前使用 PostgreSQL 14.7，不安装 PostGIS 扩展
    - 项目将不使用 PostGIS 功能
 
 #### 使用技巧
@@ -270,11 +268,8 @@ curl http://localhost:8000/health
 ## 📝 注意事项
 
 1. **数据库连接**：
-   - **云数据库**：确保已配置 VPN 或 AWS 安全组允许连接
-   - 使用检查脚本验证连接：`./check-cloud-db.sh`
-   - 如果连接失败，检查网络连接和安全组配置
-   - **Redis**：确保 Docker 服务正在运行：`docker compose ps`
-   - 如果 Redis 连接失败，检查服务状态：`docker compose logs redis`
+   - 确保 Docker 服务正在运行：`docker compose ps`
+   - 如果连接失败，检查服务状态：`docker compose logs postgres`
 
 2. **Redis 连接**：
    - 确保 Redis 服务正在运行：`docker compose ps`
