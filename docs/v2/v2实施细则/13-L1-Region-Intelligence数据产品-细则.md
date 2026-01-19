@@ -80,6 +80,8 @@ L1 Region Intelligence Data Product（区域情报：Overview + 趋势 + Timelin
 - risk：risk_event_count（按 tier 分组）
 - claims：claim_count / payout_amount_sum（Mode-aware：Demo 可区间化或只给强弱/比例）
 
+> 强制口径（Phase 1/2）：claims 域尚未落地（Step 30 在 Phase 3），因此 L1 的 claims KPI/series/events 必须以“可见但不可用（disabled/placeholder）”返回，并在 meta 中显式声明 `claims_available=false`（字段名最终以 Shared Contract 为准）。禁止用 risk_events 或任何前端/后端推断结果伪造 claims 事实。
+
 ### 2) Timeline（三泳道，Series）
 
 同一 UTC 时间轴：
@@ -107,6 +109,10 @@ L1 Region Intelligence Data Product（区域情报：Overview + 趋势 + Timelin
 - `access_mode`
 - `prediction_run_id`（predicted）
 - 风险阈值/tiers/unit/窗口口径（解释闭环所需）
+ - **claims 可用性（强制）**：
+   - `claims_available`（bool，字段名最终以 Shared Contract 为准）
+   - `claims_unavailable_reason`（string，建议：`not_implemented_until_phase_3`）
+   - `claims_series_status`（建议：`disabled|placeholder|ready`）
 
 ---
 
@@ -118,6 +124,8 @@ L1 Region Intelligence Data Product（区域情报：Overview + 趋势 + Timelin
   - claims/policies 金额类 KPI 建议区间化/范围化
   - events 明细默认不下发或仅摘要
   - Correlation 默认折叠或不返回细粒度散点
+ - 当 `claims_available=false`：
+   - claims 相关 KPI/series 必须以 “N/A / disabled” 呈现；tooltip 解释原因；不得出现“空白但可点”的误导交互。
 
 ### Partner
 
@@ -137,6 +145,7 @@ L1 Region Intelligence Data Product（区域情报：Overview + 趋势 + Timelin
 - predicted L1 必须绑定 `prediction_run_id`（或由 active_run 解析并回填）。
 - Timeline 三泳道必须同批次（Weather/Risk/Claims 的 predicted 输入不得跨 run）。
 - 缓存 key 必含 `prediction_run_id`，避免混批次（失败模式 B）。
+ - predicted 与 claims 可用性必须正交：`claims_available=false` 时，不得输出 claims 结论、不得触发任何 claims 下钻意图。
 
 ---
 
@@ -210,7 +219,7 @@ L1 Region Intelligence Data Product（区域情报：Overview + 趋势 + Timelin
 
 ### 功能闭环（必须）
 
-- [ ] L1 Overview + Timeline 输出可用，三泳道对齐。
+- [ ] L1 Overview + Timeline 输出可用：Weather/Risk 泳道可用；Claims 泳道允许 disabled/placeholder（Phase 1/2），但必须可解释且不误导。
 - [ ] Ranking click / lock region 触发 L1 最小集加载（hover 不触发）。
 
 ### 一致性闭环（必须）
@@ -227,6 +236,7 @@ L1 Region Intelligence Data Product（区域情报：Overview + 趋势 + Timelin
 
 - [ ] Demo/Public 下敏感金额/明细被裁剪或区间化。
 - [ ] predicted 下不混批次（响应显式带 run_id，三泳道同批次）。
+ - [ ] 当 `claims_available=false`：响应 meta 明确声明不可用原因；前端/AI 不得伪造 claims 事实。
 
 ---
 

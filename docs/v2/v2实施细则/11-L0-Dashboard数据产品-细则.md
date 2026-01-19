@@ -82,6 +82,11 @@ L0 Dashboard Data Product（省级态势：KPI + TopN 排名，Combined/Policies
 - `access_mode`
 - `prediction_run_id`（predicted）
 - （如受 weather_type/product 影响）输出必须明确口径
+- **claims 可用性（强制）**：
+  - `claims_available`（bool，字段名最终以 Shared Contract 为准）
+  - `claims_unavailable_reason`（string，建议：`not_implemented_until_phase_3`）
+
+> 说明（强制口径）：Phase 1/2 的 L0 不依赖 claims 表（Step 30 在 Phase 3），因此 L0 的 Claims tab 必须以“可见但不可用（disabled/placeholder）”形态返回，且必须显式声明 `claims_available=false`，禁止通过其他事实（risk_events）伪造 claims 聚合。
 
 ---
 
@@ -102,6 +107,7 @@ L0 Dashboard Data Product（省级态势：KPI + TopN 排名，Combined/Policies
 
 硬规则：
 - **后端强裁剪**：前端隐藏不算权限（失败模式 A）。
+ - **不可用能力必须可解释**：当 `claims_available=false` 时，Claims tab 必须返回占位输出 + meta 解释，不得返回空结构导致前端误判为“接口异常”。
 
 ---
 
@@ -110,6 +116,9 @@ L0 Dashboard Data Product（省级态势：KPI + TopN 排名，Combined/Policies
 - predicted L0 请求必须绑定 `prediction_run_id`（或由 active_run 解析并回填）。
 - L0 的缓存 key 必含 `prediction_run_id`，避免混批次（失败模式 B）。
 - L0 输出必须在 Meta 中显式给出 run_id，供 FE/AI 在同一时间轴叙事中对齐。
+ - predicted 与 claims 可用性必须正交：
+  - 即使 `data_type=historical`，Phase 1/2 仍可能 `claims_available=false`（因为 claims 域未落地）
+  - 任何情况下禁止 AI/前端在 `claims_available=false` 时输出/推断 claims 结论
 
 ---
 
@@ -174,7 +183,7 @@ L0 属于高频背书数据，必须强缓存/预聚合：
 
 ### 功能闭环（必须）
 
-- [ ] Combined/Policies/Claims 三个 Tab 的 KPI + Top5 可用。
+- [ ] Combined/Policies/Claims 三个 Tab 的 KPI + Top5 可用（Phase 1/2 允许 Claims 为 disabled/placeholder，但必须可解释且不误导）。
 - [ ] Top5 点击可驱动 Map fly-to + lock（至少能通过 region_code 定位）。
 
 ### 性能闭环（必须）
@@ -186,6 +195,7 @@ L0 属于高频背书数据，必须强缓存/预聚合：
 
 - [ ] Demo/Public 下敏感字段不可通过接口获取（后端强裁剪）。
 - [ ] predicted 场景响应显式带 prediction_run_id，且不混批次。
+ - [ ] 当 `claims_available=false`：响应 meta 明确声明不可用原因；Claims tab 不返回伪造聚合；前端可稳定渲染“不可用”状态。
 
 ---
 

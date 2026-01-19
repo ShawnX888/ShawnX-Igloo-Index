@@ -34,6 +34,7 @@ L0 Sidebar（省级态势播报台）：3 Tab（Combined / Policies / Claims）+
 
 - 不在本细则实现 AI Insight Cards（后续 Step 39）。
 - 不在本细则实现 L1/L2 面板（后续 Step 26+）。
+ - 不在 Phase 2 强行“补齐 claims 事实域”：claims 的事实与计算在 Phase 3（Step 30/31/32）；Phase 2 仅要求 Claims tab 可见但不可用且解释清晰。
 
 ---
 
@@ -74,6 +75,10 @@ L0 请求维度（最小）：
   - KPI 卡片（含单位/口径提示）
   - Top5 排名（条形/列表均可，但必须可点击）
   - “当前口径 meta”：data_type /（predicted）prediction_run_id / access_mode（可在 tooltip 或次级信息展示）
+  - **Claims tab 占位/禁用态（Phase 2 必须）**：
+    - 当后端 `claims_available=false` 时，Claims tab 必须可见但不可用（disabled）
+    - UI 必须展示不可用原因（tooltip/inline note）：例如“理赔事实域在 Phase 3 上线，当前为占位”
+    - 禁止用 risk_events 或前端 mock 伪造 claims KPI/排名
 
 ### 交互输出（给 UI Orchestration）
 
@@ -94,6 +99,9 @@ L0 请求维度（最小）：
 
 - 被裁剪字段必须有“可解释呈现”：
   - lock 图标/tooltip 说明（而不是直接消失导致演示断流）
+ - 被“不可用”的能力必须有“可解释呈现”：
+   - Claims tab disabled + 明确原因
+   - 交互上不得触发任何 claims 相关请求/下钻
 
 ---
 
@@ -157,6 +165,7 @@ L0 请求维度（最小）：
 
 - [ ] 三 Tab 可切换，KPI 与 Top5 正确展示（来自 L0 Data Product）。
 - [ ] Ranking Click 能驱动 Map fly-to + lock region（并触发 L1 最小集刷新，若策略允许）。
+ - [ ] 当 `claims_available=false`：Claims tab 可见但不可用且解释清晰；不会触发 claims 查询；不会出现“空白/报错式 UI”。
 
 ### 红线（必须）
 

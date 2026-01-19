@@ -102,6 +102,11 @@ AI Insight Cards（Director Cues）：一句话结论 + 证据点 + CTA（可执
 - CTA：
   - 禁止导出/全量明细/高风险动作
   - `Open details` 仅允许打开“摘要化 Details”（由后端 L2 裁剪兜底），或直接降级为 “Show on timeline”
+ - **Claims 可用性（强制）**：
+   - 当 Data Products 的 meta 声明 `claims_available=false`（字段名以 Shared Contract 为准）：
+     - 禁止生成任何以 claims 为证据点的卡片
+     - 禁止生成 claims 相关 CTA（例如“查看理赔明细/理赔对比”）
+     - 允许生成“解释性卡片”：说明“理赔事实域尚未上线/当前不可用”，并给替代 CTA（Show on timeline / Overlay thresholds）
 
 ### Partner
 
@@ -119,6 +124,8 @@ AI Insight Cards（Director Cues）：一句话结论 + 证据点 + CTA（可执
 - 若洞察引用 L0/L1 的 predicted 证据：必须同批次，且 scope/meta 显式带 run_id（至少 debug）
 - 与 claims 事实一致性：
   - predicted 下不得引用“正式理赔事实”作为预测证据（如需解释必须明确“无正式 claims 事实”）
+ - 与 Phase 2 的 claims 可用性一致性（强制）：
+   - historical/predicted 均可能 `claims_available=false`（Phase 1/2），此时不得输出任何 claims 事实类结论
 
 ---
 
@@ -176,6 +183,7 @@ AI Insight Cards（Director Cues）：一句话结论 + 证据点 + CTA（可执
 
 - [ ] 固定 3 张洞察卡可展示，且每张卡片包含结论/证据/口径/CTA。
 - [ ] CTA 点击能触发 UI Orchestration 联动（打开面板/定位时间轴/切图层），并可观测可回放。
+ - [ ] 当 `claims_available=false`：洞察卡不会输出 claims 证据点/结论；不会产生 claims 相关 CTA；UI 仍有替代解释路径（timeline/thresholds）。
 
 ### Mode（必须）
 
