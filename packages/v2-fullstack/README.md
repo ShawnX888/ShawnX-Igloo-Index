@@ -36,12 +36,54 @@ packages/v2-fullstack/
 ## 快速开始
 
 ```bash
-# 安装依赖
-npm install
+# 启动基础设施（Postgres + Redis）
+cd packages/v2-fullstack
+npm run dev:help
+npm run dev:infra
 
-# 开发模式
-npm run dev
+# 启动后端（FastAPI / Uvicorn，热更新）
+npm run dev:backend
 
-# 构建
-npm run build
+# 启动前端（Vite）
+npm run dev:frontend
+
+# 一键启动：infra + backend + frontend（推荐）
+npm run dev:full
+```
+
+## 常用命令
+
+```bash
+# 环境自检（Docker / compose / 目录结构 / env 文件）
+cd packages/v2-fullstack
+npm run dev:doctor
+
+# 等待 infra 健康（适合脚本化/CI/避免后端先起连不上 DB）
+npm run dev:infra:wait
+
+# 查看 docker 服务状态与日志
+npm run dev:infra:ps
+npm run dev:infra:logs
+
+# 停止 docker 服务（保留数据卷）
+npm run dev:infra:down
+
+# 危险：清空本地 docker 卷数据（需要显式确认）
+I_AM_SURE=1 npm run dev:infra:reset
+
+# 进入容器（排查 DB / Redis 很常用）
+npm run dev:psql
+npm run dev:redis-cli
+
+# Celery（Step 14/15/32 落地后启用）
+npm run dev:worker
+npm run dev:beat
+npm run dev:full:worker
+
+# DB 迁移（Step 05+ 落地 Alembic 后启用）
+npm run dev:migrate
+IGLOO_MIGRATION_MSG="add policies table" npm run dev:makemigrations
+
+# 自动配置开发工具连接（DBeaver/Postman/RedisInsight）
+npm run dev:tools
 ```
