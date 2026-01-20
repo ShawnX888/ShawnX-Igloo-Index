@@ -13,14 +13,16 @@ Reference:
 
 from datetime import datetime, timezone as tz
 from decimal import Decimal
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 
 from sqlalchemy import Column, DateTime, ForeignKey, Index, Integer, Numeric, String
+from sqlalchemy.orm import relationship, Mapped
 
 from app.models.base import Base
 
 if TYPE_CHECKING:
     from app.models.product import Product
+    from app.models.claim import Claim
 
 
 class RiskEvent(Base):
@@ -102,6 +104,32 @@ class RiskEvent(Base):
         default=lambda: datetime.now(tz.utc),
         comment="创建时间(UTC)"
     )
+    
+    # Relationships
+    if TYPE_CHECKING:
+        product: Mapped["Product"] = relationship(
+            "Product",
+            back_populates="risk_events",
+            lazy="selectin"
+        )
+        
+        claims: Mapped[List["Claim"]] = relationship(
+            "Claim",
+            back_populates="risk_event",
+            lazy="selectin"
+        )
+    else:
+        product = relationship(
+            "Product",
+            back_populates="risk_events",
+            lazy="selectin"
+        )
+        
+        claims = relationship(
+            "Claim",
+            back_populates="risk_event",
+            lazy="selectin"
+        )
     
     __table_args__ = (
         Index(

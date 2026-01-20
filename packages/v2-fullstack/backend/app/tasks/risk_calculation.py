@@ -8,10 +8,19 @@ Reference:
 """
 
 import logging
+import redis
 
 from app.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
+
+# Redis客户端 (用于分布式锁)
+redis_client = redis.Redis(
+    host='localhost',
+    port=6379,
+    db=2,  # 使用db=2专门用于锁
+    decode_responses=True
+)
 
 
 @celery_app.task(bind=True, max_retries=3)

@@ -105,9 +105,34 @@ PHASE_<阶段编号>_STEP_<步骤编号>_SUMMARY.md
   - 状态: ⏭️ 框架就绪，UI实现待设计确认
   - 说明: Map Stage、面板、图层等组件框架已建立，详细实现需UI设计稿
 
-### Phase 3: L2 + Mode + AI 闭环
+### Phase 3: L2 + Mode + AI 闭环 🚧 部分完成
 
-- [ ] PHASE_3_STEP_30-41_SUMMARY.md - Claims + AI Agent
+- [x] **PHASE_3_STEP_30_SUMMARY.md** - 理赔表 + Claim Service
+  - 完成日期: 2026-01-20
+  - 核心交付: claims表、Mode裁剪、幂等约束
+
+- [x] **PHASE_3_STEP_31_SUMMARY.md** - Claim Calculator
+  - 完成日期: 2026-01-20
+  - 核心交付: Tier差额逻辑、Decimal精度、职责隔离
+
+- [x] **PHASE_3_STEP_32_SUMMARY.md** - 理赔计算任务
+  - 完成日期: 2026-01-20
+  - 核心交付: Celery任务、Redis分布式锁
+
+- [x] **PHASE_3_STEP_33_SUMMARY.md** - L2 Evidence Data Product
+  - 完成日期: 2026-01-20
+  - 核心交付: 证据链API、风险↔理赔关联
+
+- [x] **PHASE_3_STEP_30-33_COMPLETE_SUMMARY.md** - Claims闭环完成总结
+  - 完成日期: 2026-01-20
+  - 测试: 9/9通过
+  - 进度: 4/12步骤 (33%)
+
+- [ ] PHASE_3_STEP_34-41_SUMMARY.md - UI组件 + AI Agent (待实施)
+
+### Phase 4: 合规 + 观测 + 优化
+
+- [ ] PHASE_4_STEP_42-47_SUMMARY.md - 治理层
 - [ ] ...
 
 ### Phase 2: 前端联动闭环

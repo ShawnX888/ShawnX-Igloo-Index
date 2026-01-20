@@ -16,7 +16,7 @@ Reference:
 
 from datetime import datetime, timezone as tz
 from decimal import Decimal
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Numeric, String
 from sqlalchemy.orm import relationship, Mapped
@@ -25,6 +25,7 @@ from app.models.base import Base
 
 if TYPE_CHECKING:
     from app.models.product import Product
+    from app.models.claim import Claim
 
 
 class Policy(Base):
@@ -136,10 +137,22 @@ class Policy(Base):
             back_populates="policies",
             lazy="selectin"
         )
+        
+        claims: Mapped[List["Claim"]] = relationship(
+            "Claim",
+            back_populates="policy",
+            lazy="selectin"
+        )
     else:
         product = relationship(
             "Product",
             back_populates="policies",
+            lazy="selectin"
+        )
+        
+        claims = relationship(
+            "Claim",
+            back_populates="policy",
             lazy="selectin"
         )
     

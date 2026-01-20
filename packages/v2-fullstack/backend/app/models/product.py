@@ -28,6 +28,7 @@ from app.models.base import Base
 if TYPE_CHECKING:
     from app.models.policy import Policy
     from app.models.risk_event import RiskEvent
+    from app.models.claim import Claim
 
 
 class Product(Base):
@@ -157,6 +158,12 @@ class Product(Base):
             back_populates="product",
             lazy="selectin"
         )
+        
+        claims: Mapped[List["Claim"]] = relationship(
+            "Claim",
+            back_populates="product",
+            lazy="selectin"
+        )
     else:
         policies = relationship(
             "Policy",
@@ -166,6 +173,12 @@ class Product(Base):
         
         risk_events = relationship(
             "RiskEvent",
+            back_populates="product",
+            lazy="selectin"
+        )
+        
+        claims = relationship(
+            "Claim",
             back_populates="product",
             lazy="selectin"
         )

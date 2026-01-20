@@ -21,7 +21,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.schemas.access_control import DataProductType
-from app.schemas.shared import DataProductResponse, SharedDimensions
+from app.schemas.shared import AccessMode, DataProductResponse, SharedDimensions
+from app.schemas.l2_evidence import L2EvidenceRequest, L2EvidenceResponse
+from app.services.l2_evidence_service import l2_evidence_service
 from app.utils.access_control import AccessControlManager
 
 logger = logging.getLogger(__name__)
@@ -76,3 +78,17 @@ async def get_l1_intelligence(
 ) -> DataProductResponse:
     """L1 Region Intelligence 数据产品"""
     raise HTTPException(status_code=501, detail="L1 Intelligence implementation pending")
+
+
+@router.post("/l2-evidence", response_model=L2EvidenceResponse)
+async def get_l2_evidence(
+    request: L2EvidenceRequest,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    access_mode: AccessMode = AccessMode.DEMO_PUBLIC,
+) -> L2EvidenceResponse:
+    """
+    L2 Evidence 数据产品
+    
+    返回: 风险事件 + 理赔 + 天气证据
+    """
+    return await l2_evidence_service.get_evidence(session, request, access_mode)
