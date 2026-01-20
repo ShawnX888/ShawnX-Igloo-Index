@@ -60,26 +60,18 @@ class Thresholds(BaseModel):
     阈值配置
     
     定义三档风险阈值
+    
+    注意: 阈值的顺序由operator决定
+    - operator ">=" 时, thresholds应递增 (如: 50, 100, 150)
+    - operator "<=" 时, thresholds应递减 (如: 10, 5, 0)
+    
+    validator在ProductCreate层面根据operator验证
     """
     model_config = ConfigDict(from_attributes=True)
     
     tier1: Decimal = Field(..., description="一级阈值")
     tier2: Decimal = Field(..., description="二级阈值")
     tier3: Decimal = Field(..., description="三级阈值")
-    
-    @field_validator("tier2")
-    @classmethod
-    def validate_tier2_greater_than_tier1(cls, v: Decimal, info) -> Decimal:
-        if "tier1" in info.data and v <= info.data["tier1"]:
-            raise ValueError("tier2 must be greater than tier1")
-        return v
-    
-    @field_validator("tier3")
-    @classmethod
-    def validate_tier3_greater_than_tier2(cls, v: Decimal, info) -> Decimal:
-        if "tier2" in info.data and v <= info.data["tier2"]:
-            raise ValueError("tier3 must be greater than tier2")
-        return v
 
 
 class Calculation(BaseModel):

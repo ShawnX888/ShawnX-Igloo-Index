@@ -21,7 +21,7 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 # ============================================================================
@@ -145,12 +145,11 @@ class CalculationRangeUTC(BaseModel):
         description="起始扩展的小时数"
     )
     
-    @field_validator("calculation_start")
-    @classmethod
-    def validate_calculation_before_display(cls, v: datetime, info) -> datetime:
-        if "display_start" in info.data and v > info.data["display_start"]:
+    @model_validator(mode='after')
+    def validate_calculation_before_display(self) -> 'CalculationRangeUTC':
+        if self.calculation_start > self.display_start:
             raise ValueError("calculation_start must be <= display_start")
-        return v
+        return self
 
 
 # ============================================================================

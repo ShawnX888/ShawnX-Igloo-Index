@@ -19,7 +19,7 @@ from decimal import Decimal
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Numeric, String
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, Mapped
 
 from app.models.base import Base
 
@@ -129,12 +129,19 @@ class Policy(Base):
         comment="更新时间 (UTC)"
     )
     
-    # Relationships
-    product: "Product" = relationship(
-        "Product",
-        back_populates="policies",
-        lazy="selectin"
-    )
+    # Relationships - use Mapped[] for SQLAlchemy 2.0
+    if TYPE_CHECKING:
+        product: Mapped["Product"] = relationship(
+            "Product",
+            back_populates="policies",
+            lazy="selectin"
+        )
+    else:
+        product = relationship(
+            "Product",
+            back_populates="policies",
+            lazy="selectin"
+        )
     
     def __repr__(self) -> str:
         return (

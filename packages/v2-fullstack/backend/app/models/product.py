@@ -17,11 +17,11 @@ Reference:
 """
 
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 
 from sqlalchemy import Boolean, Column, DateTime, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, Mapped
 
 from app.models.base import Base
 
@@ -144,17 +144,31 @@ class Product(Base):
     
     # Relationships
     # Note: 使用字符串前向引用避免循环导入
-    policies: list["Policy"] = relationship(
-        "Policy",
-        back_populates="product",
-        lazy="selectin"
-    )
-    
-    risk_events: list["RiskEvent"] = relationship(
-        "RiskEvent",
-        back_populates="product",
-        lazy="selectin"
-    )
+    # Relationships - use Mapped[] for SQLAlchemy 2.0
+    if TYPE_CHECKING:
+        policies: Mapped[List["Policy"]] = relationship(
+            "Policy",
+            back_populates="product",
+            lazy="selectin"
+        )
+        
+        risk_events: Mapped[List["RiskEvent"]] = relationship(
+            "RiskEvent",
+            back_populates="product",
+            lazy="selectin"
+        )
+    else:
+        policies = relationship(
+            "Policy",
+            back_populates="product",
+            lazy="selectin"
+        )
+        
+        risk_events = relationship(
+            "RiskEvent",
+            back_populates="product",
+            lazy="selectin"
+        )
     
     def __repr__(self) -> str:
         return (

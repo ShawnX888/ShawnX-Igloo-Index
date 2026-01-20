@@ -41,14 +41,16 @@ class TestProductSchemas:
         
         assert thresholds.tier1 < thresholds.tier2 < thresholds.tier3
     
-    def test_thresholds_invalid_order(self):
-        """测试无效的Thresholds(tier2不大于tier1)"""
-        with pytest.raises(ValueError, match="tier2 must be greater than tier1"):
-            Thresholds(
-                tier1=Decimal("100.0"),
-                tier2=Decimal("50.0"),  # 错误: tier2 < tier1
-                tier3=Decimal("150.0")
-            )
+    def test_thresholds_decreasing_for_less_than(self):
+        """测试Thresholds创建(递减阈值for <= operator, 如低温)"""
+        thresholds = Thresholds(
+            tier1=Decimal("10.0"),
+            tier2=Decimal("5.0"),   # 递减
+            tier3=Decimal("0.0")
+        )
+        
+        # 对于 <= 运算符, 阈值可以递减
+        assert thresholds.tier1 > thresholds.tier2 > thresholds.tier3
     
     def test_payout_percentages_validation(self):
         """测试PayoutPercentages验证"""

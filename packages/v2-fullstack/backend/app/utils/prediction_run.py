@@ -292,9 +292,11 @@ class PredictionConsistencyValidator:
         
         if not consistent:
             # 发现不一致
+            # 如果有expected_run_id，标记所有不匹配的源；否则标记非第一个run_id的源
+            reference_run_id = expected_run_id if expected_run_id else unique_run_ids[0]
             inconsistent_sources = [
                 source for source, run_id in data_sources.items()
-                if run_id is not None and run_id != unique_run_ids[0]
+                if run_id is not None and run_id != reference_run_id
             ]
             
             return PredictionConsistencyCheck(
