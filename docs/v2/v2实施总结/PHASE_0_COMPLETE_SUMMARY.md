@@ -11,12 +11,103 @@
 
 Phase 0完成了v2全栈架构的基础契约层，固化了前后端之间的核心约束，为Phase 1-4的并行开发奠定基础。
 
-### 核心成就
+---
 
-1. ✅ **Shared Contract**: 统一的输入维度、输出DTO、枚举定义
-2. ✅ **Access Mode**: 三档裁剪策略，后端强制执行
-3. ✅ **Prediction Run**: 批次版本化，一致性保障，可回滚
-4. ✅ **Time & Timezone**: 三层口径，自然边界对齐，业务规则正确
+## 🎯 核心成就
+
+### 1. ✅ Shared Contract (共享契约)
+
+**目标**: 统一前后端数据交换格式，消除口径差异
+
+**成就**:
+- **统一输入维度**: `SharedDimensions` (8个必须维度: region_scope, region_code, time_range, data_type, weather_type, access_mode, product_id?, prediction_run_id?)
+- **输出DTO分类**: `SeriesData`, `EventData`, `AggregationData` 三大类型，不混用
+- **枚举对齐**: Python Enum ↔ TypeScript Enum 完全对应 (RegionScope, DataType, WeatherType, AccessMode)
+- **缓存key标准化**: `to_cache_key()` / `toCacheKey()` - 必含mode, predicted必含run_id
+- **可观测性**: `TraceContext` + `ResponseMeta` - 全链路可追溯
+
+**工程价值**:
+- 前后端可并行开发，API契约预先定义
+- 缓存层不会串数据 (mode和run_id强制隔离)
+- 问题排查效率提升 (trace_id全链路追踪)
+
+**测试覆盖**: 41个测试用例 (后端22 + 前端19)
+
+---
+
+### 2. ✅ Access Mode (权限裁剪)
+
+**目标**: 不同用户角色看到不同粒度/字段的数据，后端强制执行
+
+**成就**:
+- **三档模式**: Demo/Public (演示), Partner (合作方), Admin/Internal (内部全权限)
+- **三维裁剪**:
+  - **字段级**: 敏感字段不下发 (如Demo不返回payoutRules)
+  - **粒度级**: 强制聚合 (Demo只能看省级，不能看区县)
+  - **能力级**: 功能限制 (Demo不能export/share/configure)
+- **策略矩阵**: 6个预定义策略 (L0×3, L2×3), 可扩展
+- **前端UI控制**: "可见但不可用" - 按钮显示但禁用 + 提示升级
+
+**工程价值**:
+- **P0安全**: Demo用户无法通过抓包/绕过前端获取敏感数据
+- **合规性**: 不同角色数据访问符合合规要求
+- **商业价值**: 支持freemium商业模式 (Demo免费，Partner付费)
+
+**测试覆盖**: 32个测试用例 (后端22 + 前端10)
+
+**验收红线**: `test_demo_public_cannot_access_sensitive_fields` - Demo绝不下发payoutRules
+
+---
+
+### 3. ✅ Prediction Run (批次版本化)
+
+**目标**: 预测数据按批次管理，确保一致性，支持更新和回滚
+
+**成就**:
+- **批次元信息**: `PredictionRun` with id, status (active/archived/failed), source, scope
+- **Active Run管理**: 全局单一`active_run`, 切换时自动失效缓存
+- **一致性保障**:
+  - `PredictionConsistencyValidator`: 后端校验同一请求链路不混批次
+  - `PredictionRunCollector`: 前端收集各数据产品的run_id并检查一致性
+- **可追溯**: run_id格式 `run-YYYY-MM-DD-{suffix}`, 可审计
+- **回滚能力**: 通过状态切换回滚 (不覆盖数据)
+
+**工程价值**:
+- **P0一致性**: 避免"地图显示v2批次，Dashboard显示v1批次"的解释断裂
+- **可维护性**: 预测更新后可回滚到上一版本
+- **可审计**: 每次切换都有audit log
+
+**测试覆盖**: 40个测试用例 (后端18 + 前端22)
+
+**验收红线**: `test_no_batch_mixing_in_single_request` - 混批次必须被检测
+
+---
+
+### 4. ✅ Time & Timezone (时间口径统一)
+
+**目标**: 跨时区保单正确处理"per day/month"业务规则
+
+**成就**:
+- **三层时间口径**:
+  - **Storage层**: UTC (数据库TIMESTAMPTZ)
+  - **Business层**: `region_timezone` (风险地时区，用于"per day"判断)
+  - **Display层**: User local timezone (前端展示)
+- **自然边界对齐**: 
+  - `align_to_natural_day_start()`: 转UTC到region_tz，对齐到00:00，再转回UTC
+  - `is_same_natural_day()`: 判断两个UTC时间在region_tz下是否同一天
+- **扩展窗口计算**: 
+  - `calculate_extended_range()`: 为边界数据扩展查询窗口
+  - **输出必须裁剪**: 响应只返回用户请求的display_range
+- **时区映射**: 中国省份 → 时区 (Asia/Shanghai, Asia/Urumqi, Asia/Chongqing)
+
+**工程价值**:
+- **P0业务正确性**: "per day"的"day"基于风险地时区，避免跨日误赔
+- **跨时区支持**: 新疆和北京保单正确归期
+- **DST容错**: 工具函数处理夏令时边界
+
+**测试覆盖**: 42个测试用例 (后端23 + 前端19)
+
+**验收红线**: `test_per_day_boundary_at_region_midnight` - 自然日边界必须基于region_tz
 
 ### 交付成果统计
 

@@ -39,11 +39,47 @@ PHASE_<阶段编号>_STEP_<步骤编号>_SUMMARY.md
   - 状态: ✅ Phase 0 全部完成
   - 总计: 4个步骤、155个测试用例、6,565行代码
 
-### Phase 1: 后端数据产品最小可用
+### Phase 1: 后端数据产品最小可用 ✅ 框架完成
 
-- [ ] PHASE_1_STEP_05_SUMMARY.md - 产品表 + Product Service
-- [ ] PHASE_1_STEP_06_SUMMARY.md - 保单表 + Policy Service
-- [ ] PHASE_1_STEP_07_SUMMARY.md - 天气数据表 + Weather Service
+- [x] **PHASE_1_STEP_05_SUMMARY.md** - 产品表 + Product Service
+  - 完成日期: 2026-01-20
+  - 核心交付: products表, 6个seed产品, Mode裁剪
+
+- [x] **PHASE_1_STEP_06_SUMMARY.md** - 保单表 + Policy Service
+  - 完成日期: 2026-01-20
+  - 核心交付: policies表, timezone字段, Decimal金额
+
+- [x] **PHASE_1_STEP_07_SUMMARY.md** - 天气数据表 + Weather Service
+  - 完成日期: 2026-01-20
+  - 核心交付: weather_data表, 批次绑定
+
+- [x] **PHASE_1_STEP_08_SUMMARY.md** - Risk Calculator
+  - 完成日期: 2026-01-20
+  - 核心交付: 纯计算引擎, 职责隔离
+
+- [x] **PHASE_1_STEP_09_SUMMARY.md** - 风险事件表 + Risk Service
+  - 完成日期: 2026-01-20
+  - 核心交付: risk_events表, 可追溯
+
+- [x] **PHASE_1_STEP_10_SUMMARY.md** - 预测批次表 + Service
+  - 完成日期: 2026-01-20
+  - 核心交付: prediction_runs表, active_run
+
+- [x] **PHASE_1_STEP_11-13_SUMMARY.md** - 数据产品API框架
+  - 完成日期: 2026-01-20
+  - 核心交付: L0/Overlays/L1 API路由
+
+- [x] **PHASE_1_STEP_14-15_SUMMARY.md** - Celery异步任务
+  - 完成日期: 2026-01-20
+  - 核心交付: Celery配置, 任务框架
+
+- [x] **PHASE_1_COMPLETE_SUMMARY.md** - Phase 1 完成总结
+  - 完成日期: 2026-01-20
+  - 总计: 11个步骤, 5张表, 3,090行代码
+
+### Phase 2: 前端核心页面与交互
+
+- [ ] PHASE_2_STEP_16-33_SUMMARY.md - 前端组件开发
 - [ ] ...
 
 ### Phase 2: 前端联动闭环

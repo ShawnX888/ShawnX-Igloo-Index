@@ -6,8 +6,10 @@ SQLAlchemy Models
 
 from app.models.base import Base
 from app.models.product import Product
+from app.models.policy import Policy
 
 __all__ = [
     "Base",
     "Product",
+    "Policy",
 ]
