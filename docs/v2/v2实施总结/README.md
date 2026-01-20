@@ -90,9 +90,24 @@ PHASE_<阶段编号>_STEP_<步骤编号>_SUMMARY.md
   - 完成日期: 2026-01-20
   - 总计: 11个步骤, 5张表, 3,090行代码
 
-### Phase 2: 前端核心页面与交互
+### Phase 2: 前端核心页面与交互 ⏭️ 基础完成
 
-- [ ] PHASE_2_STEP_16-33_SUMMARY.md - 前端组件开发
+- [x] **PHASE_2_STEP_16_SUMMARY.md** - 项目结构与类型定义
+  - 完成日期: 2026-01-20
+  - 核心交付: API Client、Zustand Stores、TanStack Query、Custom Hooks
+
+- [x] **PHASE_2_STEP_17_SUMMARY.md** - Google Maps API配置
+  - 完成日期: 2026-01-20
+  - 核心交付: Maps Loader、API Key管理、环境变量配置
+
+- [x] **PHASE_2_STEP_18-29_SUMMARY.md** - 前端UI组件框架 (批量)
+  - 完成日期: 2026-01-20
+  - 状态: ⏭️ 框架就绪，UI实现待设计确认
+  - 说明: Map Stage、面板、图层等组件框架已建立，详细实现需UI设计稿
+
+### Phase 3: L2 + Mode + AI 闭环
+
+- [ ] PHASE_3_STEP_30-41_SUMMARY.md - Claims + AI Agent
 - [ ] ...
 
 ### Phase 2: 前端联动闭环
