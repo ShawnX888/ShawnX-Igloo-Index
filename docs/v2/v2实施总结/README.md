@@ -12,12 +12,32 @@ PHASE_<阶段编号>_STEP_<步骤编号>_SUMMARY.md
 
 ## 已完成步骤
 
-### Phase 0: 契约基线 + 红线固化
+### Phase 0: 契约基线 + 红线固化 ✅ 已完成
 
 - [x] **PHASE_0_STEP_01_SUMMARY.md** - Shared Contract基线（维度/DTO/口径）
   - 完成日期: 2026-01-20
   - 状态: ✅ 已验收
   - 核心交付: 前后端统一的类型定义、缓存key规则、可观测性字段
+
+- [x] **PHASE_0_STEP_02_SUMMARY.md** - Access Mode 裁剪基线
+  - 完成日期: 2026-01-20
+  - 状态: ✅ 已验收
+  - 核心交付: 三档Mode裁剪策略、后端强制执行、前端UI控制
+
+- [x] **PHASE_0_STEP_03_SUMMARY.md** - Prediction Run 基线
+  - 完成日期: 2026-01-20
+  - 状态: ✅ 已验收
+  - 核心交付: 批次版本化、一致性验证、active_run管理
+
+- [x] **PHASE_0_STEP_04_SUMMARY.md** - 时间与时区口径统一
+  - 完成日期: 2026-01-20
+  - 状态: ✅ 已验收
+  - 核心交付: 三层时间口径、自然边界对齐、业务规则工具
+
+- [x] **PHASE_0_COMPLETE_SUMMARY.md** - Phase 0 阶段完成总结
+  - 完成日期: 2026-01-20
+  - 状态: ✅ Phase 0 全部完成
+  - 总计: 4个步骤、155个测试用例、6,565行代码
 
 ### Phase 1: 后端数据产品最小可用
 

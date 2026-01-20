@@ -6,3 +6,6 @@
  */
 
 export * from './shared';
+export * from './access-control';
+export * from './prediction';
+export * from './time';

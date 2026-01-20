@@ -1,0 +1,218 @@
+[
+  {
+    "id": "daily_rainfall",
+    "name": "Daily Rainfall Protection",
+    "type": "daily",
+    "weather_type": "rainfall",
+    "description": "保障连续降雨造成的损失，基于4小时累计降雨量",
+    "icon": "rain",
+    "version": "v1.0.0",
+    "is_active": true,
+    "risk_rules": {
+      "time_window": {
+        "type": "hourly",
+        "size": 4
+      },
+      "thresholds": {
+        "tier1": "50.0",
+        "tier2": "100.0",
+        "tier3": "150.0"
+      },
+      "calculation": {
+        "aggregation": "sum",
+        "operator": ">=",
+        "unit": "mm"
+      },
+      "weather_type": "rainfall"
+    },
+    "payout_rules": {
+      "frequency_limit": "once_per_day_per_policy",
+      "payout_percentages": {
+        "tier1": "20.0",
+        "tier2": "50.0",
+        "tier3": "100.0"
+      },
+      "total_cap": "100.0"
+    }
+  },
+  {
+    "id": "weekly_rainfall",
+    "name": "Weekly Rainfall Protection",
+    "type": "weekly",
+    "weather_type": "rainfall",
+    "description": "保障周降雨量异常造成的损失，基于7天累计降雨量",
+    "icon": "rain",
+    "version": "v1.0.0",
+    "is_active": true,
+    "risk_rules": {
+      "time_window": {
+        "type": "daily",
+        "size": 7
+      },
+      "thresholds": {
+        "tier1": "200.0",
+        "tier2": "400.0",
+        "tier3": "600.0"
+      },
+      "calculation": {
+        "aggregation": "sum",
+        "operator": ">=",
+        "unit": "mm"
+      },
+      "weather_type": "rainfall"
+    },
+    "payout_rules": {
+      "frequency_limit": "once_per_month_per_policy",
+      "payout_percentages": {
+        "tier1": "15.0",
+        "tier2": "40.0",
+        "tier3": "100.0"
+      },
+      "total_cap": "100.0"
+    }
+  },
+  {
+    "id": "monthly_rainfall",
+    "name": "Monthly Rainfall Protection",
+    "type": "monthly",
+    "weather_type": "rainfall",
+    "description": "保障月降雨量异常造成的损失，基于自然月累计降雨量",
+    "icon": "rain",
+    "version": "v1.0.0",
+    "is_active": true,
+    "risk_rules": {
+      "time_window": {
+        "type": "monthly",
+        "size": 1
+      },
+      "thresholds": {
+        "tier1": "500.0",
+        "tier2": "800.0",
+        "tier3": "1200.0"
+      },
+      "calculation": {
+        "aggregation": "sum",
+        "operator": ">=",
+        "unit": "mm"
+      },
+      "weather_type": "rainfall"
+    },
+    "payout_rules": {
+      "frequency_limit": "once_per_month_per_policy",
+      "payout_percentages": {
+        "tier1": "10.0",
+        "tier2": "30.0",
+        "tier3": "100.0"
+      },
+      "total_cap": "100.0"
+    }
+  },
+  {
+    "id": "daily_wind",
+    "name": "Daily Wind Protection",
+    "type": "daily",
+    "weather_type": "wind",
+    "description": "保障强风造成的损失，基于4小时最大风速",
+    "icon": "wind",
+    "version": "v1.0.0",
+    "is_active": true,
+    "risk_rules": {
+      "time_window": {
+        "type": "hourly",
+        "size": 4
+      },
+      "thresholds": {
+        "tier1": "60.0",
+        "tier2": "80.0",
+        "tier3": "100.0"
+      },
+      "calculation": {
+        "aggregation": "max",
+        "operator": ">=",
+        "unit": "km_h"
+      },
+      "weather_type": "wind"
+    },
+    "payout_rules": {
+      "frequency_limit": "once_per_day_per_policy",
+      "payout_percentages": {
+        "tier1": "25.0",
+        "tier2": "60.0",
+        "tier3": "100.0"
+      },
+      "total_cap": "100.0"
+    }
+  },
+  {
+    "id": "daily_temperature_high",
+    "name": "High Temperature Protection",
+    "type": "daily",
+    "weather_type": "temperature",
+    "description": "保障高温造成的损失，基于日最高温度",
+    "icon": "temperature-high",
+    "version": "v1.0.0",
+    "is_active": true,
+    "risk_rules": {
+      "time_window": {
+        "type": "daily",
+        "size": 1
+      },
+      "thresholds": {
+        "tier1": "35.0",
+        "tier2": "38.0",
+        "tier3": "40.0"
+      },
+      "calculation": {
+        "aggregation": "max",
+        "operator": ">=",
+        "unit": "celsius"
+      },
+      "weather_type": "temperature"
+    },
+    "payout_rules": {
+      "frequency_limit": "once_per_day_per_policy",
+      "payout_percentages": {
+        "tier1": "15.0",
+        "tier2": "40.0",
+        "tier3": "100.0"
+      },
+      "total_cap": "100.0"
+    }
+  },
+  {
+    "id": "daily_temperature_low",
+    "name": "Low Temperature Protection",
+    "type": "daily",
+    "weather_type": "temperature",
+    "description": "保障低温造成的损失，基于日最低温度",
+    "icon": "temperature-low",
+    "version": "v1.0.0",
+    "is_active": true,
+    "risk_rules": {
+      "time_window": {
+        "type": "daily",
+        "size": 1
+      },
+      "thresholds": {
+        "tier1": "0.0",
+        "tier2": "-5.0",
+        "tier3": "-10.0"
+      },
+      "calculation": {
+        "aggregation": "min",
+        "operator": "<=",
+        "unit": "celsius"
+      },
+      "weather_type": "temperature"
+    },
+    "payout_rules": {
+      "frequency_limit": "once_per_day_per_policy",
+      "payout_percentages": {
+        "tier1": "15.0",
+        "tier2": "40.0",
+        "tier3": "100.0"
+      },
+      "total_cap": "100.0"
+    }
+  }
+]
