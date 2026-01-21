@@ -23,8 +23,8 @@ Map Stage（地图主舞台）基线：Map 容器 + 交互边界 + 图层框架�
   - Overlay UI（layer controls / GPS / product selector 等）在地图之上可交互
 - 固化“轻/重交互边界”（三条红线之一：交互风暴）：
   - hover：只高亮 + mini tooltip（≤3 指标，且来自已加载数据）
-  - click lock / ranking click：允许触发 L1 最小集（但不强制弹起面板）
-  - See more / AI CTA：才允许触发 L2（按需加载）
+  - click lock / pareto click：允许触发 L1 最小集（但不强制弹起面板）
+  - AI Insight click / AI CTA：才允许触发 L2（按需加载）
 - 图层框架基线：
   - deck.gl overlays（可视化层）
   - Data Layer（边界 GeoJSON）
@@ -49,9 +49,9 @@ Map Stage 直接消费：
 
 并通过交互触发：
 
-- L0 Dashboard（Ranking click → map lock）
+- L0 Dashboard（Pareto click → map lock）
 - L1 Region Intelligence（click lock → L1 最小集刷新）
-- L2 Evidence（See more / CTA → 按需加载）
+- L2 Evidence（AI Insight click / CTA → 按需加载）
 
 ---
 

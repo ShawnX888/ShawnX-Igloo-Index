@@ -19,7 +19,7 @@ L2 Details 面板（Region Intelligence Panel 的 Details section）：消费 L2
 ### 目标
 
 - 落地 v2 的 L2 证据链 UI 闭环（与 `v2页面设计提案.md` 对齐）：
-  - 默认折叠/不打断主舞台；仅在 “See more / Insight CTA: Open details” 触发进入
+  - 默认折叠/不打断主舞台；仅在 “AI Insight CTA: Open details” 触发进入
   - 按时间倒序列出 Evidence items（风险事件 ↔ 理赔摘要/条目 ↔ 规则提示）
   - 点击条目可 **回指 Timeline（UTC）** 与 **回指地图**（高亮/必要时 fly-to）
 - 严格遵守 v2 三条红线：
@@ -138,7 +138,7 @@ L2 下钻焦点（来自 Step 33 的契约扩展，前端负责传递）：
 
 - 禁止触发 L2 的动作：hover、brush、layer toggle、panel snap（peek/half/full）
 - 允许触发 L2 的动作：
-  - `See more` / `Insight CTA: Open details`
+  - `AI Insight CTA: Open details`
   - Details 内显式分页加载（Load more）
 
 ### UI 性能（建议）

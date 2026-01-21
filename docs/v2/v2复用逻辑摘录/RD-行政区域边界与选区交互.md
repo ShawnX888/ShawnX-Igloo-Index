@@ -59,8 +59,8 @@ hover 只能做：
 - hover 导致排行榜/时间轴重算风暴
 
 ### 3.3 与数据产品的协作边界
-- click lock / ranking click 才允许触发 L1 最小集刷新
-- “See more / AI CTA” 才触发 L2（按 Mode 裁剪）
+- click lock / Pareto Click 才允许触发 L1 最小集刷新
+- “AI Insight Click / AI CTA” 才触发 L2（按 Mode 裁剪）
 
 ### 3.4 可观测性
 边界交互至少记录：

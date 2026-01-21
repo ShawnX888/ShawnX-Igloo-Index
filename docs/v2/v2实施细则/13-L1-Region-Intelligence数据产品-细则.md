@@ -43,7 +43,7 @@ L1 Region Intelligence Data Product（区域情报：Overview + 趋势 + Timelin
 
 同时为以下模块提供输入：
 
-- AI Insights（洞察卡证据点与 CTA 引导）
+- AI Insights（AI Insight 证据点与 CTA 引导）
 - Map Overlays（当 Timeline brush 需要同步 overlays 时）
 
 ---
@@ -171,7 +171,7 @@ L1 Region Intelligence Data Product（区域情报：Overview + 趋势 + Timelin
 ### 交互触发边界（必须）
 
 - Hover：不得触发 L1 请求（0 重请求）
-- Lock/Ranking click：允许触发 L1 最小集
+- Lock/Pareto click：允许触发 L1 最小集
 - Brush：高频交互必须节流；尽量复用缓存（避免每像素一次请求）
 
 ---
@@ -220,7 +220,7 @@ L1 Region Intelligence Data Product（区域情报：Overview + 趋势 + Timelin
 ### 功能闭环（必须）
 
 - [ ] L1 Overview + Timeline 输出可用：Weather/Risk 泳道可用；Claims 泳道允许 disabled/placeholder（Phase 1/2），但必须可解释且不误导。
-- [ ] Ranking click / lock region 触发 L1 最小集加载（hover 不触发）。
+- [ ] Pareto click / lock region 触发 L1 最小集加载（hover 不触发）。
 
 ### 一致性闭环（必须）
 

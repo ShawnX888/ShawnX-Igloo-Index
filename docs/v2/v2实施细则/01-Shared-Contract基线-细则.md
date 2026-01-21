@@ -139,7 +139,7 @@ Shared Contract 基线（维度/DTO/口径）
 
 ### 建议事件命名（用于统一排障口径）
 
-- 前端交互：map_hover、map_lock、ranking_click、time_range_change、timeline_brush、weather_type_toggle、layer_toggle、panel_snap_change、ai_cta_click
+- 前端交互：map_hover、map_lock、pareto_click、time_range_change、timeline_brush、weather_type_toggle、layer_toggle、panel_snap_change、ai_insight_click、ai_cta_click
 - 后端数据产品：dp_l0_dashboard_query、dp_l1_region_intelligence_query、dp_l2_evidence_query、dp_overlays_query
 - AI：ai_tool_call、ai_intent_proposed、ai_intent_blocked_by_mode、ai_intent_executed
 

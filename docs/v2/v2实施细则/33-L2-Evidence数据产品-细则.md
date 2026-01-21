@@ -20,7 +20,7 @@ L2 Evidence Data Product（证据链明细）：风险事件 ↔ 理赔 ↔ 天�
 
 - 提供 L2 “证据链”后端权威输出，支撑：
   - L2 Details 面板（Step 35）
-  - AI Insight Cards 的 “See more / Explain why” CTA 下钻（Phase 3）
+  - AI Insight（ticker + pin）的 “Explain why / Open details” CTA 下钻（Phase 3）
 - 明确 L1 与 L2 的职责边界：
   - L1：可复用的聚合与趋势（Overview + Timeline）
   - L2：重查询的明细/半明细证据（默认不预取，按需加载）
@@ -157,7 +157,7 @@ L2 的“下钻焦点”（建议固化为契约扩展字段）：
 
 - hover/brush/toggle：禁止触发 L2
 - 仅允许由：
-  - click lock + “See more / Explain why” CTA
+  - click lock + “AI Insight CTA: Explain why” CTA
   - 或面板进入 L2 section 的显式用户动作
  触发 L2 请求（与 Step 20 联动矩阵一致）
 

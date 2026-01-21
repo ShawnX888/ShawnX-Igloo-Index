@@ -51,7 +51,7 @@ v2 要避免“图层开关 → 触发重查询风暴”：
 - **Layer Toggle**：
   - 一般只改渲染
   - 如确需触发 Overlays 请求：必须节流/去抖，且不得触发 L2
-- **Click lock / Ranking click / See more / AI CTA** 才允许触发更重的数据产品请求（L1/L2）
+- **Click lock / Pareto Click / AI Insight Click / AI CTA** 才允许触发更重的数据产品请求（L1/L2）
 
 ### 3.3 Access Mode 规则（强制）
 图层能力在不同 Mode 下可能“可见但不可用”：

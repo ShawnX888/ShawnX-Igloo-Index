@@ -10,7 +10,7 @@
 
 ## 模块名称
 
-L0 Dashboard Data Product（省级态势：KPI + TopN 排名，Combined/Policies/Claims）
+L0 Dashboard Data Product（省级态势：金额 KPI + Top 导航（Pareto） + 趋势提示）
 
 ---
 
@@ -19,11 +19,10 @@ L0 Dashboard Data Product（省级态势：KPI + TopN 排名，Combined/Policies
 ### 目标
 
 - 提供 L0“10 秒看懂态势”的后端权威数据产品输出：
-  - Combined / Policies / Claims 三个视角
-  - 每个视角：3–5 KPI + Top5（或 TopN）排名 +（可选）轻量趋势
+  - 省级背书：金额 KPI（最小集）+ Top 导航（Pareto TopN）+（可选）claim sparkline（趋势提示）
 - 强缓存/预聚合优先，支撑路演/高频交互：
   - 缓存命中 p95 < 500ms
-- Ranking Click 作为导航入口：输出必须支持“排行榜 → 地图锁区”联动（包含 region_code 与必要 meta）。
+- Pareto Click 作为导航入口：输出必须支持“Top 导航 → 地图锁区”联动（包含 region_code 与必要 meta）。
 - Mode-aware：Demo/Public 下隐藏敏感口径与字段；Partner/Admin 逐步开放。
 
 ### 非目标
@@ -37,7 +36,7 @@ L0 Dashboard Data Product（省级态势：KPI + TopN 排名，Combined/Policies
 
 本模块本身就是 Data Product：**L0 Dashboard**。
 
-同时为 AI Insights 提供输入（洞察卡证据点）：
+同时为 AI Insights 提供输入（AI Insight 证据点）：
 
 - AI Insights（依赖 L0 的 KPI/TopN）
 
@@ -61,18 +60,19 @@ L0 Dashboard Data Product（省级态势：KPI + TopN 排名，Combined/Policies
 
 ### 1) KPI（Aggregations）
 
-- 每个 Tab（Combined/Policies/Claims）输出 3–5 个 KPI（可配置）。
+- KPI 默认以“最小背书集”为主（固定 2 个金额 KPI：Total Premium / Total Claims Amount；字段名以 Shared Contract 为准）。
 - 每个 KPI 必须带：
   - 数值（可能被 Mode 裁剪为区间）
   - 单位（或说明）
   - 口径说明（time_range/data_type/weather_type/product 影响）
 
-### 2) TopN 排名（Aggregations）
+### 2) Top 导航（Pareto TopN，Aggregations）
 
 - TopN 条目必须包含：
   - `region_code`（用于 Map fly-to + lock）
   - `rank`
-  - 指标值（Mode 可裁剪为区间/强弱）
+  - claim amount（排序主键；Mode 可裁剪为区间/强弱）
+  - premium amount（并列展示；Mode 可裁剪为区间/强弱）
   - 必要的比较维度（如占比/同比，MVP 可不做）
 
 ### 3) Meta/Legend（必须）
@@ -86,7 +86,7 @@ L0 Dashboard Data Product（省级态势：KPI + TopN 排名，Combined/Policies
   - `claims_available`（bool，字段名最终以 Shared Contract 为准）
   - `claims_unavailable_reason`（string，建议：`not_implemented_until_phase_3`）
 
-> 说明（强制口径）：Phase 1/2 的 L0 不依赖 claims 表（Step 30 在 Phase 3），因此 L0 的 Claims tab 必须以“可见但不可用（disabled/placeholder）”形态返回，且必须显式声明 `claims_available=false`，禁止通过其他事实（risk_events）伪造 claims 聚合。
+> 说明（强制口径）：Phase 1/2 的 L0 不依赖 claims 表（Step 30 在 Phase 3），因此 L0 输出中与 claims 事实域相关的内容必须显式声明 `claims_available=false`（并提供原因），且禁止通过其他事实（risk_events）伪造 claims 聚合。
 
 ---
 
@@ -107,7 +107,7 @@ L0 Dashboard Data Product（省级态势：KPI + TopN 排名，Combined/Policies
 
 硬规则：
 - **后端强裁剪**：前端隐藏不算权限（失败模式 A）。
- - **不可用能力必须可解释**：当 `claims_available=false` 时，Claims tab 必须返回占位输出 + meta 解释，不得返回空结构导致前端误判为“接口异常”。
+- **不可用能力必须可解释**：当 `claims_available=false` 时，与 claims 事实域相关的输出必须返回占位/禁用态 + meta 解释，不得返回空结构导致前端误判为“接口异常”。
 
 ---
 
@@ -167,7 +167,7 @@ L0 属于高频背书数据，必须强缓存/预聚合：
 
 ### 来自 v1 的可复用资产（R0/R1）
 
-- 可复用“排行榜作为导航入口”的交互思想，但 v2 必须由后端输出稳定的 TopN 数据产品（避免前端自行 group-by）。
+- 可复用“Top 导航作为地图入口”的交互思想，但 v2 必须由后端输出稳定的 TopN 数据产品（避免前端自行 group-by）。
 
 ### 来自 v1 的可复用逻辑（R2）
 
@@ -183,8 +183,8 @@ L0 属于高频背书数据，必须强缓存/预聚合：
 
 ### 功能闭环（必须）
 
-- [ ] Combined/Policies/Claims 三个 Tab 的 KPI + Top5 可用（Phase 1/2 允许 Claims 为 disabled/placeholder，但必须可解释且不误导）。
-- [ ] Top5 点击可驱动 Map fly-to + lock（至少能通过 region_code 定位）。
+- [ ] KPI（金额最小背书集）+ Pareto TopN（dual bars，claim 排序）可用（Phase 1/2 若 `claims_available=false`，与 claims 相关输出必须为禁用/占位且可解释）。
+- [ ] Pareto Click 能驱动 Map fly-to + lock（至少能通过 region_code 定位），默认不自动打开面板。
 
 ### 性能闭环（必须）
 
@@ -195,7 +195,7 @@ L0 属于高频背书数据，必须强缓存/预聚合：
 
 - [ ] Demo/Public 下敏感字段不可通过接口获取（后端强裁剪）。
 - [ ] predicted 场景响应显式带 prediction_run_id，且不混批次。
- - [ ] 当 `claims_available=false`：响应 meta 明确声明不可用原因；Claims tab 不返回伪造聚合；前端可稳定渲染“不可用”状态。
+- [ ] 当 `claims_available=false`：响应 meta 明确声明不可用原因；不返回伪造 claims 聚合；前端可稳定渲染“不可用”状态。
 
 ---
 

@@ -32,7 +32,7 @@ UI Orchestration（Zustand：View/Access State；TanStack Query：Server State�
 
 ### 非目标
 
-- 不在本细则实现具体 UI 组件（L0 Sidebar、Top Bar、Panel 等由各自步骤实现）。
+- 不在本细则实现具体 UI 组件（L0 Left HUD Rail、Top Bar、Panel 等由各自步骤实现）。
 - 不在本细则定义后端权限系统；只定义 Mode-aware 的前端呈现与请求维度约束。
 
 ---
@@ -75,8 +75,8 @@ UI Orchestration 负责统一调度以下数据产品请求与刷新策略：
 
 与 `v2页面设计提案.md` 对齐：
 
-- S0 初始（L0 展开；Panel Collapsed/Peek）
-- S1 区域锁定（Map lock；洞察卡刷新；面板默认不打断）
+- S0 初始（Left HUD Rail 可见；Panel Collapsed/Peek）
+- S1 区域锁定（Map lock；Left HUD Rail 高亮选区；AI Insight 状态更新/轮动（节流）；面板默认不打断）
 - S2 情报面板打开（Half；定位到目标 section）
 - S3 分析模式（Full；sticky nav）
 
@@ -85,8 +85,8 @@ UI Orchestration 负责统一调度以下数据产品请求与刷新策略：
 必须覆盖并写死以下规则（摘要，详细触发见 v2 页面设计）：
 
 - hover：只 UI 高亮/tooltip（≤3 指标）；**不得**触发 L1/L2
-- map click lock / ranking click：允许触发 L1 最小集（可缓存），不强制展开面板
-- see more / insight CTA：允许打开面板并触发 L2（按需加载）
+- map click lock / pareto click：允许触发 L1 最小集（可缓存），不强制展开面板
+- AI Insight click / CTA：允许打开面板并触发 L2（按需加载，按 Mode 裁剪）
 - time brush：节流触发 L0/L1/Overlays 刷新
 - weather_type toggle：同步更新 overlays + 产品列表 + L1 timeline（节流）
 
@@ -176,8 +176,8 @@ UI Orchestration 负责统一调度以下数据产品请求与刷新策略：
 
 ### 联动闭环（必须）
 
-- [ ] L0 Ranking click → Map lock →（可选）L1 刷新不打断地图主舞台。
-- [ ] See more / Insight CTA → 面板打开并定位 section → 按需加载（允许）L2。
+- [ ] L0 Pareto click → Map lock →（可选）L1 刷新不打断地图主舞台。
+- [ ] AI Insight click / CTA → 面板打开到 Half 并定位 section → 按需加载（允许）L2。
 
 ### 红线（必须）
 

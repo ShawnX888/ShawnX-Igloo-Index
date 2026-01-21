@@ -32,7 +32,7 @@ Region Intelligence Panel（区域情报面板 / Bottom Sheet）基础结构：P
 - 联动边界写死（避免交互风暴）：
   - hover 不触发 L1/L2
   - click lock / ranking click：允许触发 L1 最小集，但默认不自动打开到 Full
-  - See more / Insight CTA：允许打开到 Half/Full 并定位 section；L2 仅在明确动作下加载
+  - AI Insight click / CTA：允许打开到 Half/Full 并定位 section；L2 仅在明确动作下加载
 
 ### 非目标
 
@@ -120,7 +120,7 @@ Region Intelligence Panel（区域情报面板 / Bottom Sheet）基础结构：P
 
 ### 交互治理（强制）
 
-- panel section nav：优先复用已加载的 L1 数据；需要 L2 时必须显式动作（See more / CTA / row click）
+- panel section nav：优先复用已加载的 L1 数据；需要 L2 时必须显式动作（AI Insight click / CTA / row click）
 - brush/切产品等高频交互由 Orchestration 节流并驱动刷新
 
 ---
@@ -160,7 +160,7 @@ Region Intelligence Panel（区域情报面板 / Bottom Sheet）基础结构：P
 ### 结构与联动（必须）
 
 - [ ] 支持 Peek/Half/Full；不影响地图交互（主舞台优先）。
-- [ ] Ranking click / map lock 不强制打断打开面板到 Full；See more/CTA 可打开并定位 section。
+- [ ] Pareto click / map lock 不强制打断打开面板到 Full；AI Insight click/CTA 可打开并定位 section。
 
 ### 数据治理（必须）
 

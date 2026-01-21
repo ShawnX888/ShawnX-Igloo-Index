@@ -1,4 +1,4 @@
-# 21 - L0 Sidebar（省级态势抽屉）- v2 实施细则
+# 21 - L0（Left HUD Rail，省级态势 HUD）- v2 实施细则
 
 > 对应 `docs/v2/v2实现步骤总览.md` Step 21  
 > 状态：Draft（可开工）  
@@ -10,7 +10,9 @@
 
 ## 模块名称
 
-L0 Sidebar（省级态势播报台）：3 Tab（Combined / Policies / Claims）+ KPI（3–5）+ Top5 排名（Ranking Click 导航）
+> 说明：文件名沿用 Step 21 的历史命名以保持索引稳定；本模块在 v2 顶层设计中已从“Sidebar 抽屉”调整为 **Left HUD Rail（Search 下方，HUD 化，上宽下窄）**。
+
+L0（Left HUD Rail，省级态势 HUD）：AI Insight（ticker + pin，见 Step 39）+ KPI Strip（金额 2 项）+ Pareto Top3（dual bars，claim 排序）+ Claim Trend Sparkline（提示）
 
 ---
 
@@ -19,9 +21,11 @@ L0 Sidebar（省级态势播报台）：3 Tab（Combined / Policies / Claims）+
 ### 目标
 
 - 提供“10 秒内一眼看到态势”的 L0 体验（与 `v2项目总览.md` 口径一致）：
-  - 三个 Tab：Combined / Policies / Claims
-  - 每 Tab：3–5 KPI + Top5 排名（可选 tiny trend）
-  - Ranking Click → Map fly-to + lock region（排行榜即导航）
+  - Left HUD Rail 位于 Search Box 下方、左对齐，并采用“上宽下窄”的 HUD 形态
+  - KPI Strip（金额 2 项）：Total Premium / Total Claims Amount（字段名以 Shared Contract 为准）
+  - Pareto Top3（dual bars）：claim amount（排序主键）+ premium amount（并列）
+  - Pareto Click → Map fly-to + lock district（Top 导航即地图入口；默认不自动展开面板）
+  - Claim Trend Sparkline：仅趋势提示（不承载完整趋势阅读任务）
 - 把 L0 从“UI 卡片”升级为“数据产品消费”：
   - 数据来源必须是后端 `L0 Dashboard Data Product`（Step 11）
   - 前端不做明细聚合
@@ -32,9 +36,9 @@ L0 Sidebar（省级态势播报台）：3 Tab（Combined / Policies / Claims）+
 
 ### 非目标
 
-- 不在本细则实现 AI Insight Cards（后续 Step 39）。
+- 不在本细则实现 AI Insight UI（后续 Step 39）。
 - 不在本细则实现 L1/L2 面板（后续 Step 26+）。
- - 不在 Phase 2 强行“补齐 claims 事实域”：claims 的事实与计算在 Phase 3（Step 30/31/32）；Phase 2 仅要求 Claims tab 可见但不可用且解释清晰。
+ - 不在 Phase 2 强行“补齐 claims 事实域”：claims 的事实与计算在 Phase 3（Step 30/31/32）；Phase 2 仅要求任何 claims 相关展示在 `claims_available=false` 时为禁用/占位且解释清晰。
 
 ---
 
@@ -46,7 +50,7 @@ L0 Sidebar（省级态势播报台）：3 Tab（Combined / Policies / Claims）+
 
 间接联动：
 
-- Map Stage（Step 18）：Ranking click → map lock
+- Map Stage（Step 18）：Pareto click → map lock
 - L1 Region Intelligence（Step 13）：锁区后触发 L1 最小集刷新（由 Orchestration 决策）
 
 ---
@@ -70,20 +74,18 @@ L0 请求维度（最小）：
 
 ### UI 输出
 
-- 左侧栏（态势播报台）
-  - Tab 切换
-  - KPI 卡片（含单位/口径提示）
-  - Top5 排名（条形/列表均可，但必须可点击）
+- Left HUD Rail（省级态势 HUD）
+  - KPI Strip（金额 2 项，含单位/口径提示）
+  - Pareto Top3（dual bars，并列展示 claim/premium；按 claim 排序；可点击）
+  - Claim Trend Sparkline（趋势提示 + delta，可选）
   - “当前口径 meta”：data_type /（predicted）prediction_run_id / access_mode（可在 tooltip 或次级信息展示）
-  - **Claims tab 占位/禁用态（Phase 2 必须）**：
-    - 当后端 `claims_available=false` 时，Claims tab 必须可见但不可用（disabled）
-    - UI 必须展示不可用原因（tooltip/inline note）：例如“理赔事实域在 Phase 3 上线，当前为占位”
-    - 禁止用 risk_events 或前端 mock 伪造 claims KPI/排名
+  - **claims 可用性占位/禁用态（Phase 1/2 必须）**：
+    - 当后端 `claims_available=false` 时：任何 claims 相关口径必须为禁用/占位并可解释（tooltip/inline note）
+    - 禁止用 risk_events 或前端 mock 伪造 claims 聚合事实
 
 ### 交互输出（给 UI Orchestration）
 
-- `l0_tab_change(tab_id)`
-- `l0_ranking_click(region_code)`（触发 Map lock）
+- `l0_pareto_click(region_code)`（触发 Map lock；默认不自动打开面板）
 
 ---
 
@@ -91,7 +93,7 @@ L0 请求维度（最小）：
 
 ### 后端裁剪（强制前提）
 
-- Demo/Public：金额等敏感口径可范围化/隐藏；Top5 可展示相对强弱或区间
+- Demo/Public：金额等敏感口径可范围化/隐藏；Pareto 可展示相对强弱或区间
 - Partner：更细粒度，但仍可字段级脱敏
 - Admin/Internal：全量口径
 
@@ -100,7 +102,7 @@ L0 请求维度（最小）：
 - 被裁剪字段必须有“可解释呈现”：
   - lock 图标/tooltip 说明（而不是直接消失导致演示断流）
  - 被“不可用”的能力必须有“可解释呈现”：
-   - Claims tab disabled + 明确原因
+   - claims 相关展示 disabled/placeholder + 明确原因
    - 交互上不得触发任何 claims 相关请求/下钻
 
 ---
@@ -124,7 +126,6 @@ L0 请求维度（最小）：
 
 - L0 本身属于高频背书：必须强缓存/预聚合（后端负责）
 - 前端：
-  - tab switch 只触发 L0 dp 请求（或复用缓存），不得联动触发 L2
   - hover 只做 tooltip，不触发 dp 请求
 
 ---
@@ -133,8 +134,7 @@ L0 请求维度（最小）：
 
 必须记录：
 
-- `l0_tab_change`
-- `l0_ranking_click`
+- `l0_pareto_click`
 - `dp_l0_query`（耗时/缓存命中）
 - `map_lock`（由 Map Stage 输出，串联 trace）
 
@@ -144,7 +144,6 @@ L0 请求维度（最小）：
 - `access_mode`
 - `time_range/data_type/weather_type`
 - predicted：`prediction_run_id`
-- `tab_id`
 
 ---
 
@@ -163,9 +162,9 @@ L0 请求维度（最小）：
 
 ### 功能（必须）
 
-- [ ] 三 Tab 可切换，KPI 与 Top5 正确展示（来自 L0 Data Product）。
-- [ ] Ranking Click 能驱动 Map fly-to + lock region（并触发 L1 最小集刷新，若策略允许）。
- - [ ] 当 `claims_available=false`：Claims tab 可见但不可用且解释清晰；不会触发 claims 查询；不会出现“空白/报错式 UI”。
+- [ ] KPI Strip（金额 2 项）+ Pareto Top3（dual bars，claim 排序）+ sparkline（可选）正确展示（来自 L0 Data Product）。
+- [ ] Pareto Click 能驱动 Map fly-to + lock district（并触发 L1 最小集刷新，若策略允许；默认不自动打开面板）。
+- [ ] 当 `claims_available=false`：claims 相关展示为禁用/占位且解释清晰；不会触发 claims 查询；不会出现“空白/报错式 UI”。
 
 ### 红线（必须）
 
@@ -198,6 +197,6 @@ L0 请求维度（最小）：
 
 ### 回滚策略
 
-- 若性能不达标：先收敛 KPI/Top5 数量与刷新频率，并依赖强缓存结果。
+- 若性能不达标：先收敛 Pareto TopN 数量与刷新频率，并依赖强缓存结果。
 - 若 Mode 断流：提供范围化/区间化展示与 tooltip 解释，保持叙事闭环。
 

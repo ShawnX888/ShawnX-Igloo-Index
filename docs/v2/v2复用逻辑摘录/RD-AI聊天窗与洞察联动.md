@@ -43,13 +43,13 @@
 
 ## 3. v2 化适配（必须写清楚）
 
-### 3.1 v2 的“AI 两条腿”：聊天窗 + 导演式洞察卡并存
+### 3.1 v2 的“AI 两条腿”：聊天窗 + AI Insight（导演式联动）并存
 - **聊天窗是必须保留的稳定入口**：用户表达需求、追问解释、兜底交互。
-- **洞察卡（Insight Cards）是 v2 主线**：一句话结论 + CTA（可执行 UI Intent），用于“导演式联动”与叙事节奏控制。
-- 两者并存的关键：洞察卡的 CTA 与聊天窗的解析结果，都必须走 **同一条 UI Orchestration 入口**（避免绕过 Mode/批次/节流）。
+- **AI Insight（ticker + pin）是 v2 主线**：人性化的一句话结论 + CTA（可执行 UI Intent），用于“导演式联动”与叙事节奏控制。
+- 两者并存的关键：AI Insight 的 CTA 与聊天窗的解析结果，都必须走 **同一条 UI Orchestration 入口**（避免绕过 Mode/批次/节流）。
 
 ### 3.2 输入维度（统一契约）
-任何由聊天窗产生、或由洞察卡触发的数据请求，都必须显式携带/推导 v2 维度：
+任何由聊天窗产生、或由 AI Insight 触发的数据请求，都必须显式携带/推导 v2 维度：
 - region_scope / region_code
 - time_range
 - data_type（historical/predicted）
@@ -66,7 +66,7 @@
 - **动作执行必须 Mode 校验**：AI 只能“提出 intent”，最终执行由 UI Orchestration + 后端权限裁剪共同保证。
 
 ### 3.4 Prediction Run 规则（强制）
-- predicted 场景下，聊天窗触发的查询/洞察卡触发的查询必须与页面批次一致：
+- predicted 场景下，聊天窗触发的查询/AI Insight 触发的查询必须与页面批次一致：
   - 缓存 key 维度规则以 `RD-性能优化.md` 为准（至少包含 `access_mode`；predicted 额外包含 `prediction_run_id`）
   - 禁止从历史批次缓存拼装解释（避免“解释断裂”）
 
@@ -82,17 +82,17 @@
 ### 4.1 验收用例（Acceptance）
 - [ ] 用户在聊天窗输入自然语言后，系统能更新：region、time_range、data_type、product（至少其中 2 项），并触发对应数据产品刷新。
 - [ ] 聊天窗解析失败时，UI 有明确提示且不破坏当前页面状态（可重试/可手动修正）。
-- [ ] Demo/Public 模式下，聊天窗与洞察卡不会引导用户进入不可用或敏感能力（例如 L2 明细全量/导出）。
+- [ ] Demo/Public 模式下，聊天窗与 AI Insight 不会引导用户进入不可用或敏感能力（例如 L2 明细全量/导出）。
 - [ ] predicted 场景下，聊天触发的数据请求与页面 active_run 一致，不发生混批次。
 
 ### 4.2 反例（Non-examples / Forbidden）
-- [ ] 禁止：聊天窗直接绕过 UI Orchestration 改写状态并触发 L2 明细重请求（应先进入锁区/See more/CTA 的重交互路径）。
-- [ ] 禁止：洞察卡 CTA 在 Demo/Public 下触发“导出/全量明细/敏感口径”。
+- [ ] 禁止：聊天窗直接绕过 UI Orchestration 改写状态并触发 L2 明细重请求（应先进入锁区/AI Insight Click/CTA 的重交互路径）。
+- [ ] 禁止：AI Insight CTA 在 Demo/Public 下触发“导出/全量明细/敏感口径”。
 - [ ] 禁止：predicted 场景未携带 prediction_run_id（或未绑定 active_run）直接命中缓存并返回结果。
 
 ---
 
 ## 5. 未决问题（Open Questions）
-- Q1：聊天窗与手动控制（Top Bar/Left Sidebar/Panel）是否“互斥”还是“并存+可最小化”？（建议 v2：并存，但可最小化，不强互斥）
+- Q1：聊天窗与手动控制（Top Bar/Left HUD Rail/Panel）是否“互斥”还是“并存+可最小化”？（建议 v2：并存，但可最小化，不强互斥）
 - Q2：聊天窗是否需要在 UI 上显示当前 access_mode 与 prediction_run_id（至少在 Admin/Internal 或 debug 模式显示）？
 

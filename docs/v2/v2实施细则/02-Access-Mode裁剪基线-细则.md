@@ -23,7 +23,7 @@ Access Mode 裁剪基线（后端输出裁剪规则）
   - **字段级裁剪**（敏感字段不可下发）
   - **粒度级裁剪**（明细→摘要、精确值→区间）
   - **能力级裁剪**（Compare/导出/分享/保存视图等动作集合）
-- 把 Mode 影响写入五类数据产品：L0/L1/L2/Overlays/AI Insights。
+- 把 Mode 影响写入五类数据产品：L0/L1/L2/Overlays/AI Insights（AI Insight + CTA）。
 - 明确“可见但不可用”的前端降级 UX 与后端强制裁剪的责任边界，避免演示断流。
 
 ### 非目标
@@ -35,11 +35,11 @@ Access Mode 裁剪基线（后端输出裁剪规则）
 
 ## 关联的数据产品（Data Product）
 
-- L0 Dashboard：KPI/TopN 排名（Mode 决定口径、字段、粒度）
+- L0 Dashboard：金额 KPI + Top 导航（Pareto TopN）（Mode 决定口径、字段、粒度）
 - L1 Region Intelligence：Overview/Timeline/Correlation（Mode 决定细节与默认展开）
 - L2 Evidence：证据链明细（Mode 决定是否允许下发明细）
 - Map Overlays：地图叠加层聚合（Mode 决定金额/粒度与 legend）
-- AI Insights：洞察卡与 CTA（Mode 决定可说内容与可执行动作）
+- AI Insights：AI Insight（ticker + pin）与 CTA（Mode 决定可说内容与可执行动作）
 
 ---
 
@@ -81,7 +81,7 @@ Access Mode 裁剪基线（后端输出裁剪规则）
 原则：少数字、强解释、强叙事；避免敏感数据泄露。
 
 - **L0**
-  - KPI/排名：允许范围化/区间化或相对强弱；避免精确金额（除非明确允许）
+  - KPI/Top 导航：允许范围化/区间化或相对强弱；避免精确金额（除非明确允许）
 - **L1**
   - Timeline：允许展示趋势与阈值解释，但对敏感字段裁剪
 - **L2**
