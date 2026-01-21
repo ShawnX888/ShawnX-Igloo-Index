@@ -25,19 +25,19 @@
 
 | 文件路径 | 说明 | 行数 |
 |---|---|---|
-| `backend/app/schemas/prediction.py` | Prediction Run schemas定义 | ~240行 |
-| `backend/app/utils/prediction_run.py` | ActiveRunManager + 一致性验证 | ~270行 |
-| `backend/app/schemas/__init__.py` | 更新导出 | 已更新 |
-| `backend/tests/test_prediction_run.py` | 验收测试 | ~250行 |
+| `packages/v2-fullstack/backend/app/schemas/prediction.py` | Prediction Run schemas 定义 | 以代码为准 |
+| `packages/v2-fullstack/backend/app/utils/prediction_run.py` | ActiveRunManager（MVP 框架）+ 一致性验证 | 以代码为准 |
+| `packages/v2-fullstack/backend/app/schemas/__init__.py` | 更新导出 | 已更新 |
+| `packages/v2-fullstack/backend/tests/test_prediction_run.py` | 验收测试 | 以代码为准 |
 
 ### 前端 (TypeScript)
 
 | 文件路径 | 说明 | 行数 |
 |---|---|---|
-| `frontend/src/types/prediction.ts` | Prediction Run类型定义 | ~180行 |
-| `frontend/src/lib/prediction-run.ts` | 前端管理工具 + UI辅助 | ~270行 |
-| `frontend/src/types/index.ts` | 更新导出 | 已更新 |
-| `frontend/src/types/__tests__/prediction.test.ts` | 验收测试 | ~220行 |
+| `packages/v2-fullstack/frontend/src/types/prediction.ts` | Prediction Run 类型定义 | 以代码为准 |
+| `packages/v2-fullstack/frontend/src/lib/prediction-run.ts` | 前端管理工具 + UI 辅助 | 以代码为准 |
+| `packages/v2-fullstack/frontend/src/types/index.ts` | 更新导出 | 已更新 |
+| `packages/v2-fullstack/frontend/src/types/__tests__/prediction.test.ts` | 验收测试 | 以代码为准 |
 
 ---
 

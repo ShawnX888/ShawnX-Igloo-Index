@@ -190,8 +190,11 @@ class TestExtendedRange:
     def test_calculate_extended_range_daily_7days(self):
         """测试日级7天窗口的扩展"""
         time_range = TimeRangeUTC(
-            start=datetime(2025, 1, 20, 0, 0, 0, tzinfo=timezone.utc),
-            end=datetime(2025, 1, 27, 23, 59, 59, tzinfo=timezone.utc),
+            # 对齐到 Asia/Shanghai 的自然日边界：
+            # 北京时间 2025-01-20 00:00:00  <->  UTC 2025-01-19 16:00:00
+            start=datetime(2025, 1, 19, 16, 0, 0, tzinfo=timezone.utc),
+            # 北京时间 2025-01-27 23:59:59  <->  UTC 2025-01-27 15:59:59
+            end=datetime(2025, 1, 27, 15, 59, 59, tzinfo=timezone.utc),
             region_timezone="Asia/Shanghai"
         )
         
@@ -201,8 +204,9 @@ class TestExtendedRange:
             window_duration=7  # 需要回溯7天
         )
         
-        # 计算起始应该提前7天
-        expected_calc_start = time_range.start - timedelta(days=7)
+        # 计算起始应该提前7天，并对齐到自然日边界
+        # 北京时间 2025-01-13 00:00:00  <->  UTC 2025-01-12 16:00:00
+        expected_calc_start = datetime(2025, 1, 12, 16, 0, 0, tzinfo=timezone.utc)
         assert calc_range.calculation_start == expected_calc_start
         assert calc_range.display_start == time_range.start
         assert calc_range.extension_hours == 7 * 24

@@ -269,27 +269,66 @@ def calculate_extended_range(
     """
     if window_duration is None:
         window_duration = 0
-    
-    # 根据窗口类型计算扩展量
+
+    # 确保 start/end 都是 UTC aware（naive 视为 UTC）
+    display_start = (
+        time_range.start.replace(tzinfo=timezone.utc)
+        if time_range.start.tzinfo is None
+        else time_range.start
+    )
+    display_end = (
+        time_range.end.replace(tzinfo=timezone.utc)
+        if time_range.end.tzinfo is None
+        else time_range.end
+    )
+
     if window_type == TimeWindowType.HOURLY:
-        extension = timedelta(hours=window_duration)
-    elif window_type == TimeWindowType.DAILY:
-        extension = timedelta(days=window_duration)
-    elif window_type == TimeWindowType.WEEKLY:
-        extension = timedelta(weeks=window_duration)
+        # hourly：按 UTC 连续回溯，无需自然边界对齐
+        calculation_start = display_start - timedelta(hours=window_duration)
+    elif window_type in (TimeWindowType.DAILY, TimeWindowType.WEEKLY):
+        # daily/weekly：先按天/周回溯，再对齐到 region_timezone 的自然日边界
+        if not time_range.region_timezone:
+            raise ValueError("region_timezone is required for daily/weekly extended range")
+
+        if window_type == TimeWindowType.DAILY:
+            base_start = display_start - timedelta(days=window_duration)
+        else:
+            base_start = display_start - timedelta(weeks=window_duration)
+
+        calculation_start = align_to_natural_day_start(base_start, time_range.region_timezone)
     elif window_type == TimeWindowType.MONTHLY:
-        extension = timedelta(days=window_duration * 30)  # 近似
+        # monthly：对齐到 region_timezone 的自然月起始（按月回溯 N 个月）
+        if not time_range.region_timezone:
+            raise ValueError("region_timezone is required for monthly extended range")
+
+        region_tz = ZoneInfo(time_range.region_timezone)
+        region_display_start = utc_to_region_tz(display_start, time_range.region_timezone)
+        # 回溯 window_duration 个月，并对齐到目标月 1 日 00:00:00
+        total_months = (region_display_start.year * 12 + (region_display_start.month - 1)) - window_duration
+        target_year = total_months // 12
+        target_month = (total_months % 12) + 1
+        region_month_start = datetime(
+            year=target_year,
+            month=target_month,
+            day=1,
+            hour=0,
+            minute=0,
+            second=0,
+            microsecond=0,
+            tzinfo=region_tz,
+        )
+        calculation_start = region_tz_to_utc(region_month_start, time_range.region_timezone)
     else:
-        extension = timedelta(0)
-    
-    calculation_start = time_range.start - extension
-    
+        calculation_start = display_start
+
+    extension_hours = (display_start - calculation_start).total_seconds() / 3600
+
     return CalculationRangeUTC(
         calculation_start=calculation_start,
-        calculation_end=time_range.end,
-        display_start=time_range.start,
-        display_end=time_range.end,
-        extension_hours=extension.total_seconds() / 3600
+        calculation_end=display_end,
+        display_start=display_start,
+        display_end=display_end,
+        extension_hours=extension_hours,
     )
 
 

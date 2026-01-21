@@ -25,19 +25,19 @@
 
 | 文件路径 | 说明 | 行数 |
 |---|---|---|
-| `backend/app/schemas/time.py` | 时间口径Schema定义 | ~280行 |
-| `backend/app/utils/time_utils.py` | 时区转换 + 自然边界对齐工具 | ~380行 |
-| `backend/app/schemas/__init__.py` | 更新导出 | 已更新 |
-| `backend/tests/test_time_utils.py` | 验收测试(含关键业务规则) | ~330行 |
+| `packages/v2-fullstack/backend/app/schemas/time.py` | 时间口径 Schema 定义 | 以代码为准 |
+| `packages/v2-fullstack/backend/app/utils/time_utils.py` | 时区转换 + 自然边界对齐 + 扩展窗口计算工具 | 以代码为准 |
+| `packages/v2-fullstack/backend/app/schemas/__init__.py` | 更新导出 | 已更新 |
+| `packages/v2-fullstack/backend/tests/test_time_utils.py` | 验收测试（含关键业务规则） | 以代码为准 |
 
 ### 前端 (TypeScript)
 
 | 文件路径 | 说明 | 行数 |
 |---|---|---|
-| `frontend/src/types/time.ts` | 时间口径类型定义 | ~180行 |
-| `frontend/src/lib/time-utils.ts` | 时区转换 + 展示格式化工具 | ~240行 |
-| `frontend/src/types/index.ts` | 更新导出 | 已更新 |
-| `frontend/src/types/__tests__/time.test.ts` | 验收测试 | ~240行 |
+| `packages/v2-fullstack/frontend/src/types/time.ts` | 时间口径类型定义 | 以代码为准 |
+| `packages/v2-fullstack/frontend/src/lib/time-utils.ts` | 时区转换 + 展示格式化工具 | 以代码为准 |
+| `packages/v2-fullstack/frontend/src/types/index.ts` | 更新导出 | 已更新 |
+| `packages/v2-fullstack/frontend/src/types/__tests__/time.test.ts` | 验收测试 | 以代码为准 |
 
 ---
 
