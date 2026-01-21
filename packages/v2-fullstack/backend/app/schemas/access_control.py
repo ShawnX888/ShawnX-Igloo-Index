@@ -16,6 +16,7 @@ Reference:
 - 缓存 key 必含 access_mode (否则会串数据)
 """
 
+from decimal import Decimal
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set
 
@@ -168,7 +169,8 @@ class PruningPolicyRegistry:
             allowed_fields={
                 "region_code", "region_name", "rank", 
                 "policy_count", "claim_count", "claim_rate",
-                # 隐藏: policy_amount_total, claim_amount_total (精确金额)
+                # 金额字段必须允许输出，但在 Demo/Public 下强制区间化
+                "policy_amount_total", "claim_amount_total",
             },
             masked_fields={
                 "policy_amount_total": "range",  # 转为区间
@@ -445,10 +447,25 @@ class FieldPruner:
         """
         if mask_rule == "range":
             # 转为区间表示
-            if isinstance(value, (int, float)):
-                # 简单示例: 转为10的倍数区间
-                lower = (value // 10) * 10
-                upper = lower + 10
+            if isinstance(value, (int, float, Decimal)):
+                # 安全优先：按数量级做区间化，避免过细暴露（Demo/Public）
+                decimal_value = (
+                    value
+                    if isinstance(value, Decimal)
+                    else Decimal(str(value))
+                )
+                abs_value = abs(decimal_value)
+                if abs_value == 0:
+                    step = Decimal(10)
+                else:
+                    # value.adjusted(): 10^n 的 n（例如 12345 -> 4）
+                    # 让区间至少是 10^1，并随数量级变粗（例如 12345 -> step=1000）
+                    step_exp = max(abs_value.adjusted() - 1, 1)
+                    step = Decimal(10) ** step_exp
+
+                lower = (decimal_value // step) * step
+                upper = lower + step
+                # 统一输出为字符串，避免 Decimal/float 在跨端展示时产生歧义
                 return f"[{lower}, {upper})"
             return value
         elif mask_rule == "mask":

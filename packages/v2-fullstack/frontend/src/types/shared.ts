@@ -195,7 +195,7 @@ export interface EventData {
 /**
  * 聚合数据
  * 
- * 用途: L0 KPI/TopN排名, Map Overlays区域聚合
+ * 用途: L0 KPI/Pareto（TopN）, Map Overlays区域聚合
  * 
  * 硬规则:
  * - 必须标注聚合维度(aggregation_key)与口径(aggregation_method)

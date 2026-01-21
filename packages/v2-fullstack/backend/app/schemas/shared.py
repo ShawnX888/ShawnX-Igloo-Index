@@ -13,7 +13,7 @@ Reference:
 - docs/v2/v2复用逻辑摘录/RD-共享类型与接口契约.md
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from enum import Enum
 from typing import Any, Dict, List, Literal, Optional, Union
@@ -270,7 +270,7 @@ class AggregationData(BaseModel):
     """
     聚合数据
     
-    用途: L0 KPI/TopN排名, Map Overlays区域聚合
+    用途: L0 KPI/Pareto（TopN）, Map Overlays 区域聚合
     
     硬规则:
     - 必须标注聚合维度(aggregation_key)与口径(aggregation_method)
@@ -410,7 +410,7 @@ class TraceContext(BaseModel):
     
     # 时间戳
     request_at: datetime = Field(
-        default_factory=datetime.utcnow,
+        default_factory=lambda: datetime.now(timezone.utc),
         description="请求时间(UTC)"
     )
 
@@ -440,7 +440,7 @@ class ResponseMeta(BaseModel):
         description="警告信息(如数据不完整、降级处理等)"
     )
     response_at: datetime = Field(
-        default_factory=datetime.utcnow,
+        default_factory=lambda: datetime.now(timezone.utc),
         description="响应时间(UTC)"
     )
 

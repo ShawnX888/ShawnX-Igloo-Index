@@ -26,20 +26,20 @@
 
 | 文件路径 | 说明 | 行数 |
 |---|---|---|
-| `backend/app/schemas/access_control.py` | 裁剪策略定义 + 注册表 | ~420行 |
-| `backend/app/utils/access_control.py` | AccessControlManager + 裁剪执行器 | ~230行 |
-| `backend/app/utils/mode_config.py` | Mode配置管理 + 审计日志 | ~200行 |
-| `backend/app/schemas/__init__.py` | 更新导出 | 已更新 |
-| `backend/tests/test_access_control.py` | 验收测试 | ~280行 |
+| `packages/v2-fullstack/backend/app/schemas/access_control.py` | 裁剪策略定义 + 注册表 | 以代码为准 |
+| `packages/v2-fullstack/backend/app/utils/access_control.py` | AccessControlManager + 裁剪执行器 | 以代码为准 |
+| `packages/v2-fullstack/backend/app/utils/mode_config.py` | Mode 配置管理 + 审计日志 | 以代码为准 |
+| `packages/v2-fullstack/backend/app/schemas/__init__.py` | 更新导出 | 已更新 |
+| `packages/v2-fullstack/backend/tests/test_access_control.py` | 验收测试 | 以代码为准 |
 
 ### 前端 (TypeScript)
 
 | 文件路径 | 说明 | 行数 |
 |---|---|---|
-| `frontend/src/types/access-control.ts` | 裁剪策略类型定义 | ~330行 |
-| `frontend/src/lib/access-control.ts` | Mode配置管理 + UI控制 | ~220行 |
-| `frontend/src/types/index.ts` | 更新导出 | 已更新 |
-| `frontend/src/types/__tests__/access-control.test.ts` | 验收测试 | ~290行 |
+| `packages/v2-fullstack/frontend/src/types/access-control.ts` | 裁剪策略类型定义 | 以代码为准 |
+| `packages/v2-fullstack/frontend/src/lib/access-control.ts` | Mode 配置管理 + UI 控制 | 以代码为准 |
+| `packages/v2-fullstack/frontend/src/types/index.ts` | 更新导出 | 已更新 |
+| `packages/v2-fullstack/frontend/src/types/__tests__/access-control.test.ts` | 验收测试 | 以代码为准 |
 
 ---
 
@@ -160,7 +160,7 @@ L2_DEMO_PUBLIC = ModePruningPolicy(
 #### 区间化 (range)
 ```python
 Input:  {"amount": 12345}
-Output: {"amount": "[12340, 12350)"}
+Output: {"amount": "[12000, 13000)"}
 ```
 
 #### 字符串掩码 (mask)
@@ -531,7 +531,7 @@ INFO - Capability check:
 ### Phase 3 AI集成
 
 - Step 37: Router Agent → 必须调用 `check_capability_permission()`
-- Step 39: AI Insight Cards → 输出内容和CTA必须Mode-aware
+- Step 39: AI Insight（ticker + pin）→ 输出内容和 CTA 必须 Mode-aware
 
 ---
 
@@ -581,7 +581,7 @@ INFO - Capability check:
 
 - Step 33 (L2 Evidence): 使用 `L2_DEMO/PARTNER/ADMIN` 策略
 - Step 37 (Router Agent): 必须检查 `capability_permission`
-- Step 39 (AI Insight Cards): CTA必须过Mode校验
+- Step 39（AI Insight，ticker + pin）：CTA 必须过 Mode 校验
 
 ---
 

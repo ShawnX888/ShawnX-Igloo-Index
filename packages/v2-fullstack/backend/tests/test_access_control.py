@@ -4,6 +4,8 @@
 Reference: docs/v2/v2实施细则/02-Access-Mode裁剪基线-细则.md
 """
 
+from decimal import Decimal
+
 import pytest
 
 from app.schemas.access_control import (
@@ -90,6 +92,20 @@ class TestFieldPruning:
         assert isinstance(pruned["amount"], str)
         assert "[" in pruned["amount"]
     
+    def test_field_masking_range_decimal(self):
+        """测试字段脱敏: 区间化(Decimal金额)"""
+        rule = FieldPruningRule(
+            allowed_fields={"amount"},
+            masked_fields={"amount": "range"}
+        )
+        
+        data = {"amount": Decimal("12345")}
+        pruned = FieldPruner.prune_dict(data, rule)
+        
+        assert "amount" in pruned
+        assert isinstance(pruned["amount"], str)
+        assert "[" in pruned["amount"]
+    
     def test_field_masking_mask(self):
         """测试字段脱敏: 字符串掩码"""
         rule = FieldPruningRule(
@@ -155,6 +171,12 @@ class TestPruningPolicyRegistry:
         
         # Demo/Public下应该不允许export
         assert not policy.capability_pruning.is_capability_allowed("export")
+        
+        # Demo/Public下金额字段必须允许输出，但会被强制区间化
+        assert policy.field_pruning.is_field_allowed("policy_amount_total")
+        assert policy.field_pruning.is_field_allowed("claim_amount_total")
+        assert policy.field_pruning.should_mask_field("policy_amount_total") == "range"
+        assert policy.field_pruning.should_mask_field("claim_amount_total") == "range"
     
     def test_get_l0_partner_policy(self):
         """测试获取L0 Dashboard的Partner策略"""

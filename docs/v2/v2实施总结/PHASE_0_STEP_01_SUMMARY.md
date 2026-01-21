@@ -24,19 +24,19 @@
 
 | 文件路径 | 说明 |
 |---|---|
-| `backend/app/schemas/__init__.py` | Schema模块导出 |
-| `backend/app/schemas/shared.py` | Shared Contract核心定义(465行) |
-| `backend/app/schemas/README.md` | 使用文档 |
-| `backend/tests/test_shared_contract.py` | 验收测试(16个测试用例) |
+| `packages/v2-fullstack/backend/app/schemas/__init__.py` | Schema模块导出 |
+| `packages/v2-fullstack/backend/app/schemas/shared.py` | Shared Contract核心定义(约465行) |
+| `packages/v2-fullstack/backend/app/schemas/README.md` | 使用文档 |
+| `packages/v2-fullstack/backend/tests/test_shared_contract.py` | 验收测试（以代码为准） |
 
 ### 前端 (TypeScript)
 
 | 文件路径 | 说明 |
 |---|---|
-| `frontend/src/types/index.ts` | Types模块导出 |
-| `frontend/src/types/shared.ts` | Shared Contract核心定义(约500行) |
-| `frontend/src/types/README.md` | 使用文档 |
-| `frontend/src/types/__tests__/shared.test.ts` | 验收测试(与后端对应) |
+| `packages/v2-fullstack/frontend/src/types/index.ts` | Types模块导出 |
+| `packages/v2-fullstack/frontend/src/types/shared.ts` | Shared Contract核心定义(约500行) |
+| `packages/v2-fullstack/frontend/src/types/README.md` | 使用文档 |
+| `packages/v2-fullstack/frontend/src/types/__tests__/shared.test.ts` | 验收测试(与后端对应) |
 
 ---
 
