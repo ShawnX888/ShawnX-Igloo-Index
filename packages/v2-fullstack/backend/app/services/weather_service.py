@@ -13,7 +13,7 @@ Reference:
 import logging
 from typing import List
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.weather import WeatherData as WeatherModel
@@ -53,6 +53,48 @@ class WeatherService:
         models = list(result.scalars().all())
         
         return [self._model_to_schema(m) for m in models]
+
+    async def query_stats(
+        self,
+        session: AsyncSession,
+        request: WeatherQueryRequest,
+    ) -> WeatherStats:
+        """
+        查询窗口内的聚合统计（sum/avg/max/min/count）。
+
+        注意：
+        - 统计窗口按 request.start_time/end_time（UTC）裁剪
+        - predicted 必须显式绑定 prediction_run_id
+        """
+        query = select(
+            func.sum(WeatherModel.value),
+            func.avg(WeatherModel.value),
+            func.max(WeatherModel.value),
+            func.min(WeatherModel.value),
+            func.count(),
+        ).where(
+            WeatherModel.region_code == request.region_code,
+            WeatherModel.weather_type == request.weather_type.value,
+            WeatherModel.data_type == request.data_type.value,
+            WeatherModel.timestamp >= request.start_time,
+            WeatherModel.timestamp <= request.end_time,
+        )
+
+        if request.data_type == DataType.PREDICTED:
+            if not request.prediction_run_id:
+                raise ValueError("prediction_run_id required for predicted data")
+            query = query.where(WeatherModel.prediction_run_id == request.prediction_run_id)
+
+        result = await session.execute(query)
+        row = result.one()
+
+        return WeatherStats(
+            sum=row[0],
+            avg=row[1],
+            max=row[2],
+            min=row[3],
+            count=int(row[4]),
+        )
     
     def _model_to_schema(self, model: WeatherModel) -> WeatherDataPoint:
         """转换模型到Schema"""

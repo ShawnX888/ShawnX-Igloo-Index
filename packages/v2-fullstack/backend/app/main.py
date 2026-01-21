@@ -1,13 +1,25 @@
 """
 Igloo Backend API - Main Application Entry Point
 """
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+from app.api.v1 import data_products, products
+from app.db import dispose_engine
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    yield
+    await dispose_engine()
 
 app = FastAPI(
     title="Igloo Index Insurance API",
     version="2.0.0",
     description="Backend API for Igloo Index Insurance Platform",
+    lifespan=lifespan,
 )
 
 # CORS middleware configuration
@@ -18,6 +30,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# API routers
+app.include_router(products.router, prefix="/api/v1")
+app.include_router(data_products.router, prefix="/api/v1")
 
 
 @app.get("/")

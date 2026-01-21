@@ -25,15 +25,15 @@
 
 | 文件路径 | 说明 | 行数 |
 |---|---|---|
-| `backend/app/models/base.py` | SQLAlchemy Base | ~10行 |
-| `backend/app/models/product.py` | Product数据库模型 | ~150行 |
-| `backend/app/models/__init__.py` | Models导出 | 已创建 |
-| `backend/app/schemas/product.py` | Product Schemas | ~350行 |
-| `backend/app/services/product_service.py` | Product Service | ~280行 |
-| `backend/app/api/v1/products.py` | Product API Routes | ~170行 |
-| `backend/app/seeds/products.json` | Seed数据(6个产品) | ~200行 |
-| `backend/app/seeds/seed_products.py` | Seed脚本 | ~90行 |
-| `backend/tests/test_product.py` | 单元测试 | ~190行 |
+| `packages/v2-fullstack/backend/app/models/base.py` | SQLAlchemy Base | 以代码为准 |
+| `packages/v2-fullstack/backend/app/models/product.py` | Product 数据库模型 | 以代码为准 |
+| `packages/v2-fullstack/backend/app/models/__init__.py` | Models 导出 | 已创建 |
+| `packages/v2-fullstack/backend/app/schemas/product.py` | Product Schemas | 以代码为准 |
+| `packages/v2-fullstack/backend/app/services/product_service.py` | Product Service | 以代码为准 |
+| `packages/v2-fullstack/backend/app/api/v1/products.py` | Product API Routes | 以代码为准 |
+| `packages/v2-fullstack/backend/app/seeds/products.json` | Seed 数据（6个产品） | 以代码为准 |
+| `packages/v2-fullstack/backend/app/seeds/seed_products.py` | Seed 脚本 | 以代码为准 |
+| `packages/v2-fullstack/backend/tests/test_product.py` | 单元测试 | 以代码为准 |
 
 **总计**: ~1,440行代码
 

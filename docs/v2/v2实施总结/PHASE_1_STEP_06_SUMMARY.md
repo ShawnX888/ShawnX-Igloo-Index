@@ -54,7 +54,7 @@ coverage_amount = Column(Numeric(18, 2))  # Decimal, 避免浮点误差
 
 ```python
 # 获取保单并提取timezone用于业务判断
-policy = await policy_service.get_by_id(session, policy_id, AccessMode.ADMIN)
+policy = await policy_service.get_by_id(session, policy_id, AccessMode.ADMIN_INTERNAL)
 
 # 判断两个事件是否同一天 (使用policy.timezone)
 same_day = is_same_natural_day(event1_utc, event2_utc, policy.timezone)

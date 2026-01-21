@@ -7,7 +7,7 @@
 ## 核心交付
 
 1. **weather_data 表**: 支持historical/predicted、多weather_type、H3空间索引
-2. **Weather Service**: 时间序列查询、统计聚合
+2. **Weather Service**: 时间序列查询、统计聚合（Stats）
 3. **批次绑定**: predicted必须包含prediction_run_id
 
 ---

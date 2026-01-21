@@ -20,6 +20,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import get_session
 from app.schemas.access_control import DataProductType
 from app.schemas.shared import AccessMode, DataProductResponse, SharedDimensions
 from app.schemas.l2_evidence import L2EvidenceRequest, L2EvidenceResponse
@@ -29,11 +30,6 @@ from app.utils.access_control import AccessControlManager
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/data-products", tags=["data-products"])
-
-
-async def get_session() -> AsyncSession:
-    """获取数据库会话"""
-    raise HTTPException(status_code=501, detail="Database not configured")
 
 
 @router.post("/l0-dashboard", response_model=DataProductResponse)

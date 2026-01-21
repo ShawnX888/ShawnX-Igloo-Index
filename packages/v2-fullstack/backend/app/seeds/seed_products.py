@@ -13,6 +13,7 @@ Reference:
 import asyncio
 import json
 import logging
+import os
 from pathlib import Path
 
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
@@ -76,11 +77,14 @@ async def seed_products(session: AsyncSession):
 
 async def main():
     """主函数"""
-    # TODO: 从环境变量读取数据库URL
-    # DATABASE_URL = os.getenv("DATABASE_URL")
-    DATABASE_URL = "postgresql+asyncpg://user:password@localhost/igloo"
+    # 从环境变量读取数据库URL（与 env.example 保持一致）
+    database_url = os.getenv("DATABASE_URL")
+    if not database_url:
+        raise RuntimeError(
+            "DATABASE_URL is not set. Please set it in your environment or .env file."
+        )
     
-    engine = create_async_engine(DATABASE_URL, echo=True)
+    engine = create_async_engine(database_url, echo=True)
     
     # 创建表
     async with engine.begin() as conn:

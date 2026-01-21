@@ -19,6 +19,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import get_access_mode, get_session
 from app.schemas.product import (
     Product,
     ProductCreate,
@@ -32,19 +33,6 @@ from app.services.product_service import product_service
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/products", tags=["products"])
-
-
-# TODO: 实现数据库会话依赖
-async def get_session() -> AsyncSession:
-    """获取数据库会话 (临时占位)"""
-    raise HTTPException(status_code=501, detail="Database not configured yet")
-
-
-# TODO: 实现Access Mode依赖
-async def get_access_mode() -> AccessMode:
-    """获取当前访问模式 (临时占位)"""
-    # 临时返回默认值，实际应从token/header获取
-    return AccessMode.DEMO_PUBLIC
 
 
 @router.get("", response_model=ProductListResponse)
