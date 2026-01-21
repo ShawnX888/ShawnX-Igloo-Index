@@ -8,6 +8,7 @@ Reference:
 """
 
 import logging
+import os
 import redis
 
 from app.celery_app import celery_app
@@ -15,12 +16,10 @@ from app.celery_app import celery_app
 logger = logging.getLogger(__name__)
 
 # Redis客户端 (用于分布式锁)
-redis_client = redis.Redis(
-    host='localhost',
-    port=6379,
-    db=2,  # 使用db=2专门用于锁
-    decode_responses=True
-)
+redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+# 使用db=2专门用于锁（与 REDIS_URL 分离）
+redis_lock_url = os.getenv("REDIS_LOCK_URL", redis_url.replace("/0", "/2"))
+redis_client = redis.Redis.from_url(redis_lock_url, decode_responses=True)
 
 
 @celery_app.task(bind=True, max_retries=3)

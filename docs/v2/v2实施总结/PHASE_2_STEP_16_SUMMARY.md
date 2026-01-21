@@ -6,10 +6,11 @@
 
 ## 核心交付
 
-1. **API Client层**: 纯transport,不做业务推断
-2. **Zustand Stores**: View State + Access State分离
-3. **TanStack Query**: 统一Server State管理
-4. **Custom Hooks**: 封装数据产品查询逻辑
+1. **前端工程基线（Vite + React 19 + TS）**: 与当前代码一致
+2. **API Client层**: 纯transport,不做业务推断
+3. **Zustand Stores**: View State + Access State分离
+4. **TanStack Query**: 统一Server State管理
+5. **Custom Hooks**: 封装数据产品查询逻辑
 
 ---
 

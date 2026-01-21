@@ -6,16 +6,16 @@
 
 ## 核心交付
 
-1. **Google Maps Loader**: 异步加载API
+1. **Google Maps Loader**: `@googlemaps/js-api-loader` 动态加载
 2. **API Key管理**: 从环境变量读取(安全)
-3. **配置封装**: 统一配置入口
+3. **配置封装**: 统一配置入口（version/region/language/mapIds/authReferrerPolicy）
 
 ---
 
 ## 文件清单
 
-- `lib/google-maps.ts` - Loader + 配置 ✅
-- `.env.example` - 环境变量模板 ✅
+- `lib/google-maps.ts` - Loader + 配置（js-api-loader / importLibrary）✅
+- `env.example` - 环境变量模板 ✅
 
 ---
 
@@ -34,7 +34,7 @@ const apiKey = 'AIzaSy...';
 ### 异步加载
 
 ```typescript
-// 自动处理重复加载
+// 动态库加载（只加载一次）
 const google = await initializeGoogleMaps();
 ```
 

@@ -6,9 +6,9 @@
 
 ## 核心交付
 
-1. **Celery配置**: Redis broker/backend, UTC timezone
+1. **Celery配置**: Redis broker/backend（env 可配置）, UTC timezone
 2. **风险计算任务**: `calculate_risk_events_task`
-3. **任务配置**: 重试、超时、并发控制
+3. **任务配置**: 重试、超时、并发控制接口预留
 
 ---
 
@@ -17,8 +17,8 @@
 ```python
 celery_app = Celery(
     "igloo",
-    broker="redis://localhost:6379/0",
-    backend="redis://localhost:6379/1"
+    broker=os.getenv("CELERY_BROKER_URL", os.getenv("REDIS_URL")),
+    backend=os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/1")
 )
 ```
 

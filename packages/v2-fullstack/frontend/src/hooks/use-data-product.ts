@@ -13,7 +13,7 @@
  */
 
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
-import { dataProductAPI } from '@/lib/api-client';
+import { dataProductAPI, productAPI } from '@/lib/api-client';
 import { queryKeys } from '@/lib/query-client';
 import { useAccessState } from '@/stores/access-state';
 import type { 

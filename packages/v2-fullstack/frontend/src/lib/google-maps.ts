@@ -4,12 +4,15 @@
  * Reference:
  * - docs/v2/v2实施细则/17-Google-Maps-API配置与初始化-细则.md
  * - .cursor/rules/google-dev-api-key.mdc
+ * - https://developers.google.com/maps/documentation/javascript/load-maps-js-api?utm_source=gmp-code-assist
  * 
  * 硬规则:
  * - API Key必须从环境变量读取
  * - 必须添加attribution
  * - 遵守Google Maps合规要求
  */
+
+import { importLibrary, setOptions } from '@googlemaps/js-api-loader';
 
 /**
  * Google Maps配置
@@ -20,60 +23,59 @@ export interface GoogleMapsConfig {
   libraries?: string[];
   language?: string;
   region?: string;
+  mapIds?: string[];
+  authReferrerPolicy?: string;
+  channel?: string;
+  solutionChannel?: string;
 }
+
+const DEFAULT_LIBRARIES = ['marker', 'geometry', 'data'];
+const DEFAULT_VERSION = 'weekly';
 
 /**
  * Google Maps Loader
  */
 class GoogleMapsLoader {
   private loading: Promise<typeof google> | null = null;
-  private loaded = false;
+  private optionsApplied = false;
   
   /**
    * 加载Google Maps API
    */
   async load(config: GoogleMapsConfig): Promise<typeof google> {
-    if (this.loaded && window.google?.maps) {
-      return window.google;
-    }
-    
     if (this.loading) {
       return this.loading;
     }
-    
-    this.loading = new Promise((resolve, reject) => {
-      // 创建script标签
-      const script = document.createElement('script');
-      
-      // 构建URL参数
-      const params = new URLSearchParams({
+
+    if (!this.optionsApplied) {
+      setOptions({
         key: config.apiKey,
-        v: config.version || 'weekly',
-        libraries: config.libraries?.join(',') || '',
-        language: config.language || 'zh-CN',
-        region: config.region || 'CN',
+        v: config.version || DEFAULT_VERSION,
+        libraries: config.libraries,
+        language: config.language,
+        region: config.region,
+        authReferrerPolicy: config.authReferrerPolicy,
+        mapIds: config.mapIds,
+        channel: config.channel,
+        solutionChannel: config.solutionChannel,
       });
-      
-      script.src = `https://maps.googleapis.com/maps/api/js?${params.toString()}`;
-      script.async = true;
-      script.defer = true;
-      
-      script.onload = () => {
-        if (window.google?.maps) {
-          this.loaded = true;
-          resolve(window.google);
-        } else {
-          reject(new Error('Google Maps API failed to load'));
-        }
-      };
-      
-      script.onerror = () => {
-        reject(new Error('Failed to load Google Maps script'));
-      };
-      
-      document.head.appendChild(script);
-    });
-    
+      this.optionsApplied = true;
+    }
+
+    this.loading = (async () => {
+      // Ensure maps lib is loaded first
+      await importLibrary('maps');
+
+      const librariesToLoad = (config.libraries || []).filter(lib => lib !== 'maps');
+      await Promise.all(librariesToLoad.map(lib => importLibrary(lib)));
+
+      if (!window.google?.maps) {
+        throw new Error('Google Maps API failed to load');
+      }
+
+      return window.google;
+    })();
+
     return this.loading;
   }
   
@@ -81,7 +83,7 @@ class GoogleMapsLoader {
    * 检查是否已加载
    */
   isLoaded(): boolean {
-    return this.loaded && !!window.google?.maps;
+    return !!window.google?.maps;
   }
 }
 
@@ -113,12 +115,18 @@ export function getGoogleMapsApiKey(): string {
  * 默认Google Maps配置
  */
 export function getDefaultGoogleMapsConfig(): GoogleMapsConfig {
+  const mapIds = import.meta.env.VITE_GOOGLE_MAPS_MAP_ID
+    ? [import.meta.env.VITE_GOOGLE_MAPS_MAP_ID]
+    : undefined;
+
   return {
     apiKey: getGoogleMapsApiKey(),
-    version: 'weekly',
-    libraries: ['places', 'geometry'],
+    version: DEFAULT_VERSION,
+    libraries: DEFAULT_LIBRARIES,
     language: 'zh-CN',
     region: 'CN',
+    mapIds,
+    authReferrerPolicy: import.meta.env.VITE_GOOGLE_MAPS_AUTH_REFERRER_POLICY,
   };
 }
 
