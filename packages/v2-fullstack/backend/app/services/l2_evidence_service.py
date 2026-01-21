@@ -17,7 +17,6 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.claim import Claim as ClaimModel
-from app.models.risk_event import RiskEvent as RiskEventModel
 from app.schemas.l2_evidence import (
     L2Claim,
     L2EvidenceRequest,
@@ -26,6 +25,7 @@ from app.schemas.l2_evidence import (
     L2Summary,
 )
 from app.schemas.shared import AccessMode, DataType
+from app.services.risk_service import risk_service
 
 logger = logging.getLogger(__name__)
 
@@ -74,39 +74,29 @@ class L2EvidenceService:
         request: L2EvidenceRequest
     ) -> List[L2RiskEvent]:
         """查询风险事件"""
-        query = select(RiskEventModel).where(
-            RiskEventModel.region_code == request.region_code,
-            RiskEventModel.weather_type == request.weather_type.value,
-            RiskEventModel.data_type == request.data_type.value,
-            RiskEventModel.timestamp >= request.time_range_start,
-            RiskEventModel.timestamp <= request.time_range_end
+        events = await risk_service.query_events(
+            session,
+            region_code=request.region_code,
+            weather_type=request.weather_type,
+            data_type=request.data_type,
+            time_range_start=request.time_range_start,
+            time_range_end=request.time_range_end,
+            prediction_run_id=request.prediction_run_id,
+            product_id=request.product_id,
         )
-        
-        if request.data_type == DataType.PREDICTED:
-            if not request.prediction_run_id:
-                raise ValueError("prediction_run_id required for predicted")
-            query = query.where(
-                RiskEventModel.prediction_run_id == request.prediction_run_id
-            )
-        
-        if request.product_id:
-            query = query.where(RiskEventModel.product_id == request.product_id)
-        
-        result = await session.execute(query.order_by(RiskEventModel.timestamp))
-        models = list(result.scalars().all())
-        
+
         return [
             L2RiskEvent(
-                id=m.id,
-                timestamp=m.timestamp,
-                tier_level=m.tier_level,
-                trigger_value=m.trigger_value,
-                threshold_value=m.threshold_value,
-                weather_type=m.weather_type,
-                data_type=m.data_type,
-                prediction_run_id=m.prediction_run_id
+                id=e.id,
+                timestamp=e.timestamp,
+                tier_level=e.tier_level,
+                trigger_value=e.trigger_value,
+                threshold_value=e.threshold_value,
+                weather_type=e.weather_type.value,
+                data_type=e.data_type.value,
+                prediction_run_id=e.prediction_run_id,
             )
-            for m in models
+            for e in events
         ]
     
     async def _query_claims(

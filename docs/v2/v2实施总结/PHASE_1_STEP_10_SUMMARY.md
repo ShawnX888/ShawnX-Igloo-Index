@@ -10,6 +10,7 @@
 2. **PredictionRunService**: 完善Phase 0 Step 03的数据库层
 3. **Active Run查询**: `get_active_run()`
 4. **批次列表**: 支持按status/source过滤
+5. **切换/回滚（MVP）**: 状态切换实现 active_run 切换与回滚记录（缓存失效与更细粒度传播在后续步骤接入）✅
 
 ---
 
@@ -36,7 +37,19 @@ CREATE INDEX idx_prediction_runs_status ON prediction_runs(status);
 
 - **get_active_run()**: 获取当前展示批次
 - **list_runs()**: 查询历史批次
-- **切换逻辑**: 见Phase 0 Step 03 (`app/utils/prediction_run.py`)
+- **create() / switch_active_run() / rollback_to_previous_run()**: 数据库层实现（MVP：全局单 active_run）
+- **切换逻辑（工具层）**: Phase 0 Step 03 `app/utils/prediction_run.py` 仍作为框架（缓存/审计更完整版本在后续步骤接入）
+
+---
+
+## 交付物清单
+
+| 文件路径 | 说明 | 行数 |
+|---|---|---|
+| `packages/v2-fullstack/backend/app/models/prediction_run.py` | PredictionRun 数据库模型 | 以代码为准 |
+| `packages/v2-fullstack/backend/app/schemas/prediction.py` | Prediction Run Schemas（status/source/switch record 等） | 以代码为准 |
+| `packages/v2-fullstack/backend/app/services/prediction_run_service.py` | PredictionRunService（CRUD/active_run/switch/rollback） | 以代码为准 |
+| `packages/v2-fullstack/backend/tests/test_prediction_run_service.py` | Service 单测（create/switch 校验） | 以代码为准 |
 
 ---
 

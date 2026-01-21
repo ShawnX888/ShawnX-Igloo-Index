@@ -8,7 +8,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.schemas.shared import DataType, WeatherType
 
@@ -26,6 +26,14 @@ class RiskEventBase(BaseModel):
     threshold_value: Decimal = Field(..., description="阈值")
     data_type: DataType = Field(..., description="数据类型")
     prediction_run_id: Optional[str] = Field(None, description="预测批次ID")
+
+    @model_validator(mode="after")
+    def _validate_prediction_binding(self) -> "RiskEventBase":
+        if self.data_type == DataType.PREDICTED and not self.prediction_run_id:
+            raise ValueError("prediction_run_id required for predicted risk_event")
+        if self.data_type == DataType.HISTORICAL and self.prediction_run_id is not None:
+            raise ValueError("prediction_run_id must be null for historical risk_event")
+        return self
 
 
 class RiskEventCreate(RiskEventBase):

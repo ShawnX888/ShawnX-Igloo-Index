@@ -108,10 +108,60 @@ class TestRiskCalculator:
             risk_rules,
             product_id="daily_rainfall",
             product_version="v1.0.0",
-            region_timezone="Asia/Shanghai"
+            region_timezone="Asia/Shanghai",
+            time_range_start=datetime(2025, 1, 20, 3, 0, tzinfo=timezone.utc),
+            time_range_end=datetime(2025, 1, 20, 5, 0, tzinfo=timezone.utc),
         )
         
         # 4小时累计=60mm, 触发tier1(50mm)
         assert len(events) > 0
         assert all(e.tier_level >= 1 for e in events)
         assert all(e.product_id == "daily_rainfall" for e in events)
+        # 输出严格裁剪回 time_range
+        assert all(
+            datetime(2025, 1, 20, 3, 0, tzinfo=timezone.utc)
+            <= e.timestamp
+            <= datetime(2025, 1, 20, 5, 0, tzinfo=timezone.utc)
+            for e in events
+        )
+
+    def test_calculate_risk_events_predicted_requires_run_id(self):
+        """predicted 场景必须绑定 prediction_run_id"""
+        calculator = RiskCalculator()
+
+        weather_data = [
+            WeatherDataPoint(
+                timestamp=datetime(2025, 1, 20, i, 0, tzinfo=timezone.utc),
+                region_code="CN-GD",
+                weather_type=WeatherType.RAINFALL,
+                value=Decimal("15"),
+                unit="mm",
+                data_type=DataType.PREDICTED,
+                prediction_run_id=None,
+            )
+            for i in range(4)
+        ]
+
+        risk_rules = RiskRules(
+            time_window=TimeWindow(type="hourly", size=4),
+            thresholds=Thresholds(
+                tier1=Decimal("50"),
+                tier2=Decimal("100"),
+                tier3=Decimal("150"),
+            ),
+            calculation=Calculation(
+                aggregation="sum",
+                operator=">=",
+                unit="mm",
+            ),
+            weather_type=WeatherType.RAINFALL,
+        )
+
+        with pytest.raises(ValueError, match="prediction_run_id required"):
+            calculator.calculate_risk_events(
+                weather_data,
+                risk_rules,
+                product_id="daily_rainfall",
+                product_version="v1.0.0",
+                region_timezone="Asia/Shanghai",
+            )

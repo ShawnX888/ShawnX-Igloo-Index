@@ -10,6 +10,7 @@
 2. **关键字段**: timestamp(UTC), tier_level, trigger_value, product_version
 3. **批次绑定**: predicted必须包含prediction_run_id
 4. **可追溯**: 记录product_version用于审计
+5. **Risk Service（查询）**: 提供 Mode/predicted-aware 的查询基元（不在服务层做重计算）✅
 
 ---
 
@@ -34,12 +35,25 @@ CREATE TABLE risk_events (
 
 ---
 
+## 交付物清单
+
+| 文件路径 | 说明 | 行数 |
+|---|---|---|
+| `packages/v2-fullstack/backend/app/models/risk_event.py` | RiskEvent 数据库模型（含索引） | 以代码为准 |
+| `packages/v2-fullstack/backend/app/schemas/risk_event.py` | RiskEvent Schemas（predicted/historical 绑定校验） | 以代码为准 |
+| `packages/v2-fullstack/backend/app/services/risk_service.py` | Risk Service（risk_events 查询基元） | 以代码为准 |
+| `packages/v2-fullstack/backend/tests/test_risk_event_schema.py` | Schema 验收测试（predicted 必带 run_id） | 以代码为准 |
+| `packages/v2-fullstack/backend/tests/test_risk_service.py` | Service 单测（predicted 校验 + 查询路径） | 以代码为准 |
+
+---
+
 ## 验收状态
 
 - [x] prediction_run_id字段(predicted必须)
 - [x] product_version可追溯
 - [x] 复合索引优化查询
 - [x] 与Product表外键关联
+- [x] Risk Service 查询基元（predicted/窗口裁剪）已提供
 
 **Go/No-Go**: ✅ **GO** → Step 10
 
