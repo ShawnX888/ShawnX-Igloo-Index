@@ -339,6 +339,26 @@ class LegendMeta(BaseModel):
         description="口径说明(根据access_mode裁剪)"
     )
 
+    # 业务时区口径（L1/L2解释需要）
+    region_timezone: Optional[str] = Field(
+        None,
+        description="业务边界时区(如Asia/Shanghai)"
+    )
+
+    # Claims 可用性（Phase 1/2 需要显式声明）
+    claims_available: Optional[bool] = Field(
+        None,
+        description="Claims 域是否可用"
+    )
+    claims_unavailable_reason: Optional[str] = Field(
+        None,
+        description="Claims 不可用原因"
+    )
+    claims_series_status: Optional[str] = Field(
+        None,
+        description="Claims series 状态(如 disabled/placeholder/ready)"
+    )
+
 
 class DataProductResponse(BaseModel):
     """
