@@ -19,7 +19,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.risk_event import RiskEvent as RiskEventModel
-from app.schemas.risk_event import RiskEventResponse
+from app.schemas.risk_event import RiskEventCreate, RiskEventResponse
 from app.schemas.shared import DataType, WeatherType
 
 logger = logging.getLogger(__name__)
@@ -83,6 +83,87 @@ class RiskService:
             },
         )
 
+        return [
+            RiskEventResponse(
+                id=m.id,
+                timestamp=m.timestamp,
+                region_code=m.region_code,
+                product_id=m.product_id,
+                product_version=m.product_version,
+                weather_type=WeatherType(m.weather_type),
+                tier_level=m.tier_level,
+                trigger_value=m.trigger_value,
+                threshold_value=m.threshold_value,
+                data_type=DataType(m.data_type),
+                prediction_run_id=m.prediction_run_id,
+                created_at=m.created_at,
+            )
+            for m in models
+        ]
+    
+    async def create(
+        self,
+        session: AsyncSession,
+        payload: RiskEventCreate,
+    ) -> RiskEventResponse:
+        """创建风险事件（内部写入）"""
+        model = RiskEventModel(
+            id=payload.id,
+            timestamp=payload.timestamp,
+            region_code=payload.region_code,
+            product_id=payload.product_id,
+            product_version=payload.product_version,
+            weather_type=payload.weather_type.value,
+            tier_level=payload.tier_level,
+            trigger_value=payload.trigger_value,
+            threshold_value=payload.threshold_value,
+            data_type=payload.data_type.value,
+            prediction_run_id=payload.prediction_run_id,
+        )
+        session.add(model)
+        await session.commit()
+        await session.refresh(model)
+        return RiskEventResponse(
+            id=model.id,
+            timestamp=model.timestamp,
+            region_code=model.region_code,
+            product_id=model.product_id,
+            product_version=model.product_version,
+            weather_type=WeatherType(model.weather_type),
+            tier_level=model.tier_level,
+            trigger_value=model.trigger_value,
+            threshold_value=model.threshold_value,
+            data_type=DataType(model.data_type),
+            prediction_run_id=model.prediction_run_id,
+            created_at=model.created_at,
+        )
+    
+    async def batch_create(
+        self,
+        session: AsyncSession,
+        payloads: List[RiskEventCreate],
+    ) -> List[RiskEventResponse]:
+        """批量创建风险事件（内部写入）"""
+        models = [
+            RiskEventModel(
+                id=item.id,
+                timestamp=item.timestamp,
+                region_code=item.region_code,
+                product_id=item.product_id,
+                product_version=item.product_version,
+                weather_type=item.weather_type.value,
+                tier_level=item.tier_level,
+                trigger_value=item.trigger_value,
+                threshold_value=item.threshold_value,
+                data_type=item.data_type.value,
+                prediction_run_id=item.prediction_run_id,
+            )
+            for item in payloads
+        ]
+        session.add_all(models)
+        await session.commit()
+        for model in models:
+            await session.refresh(model)
         return [
             RiskEventResponse(
                 id=m.id,

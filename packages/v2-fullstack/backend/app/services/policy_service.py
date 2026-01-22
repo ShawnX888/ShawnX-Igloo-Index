@@ -27,6 +27,72 @@ logger = logging.getLogger(__name__)
 class PolicyService:
     """保单服务"""
     
+    async def create(
+        self,
+        session: AsyncSession,
+        payload: PolicyCreate,
+    ) -> Policy:
+        """创建保单"""
+        model = PolicyModel(
+            id=payload.id,
+            policy_number=payload.policy_number,
+            product_id=payload.product_id,
+            coverage_region=payload.coverage_region,
+            coverage_amount=payload.coverage_amount,
+            timezone=payload.timezone,
+            coverage_start=payload.coverage_start,
+            coverage_end=payload.coverage_end,
+            holder_name=payload.holder_name,
+            is_active=payload.is_active,
+        )
+        session.add(model)
+        await session.commit()
+        await session.refresh(model)
+        return self._model_to_schema(model)
+    
+    async def update(
+        self,
+        session: AsyncSession,
+        policy_id: str,
+        payload: PolicyUpdate,
+    ) -> Optional[Policy]:
+        """更新保单"""
+        result = await session.execute(
+            select(PolicyModel).where(PolicyModel.id == policy_id)
+        )
+        model = result.scalar_one_or_none()
+        if not model:
+            return None
+        
+        if payload.coverage_amount is not None:
+            model.coverage_amount = payload.coverage_amount
+        if payload.coverage_end is not None:
+            model.coverage_end = payload.coverage_end
+        if payload.holder_name is not None:
+            model.holder_name = payload.holder_name
+        if payload.is_active is not None:
+            model.is_active = payload.is_active
+        
+        await session.commit()
+        await session.refresh(model)
+        return self._model_to_schema(model)
+    
+    async def delete(
+        self,
+        session: AsyncSession,
+        policy_id: str,
+    ) -> bool:
+        """删除保单"""
+        result = await session.execute(
+            select(PolicyModel).where(PolicyModel.id == policy_id)
+        )
+        model = result.scalar_one_or_none()
+        if not model:
+            return False
+        await session.delete(model)
+        await session.commit()
+        return True
+    
     async def get_by_id(
         self,
         session: AsyncSession,

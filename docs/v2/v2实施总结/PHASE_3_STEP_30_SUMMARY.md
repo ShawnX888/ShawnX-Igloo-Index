@@ -8,8 +8,9 @@
 
 1. **claims表**: policy关联、金额Decimal、唯一约束
 2. **Claim Service**: CRUD + 统计 + Mode裁剪（Demo金额区间化）
-3. **Claims API Router**: /claims + /policies/{id}/claims + /statistics/claims（内部/Admin写入）
-4. **硬规则验证**: predicted不生成claims、金额非负
+3. **Claims API Router**: /claims + /policies/{id}/claims + /statistics/claims（读路径）
+4. **Internal Claims Router**: /internal/claims（Admin/Internal 写入）
+5. **硬规则验证**: predicted不生成claims、金额非负
 
 ---
 
@@ -51,7 +52,9 @@ CREATE TABLE claims (
 - `packages/v2-fullstack/backend/app/schemas/claim.py`（Claim/ClaimCreate/ClaimUpdate/ClaimStats）
 - `packages/v2-fullstack/backend/app/services/claim_service.py`（CRUD + 统计 + Mode裁剪）
 - `packages/v2-fullstack/backend/app/api/v1/claims.py`（Claims Router）
+- `packages/v2-fullstack/backend/app/api/v1/internal/claims.py`（Internal Claims Router）
 - `packages/v2-fullstack/backend/tests/test_api_claims.py`（Router验收）
+- `packages/v2-fullstack/backend/tests/test_api_internal_claims.py`（Internal Router验收）
 - `packages/v2-fullstack/backend/tests/test_claim.py`（Schema验收用例）
 
 **Go/No-Go**: ✅ **GO** → Step 31

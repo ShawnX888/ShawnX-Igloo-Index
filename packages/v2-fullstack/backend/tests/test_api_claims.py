@@ -25,25 +25,6 @@ def _build_client(access_mode: AccessMode) -> TestClient:
     return TestClient(app)
 
 
-def test_create_claim_requires_admin():
-    client = _build_client(AccessMode.DEMO_PUBLIC)
-    response = client.post(
-        "/api/v1/claims",
-        json={
-            "id": "clm-001",
-            "policy_id": "pol-001",
-            "product_id": "daily_rainfall",
-            "region_code": "CN-GD",
-            "tier_level": 1,
-            "payout_percentage": "20.00",
-            "payout_amount": "10000.00",
-            "triggered_at": "2025-01-20T10:00:00Z",
-            "product_version": "v1.0.0",
-        },
-    )
-    assert response.status_code == 403
-
-
 def test_list_claims_calls_service(monkeypatch):
     client = _build_client(AccessMode.DEMO_PUBLIC)
     mock = AsyncMock(return_value=[])

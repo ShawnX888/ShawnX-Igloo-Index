@@ -7,6 +7,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1 import claims, data_products, policies, products, risk_events
+from app.api.v1.internal import claims as internal_claims
+from app.api.v1.internal import policies as internal_policies
+from app.api.v1.internal import risk_events as internal_risk_events
 from app.db import dispose_engine
 
 
@@ -40,6 +43,9 @@ app.include_router(claims.stats_router, prefix="/api/v1")
 app.include_router(policies.router, prefix="/api/v1")
 app.include_router(policies.stats_router, prefix="/api/v1")
 app.include_router(risk_events.router, prefix="/api/v1")
+app.include_router(internal_policies.router, prefix="/api/v1")
+app.include_router(internal_claims.router, prefix="/api/v1")
+app.include_router(internal_risk_events.router, prefix="/api/v1")
 
 
 @app.get("/")

@@ -12,6 +12,7 @@
 4. **可追溯**: 记录product_version用于审计
 5. **Risk Service（查询）**: 提供 Mode/predicted-aware 的查询基元（不在服务层做重计算）✅
 6. **Risk Events API Router**: /risk-events（读路径）
+7. **Internal Risk Events Router**: /internal/risk-events（Admin/Internal 写入）
 
 ---
 
@@ -44,9 +45,11 @@ CREATE TABLE risk_events (
 | `packages/v2-fullstack/backend/app/schemas/risk_event.py` | RiskEvent Schemas（predicted/historical 绑定校验） | 以代码为准 |
 | `packages/v2-fullstack/backend/app/services/risk_service.py` | Risk Service（risk_events 查询基元） | 以代码为准 |
 | `packages/v2-fullstack/backend/app/api/v1/risk_events.py` | Risk Events Router（读路径） | 以代码为准 |
+| `packages/v2-fullstack/backend/app/api/v1/internal/risk_events.py` | Internal Risk Events Router（写路径） | 以代码为准 |
 | `packages/v2-fullstack/backend/tests/test_risk_event_schema.py` | Schema 验收测试（predicted 必带 run_id） | 以代码为准 |
 | `packages/v2-fullstack/backend/tests/test_risk_service.py` | Service 单测（predicted 校验 + 查询路径） | 以代码为准 |
 | `packages/v2-fullstack/backend/tests/test_api_risk_events.py` | Router 验收测试（predicted/run_id 约束） | 以代码为准 |
+| `packages/v2-fullstack/backend/tests/test_api_internal_risk_events.py` | Internal Router 验收测试 | 以代码为准 |
 
 ---
 
