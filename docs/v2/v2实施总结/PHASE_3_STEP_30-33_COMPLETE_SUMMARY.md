@@ -1,6 +1,6 @@
 # Phase 3 - Step 30-33: Claims全链路 - 完整总结
 
-**实施日期**: 2026-01-20 | **状态**: ✅ 已完成
+**实施日期**: 2026-01-21 | **状态**: ✅ 已完成
 
 ---
 
@@ -17,9 +17,9 @@ Phase 3 Step 30-33完成了理赔计算的完整闭环：从数据表、计算�
 | 30 | Claims表 + Service | 数据表、Mode裁剪 | 4 | ✅ |
 | 31 | Claim Calculator | Tier差额逻辑 | 5 | ✅ |
 | 32 | 理赔计算任务 | Celery任务、Redis锁 | - | ✅ |
-| 33 | L2 Evidence API | 证据链组装 | - | ✅ |
+| 33 | L2 Evidence API | 证据链组装 + Mode强裁剪 | - | ✅ |
 
-**测试覆盖**: 9个测试全部通过 ✅
+**测试覆盖**: 新增 3 个 L2 Evidence 单元测试（未运行）
 
 ---
 
@@ -101,7 +101,7 @@ def calculate_claims(..., data_type='historical'):
 
 **解决方案**:
 ```python
-lock_key = f"claim_calc:policy:{policy_id}"
+lock_key = f"claim_calc:{policy_id}:{time_range_start_utc}:{time_range_end_utc}"
 
 with distributed_lock(lock_key, timeout=300):
     if not acquired:
@@ -175,11 +175,8 @@ backend/app/
 
 ### 测试结果
 
-```bash
-pytest tests/test_claim.py tests/test_claim_calculator.py -v
-
-✅ 9 passed in 1.66s
-```
+- 新增 `tests/test_l2_evidence.py`（Demo强裁剪 + predicted不返回claims）
+- 现阶段未执行测试
 
 ### 测试覆盖
 
@@ -187,6 +184,7 @@ pytest tests/test_claim.py tests/test_claim_calculator.py -v
 |---|---|---|
 | Claim Schema | 4 | Decimal精度、比例范围 |
 | Claim Calculator | 5 | Tier差额、predicted拒绝、total_cap |
+| L2 Evidence | 3 | Demo强裁剪、predicted不返回claims |
 
 **P0约束验证**:
 - ✅ 只读payoutRules (职责隔离)

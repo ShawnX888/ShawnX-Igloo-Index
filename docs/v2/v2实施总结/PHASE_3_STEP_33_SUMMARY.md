@@ -1,15 +1,15 @@
 # Phase 3 - Step 33: L2 Evidence Data Product - 实施总结
 
-**实施日期**: 2026-01-20 | **状态**: ✅ 已完成
+**实施日期**: 2026-01-21 | **状态**: ✅ 已完成（Mode强裁剪）
 
 ---
 
 ## 核心交付
 
-1. **L2 Evidence Service**: 组装风险事件+理赔+天气证据
-2. **API端点**: POST /data-products/l2-evidence
-3. **Mode裁剪**: Demo不返回精确金额
-4. **硬规则**: predicted场景必须包含prediction_run_id
+1. **L2 Evidence Service**: 组装 risk_events + claims + weather evidence
+2. **API端点**: POST /data-products/l2-evidence（含 focus + pagination）
+3. **Mode裁剪**: Demo强制聚合（明细为空）
+4. **硬规则**: predicted 必须带 prediction_run_id，claims 不下发
 
 ---
 
@@ -19,18 +19,23 @@
 POST /api/v1/data-products/l2-evidence
 
 Request: {
+  region_scope: 'province' | 'district',
   region_code: string,
-  time_range_start: datetime,
-  time_range_end: datetime,
+  time_range: { start, end, region_timezone? },
   data_type: 'historical' | 'predicted',
   weather_type: WeatherType,
+  access_mode: 'demo_public' | 'partner' | 'admin_internal',
   product_id?: string,
   prediction_run_id?: string,  // predicted必须
-  focus_type?: 'risk_event' | 'claim',
-  focus_id?: string
+  focus_type?: 'risk_event' | 'claim' | 'time_cursor',
+  focus_id?: string,
+  cursor_time_utc?: datetime,
+  page_size?: number,
+  cursor?: number
 }
 
 Response: {
+  meta: { region_scope, region_code, time_range, data_type, weather_type, access_mode, ... },
   summary: { risk_event_count, claim_count, total_payout, max_tier },
   risk_events: [...],
   claims: [...],
@@ -44,10 +49,10 @@ Response: {
 
 ## 关键验证
 
-- [x] 组装risk_events + claims
+- [x] 组装risk_events + claims + weather evidence
 - [x] predicted必须包含prediction_run_id
-- [x] Mode裁剪(Demo不返回金额)
-- [x] 只查historical claims
+- [x] Mode裁剪(Demo强制聚合)
+- [x] predicted不返回claims
 - [x] API端点集成
 
 **Go/No-Go**: ✅ **GO**

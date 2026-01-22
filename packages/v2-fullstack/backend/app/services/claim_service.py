@@ -19,6 +19,7 @@ from decimal import Decimal
 from typing import List, Optional
 
 from sqlalchemy import func, select
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.claim import Claim as ClaimModel
@@ -64,6 +65,49 @@ class ClaimService:
         await session.refresh(model)
         
         return self._model_to_schema(model)
+
+    async def batch_create(
+        self,
+        session: AsyncSession,
+        payloads: List[ClaimCreate],
+        data_type: DataType = DataType.HISTORICAL,
+    ) -> int:
+        """批量创建理赔记录（幂等写入）"""
+        self._assert_historical(data_type)
+
+        if not payloads:
+            return 0
+
+        values = [
+            {
+                "id": item.id,
+                "policy_id": item.policy_id,
+                "product_id": item.product_id,
+                "risk_event_id": item.risk_event_id,
+                "region_code": item.region_code,
+                "tier_level": item.tier_level,
+                "payout_percentage": item.payout_percentage,
+                "payout_amount": item.payout_amount,
+                "currency": item.currency,
+                "triggered_at": item.triggered_at,
+                "period_start": item.period_start,
+                "period_end": item.period_end,
+                "status": item.status,
+                "product_version": item.product_version,
+                "rules_hash": item.rules_hash,
+                "source": item.source,
+            }
+            for item in payloads
+        ]
+
+        stmt = insert(ClaimModel).values(values)
+        stmt = stmt.on_conflict_do_nothing(
+            index_elements=["policy_id", "triggered_at", "tier_level"]
+        )
+
+        result = await session.execute(stmt)
+        await session.commit()
+        return int(result.rowcount or 0)
     
     async def update(
         self,

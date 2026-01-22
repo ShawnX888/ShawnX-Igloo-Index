@@ -12,23 +12,35 @@ Reference:
 - 幂等写入
 """
 
+import asyncio
+import hashlib
+import json
 import logging
+import os
 from contextlib import contextmanager
-from typing import Generator
+from datetime import datetime, timezone
+from typing import Generator, Optional
 
 import redis
+from sqlalchemy import select
 
 from app.celery_app import celery_app
+from app.db import get_sessionmaker
+from app.models.policy import Policy as PolicyModel
+from app.schemas.claim import ClaimCreate
+from app.schemas.shared import AccessMode, DataType
+from app.services.claim_service import claim_service
+from app.services.compute.claim_calculator import RiskEventInput, claim_calculator
+from app.services.policy_service import policy_service
+from app.services.product_service import product_service
+from app.services.risk_service import risk_service
 
 logger = logging.getLogger(__name__)
 
-# Redis客户端
-redis_client = redis.Redis(
-    host='localhost',
-    port=6379,
-    db=2,
-    decode_responses=True
-)
+# Redis客户端 (用于分布式锁)
+redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+redis_lock_url = os.getenv("REDIS_LOCK_URL", redis_url.replace("/0", "/2"))
+redis_client = redis.Redis.from_url(redis_lock_url, decode_responses=True)
 
 
 @contextmanager
@@ -59,6 +71,157 @@ def distributed_lock(
                 pass  # 锁已过期
 
 
+def _parse_utc_datetime(value: str) -> datetime:
+    """解析ISO时间为UTC datetime"""
+    if not value:
+        raise ValueError("time_range value must not be empty")
+    normalized = value.replace("Z", "+00:00")
+    dt = datetime.fromisoformat(normalized)
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
+def _build_claim_id(policy_id: str, triggered_at: datetime, tier_level: int) -> str:
+    """构造可复现理赔ID，支持幂等去重"""
+    triggered_utc = (
+        triggered_at.replace(tzinfo=timezone.utc)
+        if triggered_at.tzinfo is None
+        else triggered_at.astimezone(timezone.utc)
+    )
+    raw = f"{policy_id}|{triggered_utc.isoformat()}|{tier_level}"
+    digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:32]
+    return f"cl_{digest}"
+
+
+def _hash_payout_rules(payout_rules) -> str:
+    """生成payoutRules哈希，便于审计"""
+    payload = payout_rules.model_dump()
+    serialized = json.dumps(payload, sort_keys=True, default=str)
+    return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+
+
+async def _calculate_claims_for_policy_async(
+    *,
+    policy_id: str,
+    time_range_start: datetime,
+    time_range_end: datetime,
+    product_id: Optional[str],
+) -> dict:
+    session_maker = get_sessionmaker()
+    async with session_maker() as session:
+        policy = await policy_service.get_by_id(
+            session,
+            policy_id,
+            access_mode=AccessMode.ADMIN_INTERNAL,
+        )
+        if not policy:
+            raise ValueError(f"policy not found: {policy_id}")
+
+        if not policy.timezone:
+            return {
+                "status": "skipped",
+                "reason": "missing_policy_timezone",
+                "policy_id": policy_id,
+            }
+
+        product_id_final = product_id or policy.product_id
+        product = await product_service.get_by_id(
+            session,
+            product_id_final,
+            access_mode=AccessMode.ADMIN_INTERNAL,
+        )
+        if not product or not product.payout_rules:
+            return {
+                "status": "skipped",
+                "reason": "missing_payout_rules",
+                "policy_id": policy_id,
+                "product_id": product_id_final,
+            }
+
+        risk_events = await risk_service.query_events(
+            session,
+            region_code=policy.coverage_region,
+            weather_type=product.risk_rules.weather_type,
+            data_type=DataType.HISTORICAL,
+            time_range_start=time_range_start,
+            time_range_end=time_range_end,
+            prediction_run_id=None,
+            product_id=product_id_final,
+        )
+
+        inputs = [
+            RiskEventInput(
+                event_id=event.id,
+                timestamp=event.timestamp,
+                tier_level=event.tier_level,
+                region_code=event.region_code,
+            )
+            for event in risk_events
+        ]
+
+        claim_drafts = claim_calculator.calculate_claims(
+            risk_events=inputs,
+            payout_rules=product.payout_rules,
+            policy_id=policy.id,
+            product_id=product_id_final,
+            product_version=product.version,
+            coverage_amount=policy.coverage_amount,
+            policy_timezone=policy.timezone,
+            region_code=policy.coverage_region,
+            data_type=DataType.HISTORICAL.value,
+            coverage_start_utc=policy.coverage_start,
+            coverage_end_utc=policy.coverage_end,
+            time_range_start=time_range_start,
+            time_range_end=time_range_end,
+        )
+
+        if not claim_drafts:
+            return {
+                "status": "completed",
+                "policy_id": policy_id,
+                "claims_generated": 0,
+                "claims_written": 0,
+                "risk_events_count": len(inputs),
+            }
+
+        rules_hash = _hash_payout_rules(product.payout_rules)
+        payloads = [
+            ClaimCreate(
+                id=_build_claim_id(draft.policy_id, draft.triggered_at, draft.tier_level),
+                policy_id=draft.policy_id,
+                product_id=draft.product_id,
+                risk_event_id=draft.risk_event_id,
+                region_code=draft.region_code,
+                tier_level=draft.tier_level,
+                payout_percentage=draft.payout_percentage,
+                payout_amount=draft.payout_amount,
+                triggered_at=draft.triggered_at,
+                period_start=draft.period_start,
+                period_end=draft.period_end,
+                status="computed",
+                product_version=draft.product_version,
+                rules_hash=rules_hash,
+                source="task",
+            )
+            for draft in claim_drafts
+        ]
+
+        inserted_count = await claim_service.batch_create(
+            session,
+            payloads,
+            data_type=DataType.HISTORICAL,
+        )
+
+        return {
+            "status": "completed",
+            "policy_id": policy_id,
+            "claims_generated": len(payloads),
+            "claims_written": inserted_count,
+            "risk_events_count": len(inputs),
+        }
+
+
 @celery_app.task(bind=True, max_retries=3)
 def calculate_claims_for_policy_task(
     self,
@@ -76,8 +239,12 @@ def calculate_claims_for_policy_task(
         time_range_end: 结束时间(UTC ISO)
         product_id: 产品ID(可选)
     """
-    # 分布式锁: 同一保单不允许并发计算
-    lock_key = f"claim_calc:policy:{policy_id}"
+    start_dt = _parse_utc_datetime(time_range_start)
+    end_dt = _parse_utc_datetime(time_range_end)
+    # 分布式锁: 同一保单 + 同一结算窗口互斥
+    lock_key = (
+        f"claim_calc:{policy_id}:{start_dt.isoformat()}:{end_dt.isoformat()}"
+    )
     
     with distributed_lock(lock_key) as acquired:
         if not acquired:
@@ -93,24 +260,30 @@ def calculate_claims_for_policy_task(
             f"Calculating claims for policy: {policy_id}",
             extra={
                 "policy_id": policy_id,
-                "time_range_start": time_range_start,
-                "time_range_end": time_range_end,
+                "time_range_start": start_dt.isoformat(),
+                "time_range_end": end_dt.isoformat(),
             }
         )
-        
-        # TODO: 实现实际计算逻辑
-        # 1. 获取policy信息(coverage_amount, timezone, product_id)
-        # 2. 获取product的payoutRules
-        # 3. 查询risk_events (historical only)
-        # 4. 调用ClaimCalculator
-        # 5. 幂等写入claims表
-        # 6. 失效相关缓存
-        
-        return {
-            "status": "completed",
-            "policy_id": policy_id,
-            "claims_generated": 0,
-        }
+
+        try:
+            return asyncio.run(
+                _calculate_claims_for_policy_async(
+                    policy_id=policy_id,
+                    time_range_start=start_dt,
+                    time_range_end=end_dt,
+                    product_id=product_id,
+                )
+            )
+        except Exception as exc:
+            logger.exception(
+                "Claim calculation task failed",
+                extra={
+                    "policy_id": policy_id,
+                    "time_range_start": start_dt.isoformat(),
+                    "time_range_end": end_dt.isoformat(),
+                },
+            )
+            raise exc
 
 
 @celery_app.task(bind=True, max_retries=3)
@@ -139,15 +312,32 @@ def calculate_claims_batch_task(
             "product_id": product_id,
         }
     )
-    
-    # TODO: 实现批量逻辑
-    # 1. 查询符合条件的policies
-    # 2. 为每个policy派发子任务
-    # 3. 收集结果
-    # 4. 失效全局缓存
-    
-    return {
-        "status": "completed",
-        "policies_processed": 0,
-        "claims_generated": 0,
-    }
+    start_dt = _parse_utc_datetime(time_range_start)
+    end_dt = _parse_utc_datetime(time_range_end)
+
+    session_maker = get_sessionmaker()
+    async def _dispatch() -> dict:
+        async with session_maker() as session:
+            query = select(PolicyModel).where(PolicyModel.is_active == True)
+            if region_code:
+                query = query.where(PolicyModel.coverage_region == region_code)
+            if product_id:
+                query = query.where(PolicyModel.product_id == product_id)
+
+            result = await session.execute(query.order_by(PolicyModel.id))
+            policies = list(result.scalars().all())
+
+        for policy in policies:
+            calculate_claims_for_policy_task.delay(
+                policy_id=policy.id,
+                time_range_start=start_dt.isoformat(),
+                time_range_end=end_dt.isoformat(),
+                product_id=policy.product_id,
+            )
+
+        return {
+            "status": "queued",
+            "policies_processed": len(policies),
+        }
+
+    return asyncio.run(_dispatch())

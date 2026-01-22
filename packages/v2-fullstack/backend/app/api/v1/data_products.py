@@ -22,7 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_session
 from app.schemas.access_control import DataProductType
-from app.schemas.shared import AccessMode, DataProductResponse, SharedDimensions
+from app.schemas.shared import DataProductResponse, SharedDimensions
 from app.schemas.l2_evidence import L2EvidenceRequest, L2EvidenceResponse
 from app.services.l2_evidence_service import l2_evidence_service
 from app.services.data_products_service import (
@@ -92,11 +92,10 @@ async def get_l1_intelligence(
 async def get_l2_evidence(
     request: L2EvidenceRequest,
     session: Annotated[AsyncSession, Depends(get_session)],
-    access_mode: AccessMode = AccessMode.DEMO_PUBLIC,
 ) -> L2EvidenceResponse:
     """
     L2 Evidence 数据产品
     
     返回: 风险事件 + 理赔 + 天气证据
     """
-    return await l2_evidence_service.get_evidence(session, request, access_mode)
+    return await l2_evidence_service.get_evidence(session, request)
