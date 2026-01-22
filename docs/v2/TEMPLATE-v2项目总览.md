@@ -128,9 +128,9 @@
 
 > 参考 `v2架构升级-全栈方案.md`，只放顶层分层与边界。
 
-- Frontend：Next.js + UI Orchestration + Query
+- Frontend：Vite + UI Orchestration + Query
 - Backend：API Router / Service（Data Products）/ Compute Tasks
-- Data：Postgres/PostGIS + Redis + Celery
+- Data：PostgreSQL 14.7（无扩展） + Redis + Celery
 
 ---
 

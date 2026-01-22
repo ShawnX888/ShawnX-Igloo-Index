@@ -357,7 +357,7 @@ frontend/src/
 
 - [ ] **Step 05**: `products` 表 (产品配置)
 - [ ] **Step 06**: `policies` 表 (必须包含 `timezone` 字段)
-- [ ] **Step 07**: `historical_weather_data` 表 (timestamp用TIMESTAMPTZ)
+- [ ] **Step 07**: `weather_data` 表 (timestamp用TIMESTAMPTZ)
 - [ ] **Step 09**: `risk_events` 表 (timestamp用TIMESTAMPTZ, 包含 `prediction_run_id`)
 - [ ] **Step 10**: `prediction_runs` 表 (实现Active Run数据库层)
 
@@ -610,7 +610,7 @@ const timeRange = TimeRangePresets.last7Days('Asia/Shanghai');
 
 - [ ] Python 3.10+ 安装
 - [ ] Node.js 18+ 安装
-- [ ] PostgreSQL 15+ 安装 (或Docker)
+- [ ] PostgreSQL 14.7 安装 (无扩展/无 PostGIS；或Docker)
 - [ ] Redis 7+ 安装 (或Docker)
 
 ### 依赖安装

@@ -53,7 +53,7 @@ Google Maps 合规 Gate：把“Maps 能不能上、怎么安全上、怎么不�
 
 ### 配置输入（建议）
 
-- `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`（浏览器端，仅用于 Maps JavaScript API；视为“公开但受限”）
+- `VITE_GOOGLE_MAPS_API_KEY`（浏览器端，仅用于 Maps JavaScript API；视为“公开但受限”）
 - `GOOGLE_MAPS_WEB_SERVICE_API_KEY`（服务端 Web Service key，仅在后端，禁止进入前端 bundle）
 - `ALLOWED_MAPS_REFERRERS`（允许的域名/子域；Demo/Prod 分离）
 - `MAPS_ALLOWED_APIS`（API restrictions 清单）
@@ -133,7 +133,7 @@ Google Maps 合规 Gate：把“Maps 能不能上、怎么安全上、怎么不�
 
 Gate 落地建议：
 
-- CI 检查：禁止出现 `GOOGLE_MAPS_WEB_SERVICE_API_KEY` / 任何 server key 前缀出现在 `NEXT_PUBLIC_*`
+- CI 检查：禁止出现 `GOOGLE_MAPS_WEB_SERVICE_API_KEY` / 任何 server key 前缀出现在 `VITE_*`
 - 运行时自检：前端启动时打印 `maps_key_scope=browser_only` 的审计日志（不含 key 值）
 
 ### 2) Secure client-side web service calls（必须）
@@ -319,8 +319,8 @@ Gate 落地建议：
 
 ### 失败模式 A：前端隐藏当权限
 
-症状：以为 `NEXT_PUBLIC_*` 里放 key 就“不会泄露”；或 Demo 入口公开但未限制 key。  
-硬规则：`NEXT_PUBLIC_*` 必进 bundle；必须靠 referrer + API restrictions、分 key、预算告警止损。
+症状：以为 `VITE_*` 里放 key 就“不会泄露”；或 Demo 入口公开但未限制 key。  
+硬规则：`VITE_*` 必进 bundle；必须靠 referrer + API restrictions、分 key、预算告警止损。
 
 ### 失败模式 B：predicted 混批次
 

@@ -10,7 +10,7 @@
 
 ## 模块名称
 
-Google Maps JavaScript API 配置与初始化（Next.js App Router：环境变量注入、动态加载、Key 限制、合规 Gate）
+Google Maps JavaScript API 配置与初始化（Vite：环境变量注入、动态加载、Key 限制、合规 Gate）
 
 ---
 
@@ -51,8 +51,8 @@ Google Maps JavaScript API 配置与初始化（Next.js App Router：环境变�
 
 > 该模块的“输入”主要是配置参数与环境变量，不承载业务维度。
 
-- `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`（客户端公开变量；会被打包进浏览器 bundle）
-- `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID`（可选：Map ID / Cloud-based map styling）
+- `VITE_GOOGLE_MAPS_API_KEY`（客户端公开变量；会被打包进浏览器 bundle）
+- `VITE_GOOGLE_MAPS_MAP_ID`（可选：Map ID / Cloud-based map styling）
 - `region` / `language`（首次加载后不可变）
 
 ---
@@ -133,7 +133,7 @@ Maps 初始化不直接涉及 predicted；但**不得**把 prediction_run_id 等
 - **API restrictions**：只授权实际使用的 APIs（至少包含 Maps JavaScript API；如使用 Geocoding Service/Places 等，再按需授权）
 - **拆分 Key**（建议）：客户端 Maps JS API key 与服务端 Web Service key 分离，避免“一个 key 打天下”
 
-> 注意（Next.js）：`NEXT_PUBLIC_*` 会被内联进客户端 bundle（Context7 / Next.js 文档明确），因此应将其视为“公开但受限”的 key：只能通过 referrer + API 限制来控制风险。
+> 注意（Vite）：`VITE_*` 会被内联进客户端 bundle，因此应将其视为“公开但受限”的 key：只能通过 referrer + API 限制来控制风险。
 
 ### 2) Attribution（必须）
 
@@ -171,7 +171,7 @@ Maps 初始化不直接涉及 predicted；但**不得**把 prediction_run_id 等
 
 ### 功能（必须）
 
-- [ ] Maps JS API 可在 Next.js Client Component 中稳定加载（只加载一次），并可被后续模块安全复用。
+- [ ] Maps JS API 可在 Vite 前端中稳定加载（只加载一次），并可被后续模块安全复用。
 
 ### 安全/合规（必须）
 
@@ -186,7 +186,7 @@ Maps 初始化不直接涉及 predicted；但**不得**把 prediction_run_id 等
 ### 失败模式 A：前端隐藏当权限
 
 症状：把 Key 当“机密”硬塞进前端，误以为不暴露。  
-硬规则：`NEXT_PUBLIC_*` 一定会进 bundle；必须靠 referrer + API 限制、预算告警、分 key 策略来降低风险。
+硬规则：`VITE_*` 一定会进 bundle；必须靠 referrer + API 限制、预算告警、分 key 策略来降低风险。
 
 ### 失败模式 B：predicted 混批次
 

@@ -44,7 +44,7 @@
 ## 3. v2 化适配（必须写清楚）
 
 ### 3.1 v2 的地图加载与 Key 注入（只保留“原则”，不保留 v1 具体实现细节）
-- Key 必须来自 v2 的环境变量策略（Next.js），禁止硬编码。
+- Key 必须来自 v2 的环境变量策略（Vite），禁止硬编码。
 - Maps JS API 推荐仍采用动态加载（importLibrary / loader），但 v2 必须与合规 gate（key 限制、成本监控、attribution）绑定。
 
 ### 3.2 地图主舞台的体验约束
