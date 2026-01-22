@@ -91,6 +91,24 @@
 
 ---
 
+## 接口策略（读写分离）
+
+### 对外读路径（可公开）
+
+- `GET /risk-events`（必填 region_code/weather_type/data_type/time_range）
+- `GET /risk-events/{id}`（可选，详情）
+
+### 内部写路径（不对外公开）
+
+- 风险事件写入由计算任务/内部接口完成（不作为公开 API）
+- 不对外暴露 `POST /risk-events` / `batch` / `calculate`
+  
+**责任归属**：
+- historical 风险事件：Risk Calculator + 计算任务批量写入
+- predicted 风险事件：预测天气刷新触发计算任务写入（批次绑定）
+
+---
+
 ## Mode 规则（必须写）
 
 RiskEvent 的字段本身通常不含 PII，但仍必须 Mode-aware（尤其是与 claims 关联时的下钻能力）：

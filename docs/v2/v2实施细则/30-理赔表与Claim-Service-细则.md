@@ -99,6 +99,26 @@ Aggregations：
 
 ---
 
+## 接口策略（读写分离）
+
+### 对外读路径（可公开）
+
+- `GET /claims`（筛选 + 列表）
+- `GET /claims/{id}`（详情）
+- `GET /policies/{id}/claims`（保单理赔列表）
+- `GET /statistics/claims`（统计）
+
+### 内部写路径（不对外公开）
+
+- 理赔写入/修复由任务或内部接口完成（不作为公开 API）
+- 不对外暴露 `POST/PUT/DELETE /claims`
+  
+**责任归属**：
+- historical 理赔：Claim Calculator + 理赔计算任务写入
+- 修复/回填：内部运维流程或后台工具（需审计）
+
+---
+
 ## Mode 规则（必须写）
 
 ### Demo/Public
