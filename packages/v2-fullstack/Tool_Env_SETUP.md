@@ -1,6 +1,6 @@
 # V2 架构升级工具安装和配置进度
 
-**更新日期**：2025-01-27  
+**更新日期**：2026-01-21  
 **阶段**：开发前准备工作（工具安装、环境配置）
 
 > **注意**：本文档仅记录开发前的准备工作（工具安装、环境配置），不包含实际开发任务。
@@ -68,14 +68,13 @@
 - ✅ 安装了 Poetry 2.2.1
 - ✅ 创建了 `requirements.txt`（pip 方式）
 - ✅ 创建了 `pyproject.toml`（Poetry 方式）
-- ✅ 安装了所有后端依赖：
-  - FastAPI 0.115.14
+- ✅ 安装了所有后端依赖（以 `backend/requirements.txt` 为准）：
+  - FastAPI 0.115.0
   - SQLAlchemy 2.0.36 (async)
-  - GeoAlchemy2 0.15.2
   - Pydantic 2.9.2
-  - Redis 5.3.1
+  - Redis 5.2.0
   - Celery 5.4.0
-  - Google Generative AI SDK 0.8.6
+  - Google Generative AI SDK 0.8.3
   - 测试工具（pytest, hypothesis）
   - 开发工具（black, ruff, mypy）
 - ✅ 创建了 `app/main.py`（FastAPI 主应用文件，基础框架，用于测试环境配置）

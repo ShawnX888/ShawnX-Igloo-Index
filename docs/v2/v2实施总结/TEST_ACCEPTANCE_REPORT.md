@@ -1,8 +1,8 @@
 # Phase 0 + Phase 1 测试验收报告
 
-**验收日期**: 2026-01-20  
+**验收日期**: 2026-01-21  
 **验收人员**: AI Agent (Claude)  
-**验收状态**: ✅ **PASSED**
+**验收状态**: ✅ **PASSED（基于 Phase 0+1 已执行测试）**
 
 ---
 
@@ -251,11 +251,7 @@
 
 **状态**: 未执行
 
-**原因**: 
-- Node.js依赖未安装
-- npm test需要配置
-
-**计划**: 
+**计划**:
 - Phase 2 前端开发时一并验收
 - 预期覆盖: 70个测试用例 (Phase 0 Step 01-04)
 
@@ -291,8 +287,20 @@
 
 **建议**:
 - ✅ Phase 0+1后端部分可以进入Phase 2
+- ⏭️ Phase 3新增测试（Claims/L2 Evidence）未执行，待数据库配置后补充
 - ⏭️ 前端测试待Phase 2前端开发时一并验收
 - ⏭️ 2个跳过的集成测试待数据库配置后补充
+
+---
+
+## ⚠️ Phase 3 新增测试未执行
+
+基于 `PHASE_3_STEP_30-33_COMPLETE_SUMMARY.md`：
+- 新增 `tests/test_claim.py`（4用例）
+- 新增 `tests/test_claim_calculator.py`（5用例）
+- 新增 `tests/test_l2_evidence.py`（3用例）
+
+当前报告未包含上述测试的执行结果，需在数据库/Redis配置完成后补跑。
 
 ---
 

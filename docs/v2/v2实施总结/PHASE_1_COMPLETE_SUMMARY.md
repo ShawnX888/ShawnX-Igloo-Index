@@ -1,12 +1,12 @@
 # Phase 1: 后端数据产品最小可用 - 阶段完成总结
 
-**实施日期**: 2026-01-20 | **状态**: ✅ 核心完成
+**实施日期**: 2026-01-21 | **状态**: ✅ 完成（historical 风险计算已落库）
 
 ---
 
 ## 实施概述
 
-Phase 1完成了后端数据层和服务层的核心基础设施,包括5张表、5个Service、API框架和异步任务系统。
+Phase 1完成了后端数据层和服务层的核心基础设施，包括5张表、5个Service、Data Products API框架，以及 historical 风险事件计算任务的幂等落库能力。
 
 ---
 
@@ -90,8 +90,10 @@ Phase 1完成了后端数据层和服务层的核心基础设施,包括5张表�
 **Products API**: `/api/v1/products`
 - GET /products: 产品列表
 - GET /products/{id}: 产品详情
-- POST /products: 创建产品 (Admin)
-- PUT /products/{id}: 更新产品 (Admin)
+
+**Internal Products API**: `/api/v1/internal/products`（Admin/Internal）
+- POST /internal/products: 创建产品
+- PUT /internal/products/{id}: 更新产品
 
 **Data Products API**: `/api/v1/data-products`
 - POST /l0-dashboard: L0 Dashboard KPI + TopN
@@ -119,10 +121,11 @@ Phase 1完成了后端数据层和服务层的核心基础设施,包括5张表�
 - Worker: prefetch_multiplier=1 (避免OOM)
 
 **风险计算任务**
-- `calculate_risk_events_task`: 异步计算风险事件
+- `calculate_risk_events_task`: historical 风险事件计算并落库
+- 并发控制: Redis 分布式锁
+- 幂等写入: 可复现事件ID + DB 部分唯一索引（historical）
 - 重试机制: max_retries=3
 - 超时保护: task_time_limit=3600s
-- 框架就绪 (实际计算逻辑待Phase 2)
 
 **工程价值**:
 - CPU密集计算不阻塞API响应
@@ -145,7 +148,7 @@ Phase 1完成了后端数据层和服务层的核心基础设施,包括5张表�
 | 12 | Map Overlays API | ✅ | API框架 |
 | 13 | L1 Intelligence API | ✅ | API框架 |
 | 14 | Celery基础设施 | ✅ | Celery配置 |
-| 15 | 风险计算任务 | ✅ | 任务框架 |
+| 15 | 风险计算任务 | ✅ | historical 计算落库 + 幂等 |
 
 ---
 
@@ -236,8 +239,6 @@ prediction_runs (预测批次)
 - [ ] 前端组件开发
 
 ### Phase 3 需要
-- [ ] Claim Calculator
-- [ ] Claims表和Service
 - [ ] AI Agent集成
 
 ---
@@ -346,13 +347,15 @@ python -m app.seeds.seed_products
 | Phase | 步骤数 | 代码量 | 测试 | 状态 |
 |---|---|---|---|---|
 | Phase 0 | 4个 | 6,565行 | 155用例 | ✅ 100% |
-| Phase 1 | 11个 | 3,090行 | ~50用例 | ✅ 100% 框架 |
-| **累计** | **15个** | **9,655行** | **~205用例** | **完成** |
+| Phase 1 | 11个 | 3,090行 | ~50用例 | ✅ 100% |
+| Phase 2 | 2/14 | ~600行 | - | ⏭️ 基础完成 |
+| Phase 3 | 4/12 | ~1,500行 | 9用例（未执行） | 🚧 进行中 |
+| **累计** | **21个** | **~11,755行** | **~214用例** | **进行中** |
 
-**总体进度**: 15/47 步骤 (32%)
+**总体进度**: 21/47 步骤 (45%)
 
 ---
 
-**当前进度**: Phase 0 (100%) + Phase 1 (100% 框架)  
-**下一阶段**: Phase 2 - 前端核心页面与交互 (Step 16-33)  
+**当前进度**: Phase 0 (100%) + Phase 1 (100%) + Phase 2 (基础完成) + Phase 3 (30-33完成)  
+**下一阶段**: Phase 2 UI实现（Step 18-29）或 Phase 3 AI（Step 37-41）  
 **Phase 1 遗留**: Data Product查询逻辑、Redis缓存层 → Phase 2补充
