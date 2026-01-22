@@ -11,6 +11,7 @@ Reference:
 """
 
 import logging
+from decimal import Decimal
 from typing import List, Optional
 
 from sqlalchemy import func, select
@@ -56,6 +57,36 @@ class PolicyService:
             .where(PolicyModel.coverage_region == region_code)
             .where(PolicyModel.is_active == True)
         )
+        models = list(result.scalars().all())
+        
+        return [
+            self._apply_mode_pruning(self._model_to_schema(m), access_mode)
+            for m in models
+        ]
+    
+    async def list_by_filter(
+        self,
+        session: AsyncSession,
+        *,
+        region_code: Optional[str] = None,
+        product_id: Optional[str] = None,
+        is_active: Optional[bool] = None,
+        limit: int = 100,
+        access_mode: AccessMode = AccessMode.DEMO_PUBLIC,
+    ) -> List[Policy]:
+        """按条件查询保单"""
+        query = select(PolicyModel)
+        
+        if region_code:
+            query = query.where(PolicyModel.coverage_region == region_code)
+        if product_id:
+            query = query.where(PolicyModel.product_id == product_id)
+        if is_active is not None:
+            query = query.where(PolicyModel.is_active == is_active)
+        
+        query = query.limit(limit)
+        
+        result = await session.execute(query)
         models = list(result.scalars().all())
         
         return [
@@ -119,11 +150,18 @@ class PolicyService:
             if policy.holder_name:
                 policy.holder_name = policy.holder_name[:1] + "***"
             # 金额区间化
-            amount = float(policy.coverage_amount)
-            lower = (amount // 10000) * 10000
-            policy.coverage_amount = Decimal(str(lower))  # 简化显示
+            policy.coverage_amount = self._mask_decimal_range(policy.coverage_amount)
         
         return policy
+    
+    def _mask_decimal_range(self, value: Decimal) -> Decimal:
+        abs_value = abs(value)
+        if abs_value == 0:
+            step = Decimal("10")
+        else:
+            step_exp = max(abs_value.adjusted() - 1, 1)
+            step = Decimal(10) ** step_exp
+        return (value // step) * step
 
 
 policy_service = PolicyService()

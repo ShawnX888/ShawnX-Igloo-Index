@@ -7,9 +7,11 @@
 ## 核心交付
 
 1. **ClaimCalculator**: 纯计算引擎,不依赖DB
-2. **Tier差额逻辑**: 同一天只赔最高tier ✅
-3. **Decimal精度**: 金额计算使用Decimal
-4. **职责隔离**: 只读payoutRules ✅
+2. **Tier差额逻辑**: 同一频次周期只赔最高tier ✅
+3. **频次限制**: once per day/month 基于 policy.timezone ✅
+4. **Decimal精度**: 金额计算使用Decimal
+5. **职责隔离**: 只读payoutRules ✅
+6. **输出裁剪**: time_range可选裁剪 ✅
 
 ---
 
@@ -34,19 +36,29 @@ for natural_date, day_events in events_by_day.items():
 - ✅ Decimal精度 (避免浮点误差)
 - ✅ predicted不生成claims
 - ✅ 使用policy.timezone判定自然边界
+- ✅ 输出可按time_range裁剪
 
 ---
 
 ## 验收状态
 
 - [x] Tier差额逻辑实现
+- [x] 频次限制按policy.timezone
 - [x] Decimal金融精度
 - [x] predicted返回空列表
 - [x] total_cap上限执行
 - [x] 职责隔离验证(只读payoutRules)
+- [x] time_range裁剪
 
 **Go/No-Go**: ✅ **GO** → Step 32
 
 ---
 
 **下一步**: Step 32 - 理赔计算任务 (Celery + Redis锁)
+
+---
+
+## 交付物清单
+
+- `packages/v2-fullstack/backend/app/services/compute/claim_calculator.py`（计算内核、频次限制、裁剪）
+- `packages/v2-fullstack/backend/tests/test_claim_calculator.py`（验收用例）

@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.v1 import data_products, products
+from app.api.v1 import claims, data_products, policies, products, risk_events
 from app.db import dispose_engine
 
 
@@ -34,6 +34,12 @@ app.add_middleware(
 # API routers
 app.include_router(products.router, prefix="/api/v1")
 app.include_router(data_products.router, prefix="/api/v1")
+app.include_router(claims.router, prefix="/api/v1")
+app.include_router(claims.policy_router, prefix="/api/v1")
+app.include_router(claims.stats_router, prefix="/api/v1")
+app.include_router(policies.router, prefix="/api/v1")
+app.include_router(policies.stats_router, prefix="/api/v1")
+app.include_router(risk_events.router, prefix="/api/v1")
 
 
 @app.get("/")

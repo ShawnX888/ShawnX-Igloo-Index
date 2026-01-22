@@ -204,6 +204,133 @@ class TestClaimCalculator:
         # 不生成claims
         assert len(claims) == 0
     
+    def test_once_per_month_grouping(self):
+        """验收用例: once_per_month_per_policy 只赔一次"""
+        calculator = ClaimCalculator()
+        
+        events = [
+            RiskEventInput(
+                event_id="evt-001",
+                timestamp=datetime(2025, 1, 5, 10, 0, tzinfo=timezone.utc),
+                tier_level=1,
+                region_code="CN-GD"
+            ),
+            RiskEventInput(
+                event_id="evt-002",
+                timestamp=datetime(2025, 1, 20, 10, 0, tzinfo=timezone.utc),
+                tier_level=3,
+                region_code="CN-GD"
+            ),
+        ]
+        
+        payout_rules = PayoutRules(
+            frequency_limit="once_per_month_per_policy",
+            payout_percentages=PayoutPercentages(
+                tier1=Decimal("20.0"),
+                tier2=Decimal("50.0"),
+                tier3=Decimal("100.0")
+            ),
+            total_cap=Decimal("100.0")
+        )
+        
+        claims = calculator.calculate_claims(
+            risk_events=events,
+            payout_rules=payout_rules,
+            policy_id="pol-001",
+            product_id="daily_rainfall",
+            product_version="v1.0.0",
+            coverage_amount=Decimal("50000.00"),
+            policy_timezone="Asia/Shanghai",
+            region_code="CN-GD",
+            data_type="historical"
+        )
+        
+        assert len(claims) == 1
+        assert claims[0].tier_level == 3
+    
+    def test_coverage_range_filtering(self):
+        """验收用例: 保障期外事件不参与理赔计算"""
+        calculator = ClaimCalculator()
+        
+        events = [
+            RiskEventInput(
+                event_id="evt-001",
+                timestamp=datetime(2025, 1, 10, 10, 0, tzinfo=timezone.utc),
+                tier_level=2,
+                region_code="CN-GD"
+            ),
+            RiskEventInput(
+                event_id="evt-002",
+                timestamp=datetime(2025, 2, 10, 10, 0, tzinfo=timezone.utc),
+                tier_level=3,
+                region_code="CN-GD"
+            ),
+        ]
+        
+        payout_rules = PayoutRules(
+            frequency_limit="once_per_day_per_policy",
+            payout_percentages=PayoutPercentages(
+                tier1=Decimal("20.0"),
+                tier2=Decimal("50.0"),
+                tier3=Decimal("100.0")
+            ),
+            total_cap=Decimal("100.0")
+        )
+        
+        claims = calculator.calculate_claims(
+            risk_events=events,
+            payout_rules=payout_rules,
+            policy_id="pol-001",
+            product_id="daily_rainfall",
+            product_version="v1.0.0",
+            coverage_amount=Decimal("50000.00"),
+            policy_timezone="Asia/Shanghai",
+            region_code="CN-GD",
+            coverage_start_utc=datetime(2025, 1, 1, 0, 0, tzinfo=timezone.utc),
+            coverage_end_utc=datetime(2025, 1, 31, 23, 59, tzinfo=timezone.utc),
+        )
+        
+        assert len(claims) == 1
+        assert claims[0].tier_level == 2
+    
+    def test_time_range_clipping(self):
+        """验收用例: 输出按 time_range 裁剪"""
+        calculator = ClaimCalculator()
+        
+        events = [
+            RiskEventInput(
+                event_id="evt-001",
+                timestamp=datetime(2025, 1, 10, 10, 0, tzinfo=timezone.utc),
+                tier_level=2,
+                region_code="CN-GD"
+            )
+        ]
+        
+        payout_rules = PayoutRules(
+            frequency_limit="once_per_day_per_policy",
+            payout_percentages=PayoutPercentages(
+                tier1=Decimal("20.0"),
+                tier2=Decimal("50.0"),
+                tier3=Decimal("100.0")
+            ),
+            total_cap=Decimal("100.0")
+        )
+        
+        claims = calculator.calculate_claims(
+            risk_events=events,
+            payout_rules=payout_rules,
+            policy_id="pol-001",
+            product_id="daily_rainfall",
+            product_version="v1.0.0",
+            coverage_amount=Decimal("50000.00"),
+            policy_timezone="Asia/Shanghai",
+            region_code="CN-GD",
+            time_range_start=datetime(2025, 1, 11, 0, 0, tzinfo=timezone.utc),
+            time_range_end=datetime(2025, 1, 12, 0, 0, tzinfo=timezone.utc),
+        )
+        
+        assert claims == []
+    
     def test_total_cap_enforcement(self):
         """验收用例: total_cap上限强制执行"""
         calculator = ClaimCalculator()

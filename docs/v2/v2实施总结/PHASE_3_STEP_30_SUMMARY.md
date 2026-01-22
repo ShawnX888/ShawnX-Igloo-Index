@@ -7,8 +7,9 @@
 ## 核心交付
 
 1. **claims表**: policy关联、金额Decimal、唯一约束
-2. **Claim Service**: CRUD + 统计 + Mode裁剪
-3. **硬规则验证**: predicted不生成claims、金额非负
+2. **Claim Service**: CRUD + 统计 + Mode裁剪（Demo金额区间化）
+3. **Claims API Router**: /claims + /policies/{id}/claims + /statistics/claims（内部/Admin写入）
+4. **硬规则验证**: predicted不生成claims、金额非负
 
 ---
 
@@ -41,6 +42,17 @@ CREATE TABLE claims (
 - [x] 唯一约束防止重复
 - [x] Mode裁剪(Demo金额区间化)
 - [x] 只存储historical (约束由Service层执行)
+
+---
+
+## 交付物清单
+
+- `packages/v2-fullstack/backend/app/models/claim.py`（claims表模型、唯一约束）
+- `packages/v2-fullstack/backend/app/schemas/claim.py`（Claim/ClaimCreate/ClaimUpdate/ClaimStats）
+- `packages/v2-fullstack/backend/app/services/claim_service.py`（CRUD + 统计 + Mode裁剪）
+- `packages/v2-fullstack/backend/app/api/v1/claims.py`（Claims Router）
+- `packages/v2-fullstack/backend/tests/test_api_claims.py`（Router验收）
+- `packages/v2-fullstack/backend/tests/test_claim.py`（Schema验收用例）
 
 **Go/No-Go**: ✅ **GO** → Step 31
 

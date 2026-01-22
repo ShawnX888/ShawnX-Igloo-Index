@@ -15,20 +15,99 @@ Reference:
 """
 
 import logging
+from decimal import Decimal
 from typing import List, Optional
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.claim import Claim as ClaimModel
-from app.schemas.claim import Claim, ClaimCreate, ClaimFilter, ClaimStats
-from app.schemas.shared import AccessMode
+from app.schemas.claim import Claim, ClaimCreate, ClaimFilter, ClaimStats, ClaimUpdate
+from app.schemas.shared import AccessMode, DataType
 
 logger = logging.getLogger(__name__)
 
 
 class ClaimService:
     """理赔服务"""
+    
+    async def create(
+        self,
+        session: AsyncSession,
+        claim_create: ClaimCreate,
+        data_type: DataType = DataType.HISTORICAL,
+    ) -> Claim:
+        """创建理赔记录"""
+        self._assert_historical(data_type)
+        
+        model = ClaimModel(
+            id=claim_create.id,
+            policy_id=claim_create.policy_id,
+            product_id=claim_create.product_id,
+            risk_event_id=claim_create.risk_event_id,
+            region_code=claim_create.region_code,
+            tier_level=claim_create.tier_level,
+            payout_percentage=claim_create.payout_percentage,
+            payout_amount=claim_create.payout_amount,
+            currency=claim_create.currency,
+            triggered_at=claim_create.triggered_at,
+            period_start=claim_create.period_start,
+            period_end=claim_create.period_end,
+            status=claim_create.status,
+            product_version=claim_create.product_version,
+            rules_hash=claim_create.rules_hash,
+            source=claim_create.source,
+        )
+        
+        session.add(model)
+        await session.commit()
+        await session.refresh(model)
+        
+        return self._model_to_schema(model)
+    
+    async def update(
+        self,
+        session: AsyncSession,
+        claim_id: str,
+        claim_update: ClaimUpdate,
+    ) -> Optional[Claim]:
+        """更新理赔记录"""
+        result = await session.execute(
+            select(ClaimModel).where(ClaimModel.id == claim_id)
+        )
+        model = result.scalar_one_or_none()
+        
+        if not model:
+            return None
+        
+        if claim_update.status is not None:
+            model.status = claim_update.status
+        if claim_update.payout_amount is not None:
+            model.payout_amount = claim_update.payout_amount
+        
+        await session.commit()
+        await session.refresh(model)
+        
+        return self._model_to_schema(model)
+    
+    async def delete(
+        self,
+        session: AsyncSession,
+        claim_id: str,
+    ) -> bool:
+        """删除理赔记录"""
+        result = await session.execute(
+            select(ClaimModel).where(ClaimModel.id == claim_id)
+        )
+        model = result.scalar_one_or_none()
+        
+        if not model:
+            return False
+        
+        await session.delete(model)
+        await session.commit()
+        
+        return True
     
     async def get_by_id(
         self,
@@ -163,13 +242,24 @@ class ClaimService:
             if claim.policy_id:
                 claim.policy_id = claim.policy_id[:8] + "***"
             
-            # 金额区间化 (简化为万元档)
-            if claim.payout_amount:
-                amount = float(claim.payout_amount)
-                lower = (amount // 10000) * 10000
-                claim.payout_amount = Decimal(str(lower))
+            # 金额区间化 (按数量级粗化，避免精确金额泄露)
+            if claim.payout_amount is not None:
+                claim.payout_amount = self._mask_decimal_range(claim.payout_amount)
         
         return claim
+    
+    def _assert_historical(self, data_type: DataType) -> None:
+        if data_type != DataType.HISTORICAL:
+            raise ValueError("predicted not allowed for claims")
+    
+    def _mask_decimal_range(self, value: Decimal) -> Decimal:
+        abs_value = abs(value)
+        if abs_value == 0:
+            step = Decimal("10")
+        else:
+            step_exp = max(abs_value.adjusted() - 1, 1)
+            step = Decimal(10) ** step_exp
+        return (value // step) * step
 
 
 claim_service = ClaimService()

@@ -8,6 +8,7 @@
 
 1. **policies 表**: 保单号、产品关联、覆盖区域、保额(Decimal)、**timezone**(必须)
 2. **Policy Service**: CRUD + 统计查询 + Mode裁剪
+3. **Policy API Router**: /policies + /statistics/policies（读路径）
 3. **验证规则**: timezone必填、coverage_end > start、金额非负
 
 ---
@@ -68,6 +69,17 @@ same_day = is_same_natural_day(event1_utc, event2_utc, policy.timezone)
 - [x] 金额使用Decimal
 - [x] Mode裁剪实现
 - [x] 测试覆盖
+
+---
+
+## 交付物清单
+
+- `packages/v2-fullstack/backend/app/models/policy.py`（policies表模型）
+- `packages/v2-fullstack/backend/app/schemas/policy.py`（Policy/PolicyStats）
+- `packages/v2-fullstack/backend/app/services/policy_service.py`（查询 + 统计 + Mode裁剪）
+- `packages/v2-fullstack/backend/app/api/v1/policies.py`（Policy Router）
+- `packages/v2-fullstack/backend/tests/test_policy.py`（Schema验收用例）
+- `packages/v2-fullstack/backend/tests/test_api_policies.py`（Router验收）
 
 **Go/No-Go**: ✅ **GO** → Step 07
 
