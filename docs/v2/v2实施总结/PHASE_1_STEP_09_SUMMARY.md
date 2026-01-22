@@ -11,7 +11,7 @@
 3. **批次绑定**: predicted必须包含prediction_run_id
 4. **可追溯**: 记录product_version用于审计
 5. **Risk Service（查询）**: 提供 Mode/predicted-aware 的查询基元（不在服务层做重计算）✅
-6. **Risk Events API Router**: /risk-events（读路径）
+6. **Risk Events API Router**: /risk-events + /risk-events/{id}（读路径）
 7. **Internal Risk Events Router**: /internal/risk-events（Admin/Internal 写入）
 
 ---

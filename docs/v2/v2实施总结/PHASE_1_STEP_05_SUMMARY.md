@@ -14,7 +14,8 @@
 1. **数据库模型**: `products` 表 (SQLAlchemy)
 2. **Pydantic Schemas**: Product相关的完整类型定义
 3. **Product Service**: CRUD + Mode裁剪 + 规则验证
-4. **RESTful API**: `/products` endpoints
+4. **RESTful API**: `/products` 读路径
+5. **Internal Product Router**: `/internal/products`（Admin/Internal 写入）
 5. **Seed数据**: 6个预定义产品配置
 
 ---
@@ -30,10 +31,12 @@
 | `packages/v2-fullstack/backend/app/models/__init__.py` | Models 导出 | 已创建 |
 | `packages/v2-fullstack/backend/app/schemas/product.py` | Product Schemas | 以代码为准 |
 | `packages/v2-fullstack/backend/app/services/product_service.py` | Product Service | 以代码为准 |
-| `packages/v2-fullstack/backend/app/api/v1/products.py` | Product API Routes | 以代码为准 |
+| `packages/v2-fullstack/backend/app/api/v1/products.py` | Product API Routes（读路径） | 以代码为准 |
+| `packages/v2-fullstack/backend/app/api/v1/internal/products.py` | Internal Product Routes（写路径） | 以代码为准 |
 | `packages/v2-fullstack/backend/app/seeds/products.json` | Seed 数据（6个产品） | 以代码为准 |
 | `packages/v2-fullstack/backend/app/seeds/seed_products.py` | Seed 脚本 | 以代码为准 |
 | `packages/v2-fullstack/backend/tests/test_product.py` | 单元测试 | 以代码为准 |
+| `packages/v2-fullstack/backend/tests/test_api_internal_products.py` | Internal Router 验收 | 以代码为准 |
 
 **总计**: ~1,440行代码
 
@@ -236,13 +239,13 @@ assert product.payout_rules is not None  # ✅ 完整
 }
 ```
 
-### POST /products (Admin only)
+### POST /internal/products (Admin only)
 
-创建产品
+创建产品（内部写路径）
 
-### PUT /products/{product_id} (Admin only)
+### PUT /internal/products/{product_id} (Admin only)
 
-更新产品
+更新产品（内部写路径）
 
 ---
 
@@ -613,7 +616,8 @@ const { data } = useQuery({
 - [x] Product数据库模型完成
 - [x] Product Schemas完成
 - [x] Product Service完成
-- [x] Product API Routes完成
+- [x] Product API Routes完成（读路径）
+- [x] Internal Product Router 完成（写路径）
 - [x] Seed数据完成 (6个产品)
 - [x] 单元测试完成
 - [x] riskRules与payoutRules职责隔离

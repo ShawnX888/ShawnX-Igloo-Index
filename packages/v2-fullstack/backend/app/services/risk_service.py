@@ -28,6 +28,33 @@ logger = logging.getLogger(__name__)
 class RiskService:
     """风险事件服务（查询为主，计算另见 Step 08/15）。"""
 
+    async def get_by_id(
+        self,
+        session: AsyncSession,
+        event_id: str,
+    ) -> Optional[RiskEventResponse]:
+        """按ID获取风险事件"""
+        result = await session.execute(
+            select(RiskEventModel).where(RiskEventModel.id == event_id)
+        )
+        model = result.scalar_one_or_none()
+        if not model:
+            return None
+        return RiskEventResponse(
+            id=model.id,
+            timestamp=model.timestamp,
+            region_code=model.region_code,
+            product_id=model.product_id,
+            product_version=model.product_version,
+            weather_type=WeatherType(model.weather_type),
+            tier_level=model.tier_level,
+            trigger_value=model.trigger_value,
+            threshold_value=model.threshold_value,
+            data_type=DataType(model.data_type),
+            prediction_run_id=model.prediction_run_id,
+            created_at=model.created_at,
+        )
+
     async def query_events(
         self,
         session: AsyncSession,

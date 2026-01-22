@@ -5,6 +5,7 @@ Risk Events API Routes
 
 Endpoints:
 - GET /risk-events - 查询风险事件列表（必填维度）
+- GET /risk-events/{id} - 获取风险事件详情（可选）
 
 Reference:
 - docs/v2/v2实施细则/09-风险事件表与Risk-Service-细则.md
@@ -25,6 +26,18 @@ from app.services.risk_service import risk_service
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/risk-events", tags=["risk-events"])
+
+
+@router.get("/{event_id}", response_model=RiskEventResponse)
+async def get_risk_event(
+    event_id: str,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> RiskEventResponse:
+    """获取风险事件详情"""
+    event = await risk_service.get_by_id(session, event_id)
+    if not event:
+        raise HTTPException(status_code=404, detail=f"Risk event not found: {event_id}")
+    return event
 
 
 @router.get("", response_model=List[RiskEventResponse])

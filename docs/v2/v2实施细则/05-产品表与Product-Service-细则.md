@@ -89,6 +89,23 @@
 
 ---
 
+## 接口策略（读写分离）
+
+### 对外读路径（可公开）
+
+- `GET /products`（筛选 + 列表）
+- `GET /products/{id}`（详情）
+
+### 内部写路径（不对外公开）
+
+- 产品写入/更新通过 internal 接口完成（与 policies/claims/risk_events 保持一致的写策略）
+- 仅 Admin/Internal 可调用，用于 seed/修复/回填
+- 建议接口：
+  - `POST /internal/products`
+  - `PUT /internal/products/{id}`
+
+---
+
 ## Mode 规则（必须写）
 
 > 产品规则本身也可能包含敏感口径（尤其 payoutRules），因此必须后端 Mode-aware 裁剪。

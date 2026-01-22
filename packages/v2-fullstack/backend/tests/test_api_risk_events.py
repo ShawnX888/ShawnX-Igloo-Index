@@ -71,3 +71,40 @@ def test_list_risk_events_calls_service(monkeypatch):
     assert response.status_code == 200
     assert response.json() == []
     assert mock.await_count == 1
+
+
+def test_get_risk_event_returns_404(monkeypatch):
+    client = _build_client()
+    mock = AsyncMock(return_value=None)
+    monkeypatch.setattr(risk_service, "get_by_id", mock)
+
+    response = client.get("/api/v1/risk-events/evt-missing")
+
+    assert response.status_code == 404
+
+
+def test_get_risk_event_calls_service(monkeypatch):
+    client = _build_client()
+    mock = AsyncMock(
+        return_value={
+            "id": "evt-001",
+            "timestamp": "2025-01-01T00:00:00Z",
+            "region_code": "CN-GD",
+            "product_id": "daily_rainfall",
+            "product_version": "v1.0.0",
+            "weather_type": "rainfall",
+            "tier_level": 1,
+            "trigger_value": "10.00",
+            "threshold_value": "5.00",
+            "data_type": "historical",
+            "prediction_run_id": None,
+            "created_at": "2025-01-01T00:00:00Z",
+        }
+    )
+    monkeypatch.setattr(risk_service, "get_by_id", mock)
+
+    response = client.get("/api/v1/risk-events/evt-001")
+
+    assert response.status_code == 200
+    assert response.json()["id"] == "evt-001"
+    assert mock.await_count == 1
