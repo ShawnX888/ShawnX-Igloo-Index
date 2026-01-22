@@ -15,7 +15,7 @@ from datetime import datetime, timezone as tz
 from decimal import Decimal
 from typing import TYPE_CHECKING, List
 
-from sqlalchemy import Column, DateTime, ForeignKey, Index, Integer, Numeric, String
+from sqlalchemy import Column, DateTime, ForeignKey, Index, Integer, Numeric, String, text
 from sqlalchemy.orm import relationship, Mapped
 
 from app.models.base import Base
@@ -139,5 +139,15 @@ class RiskEvent(Base):
         Index(
             'idx_risk_predicted',
             'prediction_run_id', 'product_id', 'timestamp'
+        ),
+        Index(
+            "uq_risk_event_historical",
+            "product_id",
+            "region_code",
+            "timestamp",
+            "weather_type",
+            "tier_level",
+            unique=True,
+            postgresql_where=text("data_type = 'historical' AND prediction_run_id IS NULL"),
         ),
     )
